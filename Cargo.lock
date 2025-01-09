@@ -415,6 +415,7 @@ dependencies = [
 name = "pwmixer"
 version = "0.1.0"
 dependencies = [
+ "libspa",
  "pipewire",
 ]
 
