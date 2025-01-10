@@ -1,14 +1,14 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 use pipewire::{
     context::Context,
     core::Core,
     main_loop::MainLoop,
     node::Node,
-    registry::{ Listener, GlobalObject, Registry },
-    types::ObjectType
+    registry::{GlobalObject, Listener, Registry},
+    types::ObjectType,
 };
 
 use libspa::utils::dict::DictRef;
@@ -38,7 +38,8 @@ impl PipewireListener {
         let nodes_remove = Rc::clone(&nodes);
         let registry_bind = Rc::clone(&registry);
 
-        let listener = registry.borrow()
+        let listener = registry
+            .borrow()
             .add_listener_local()
             .global(move |global| {
                 let bound = Self::bind_node(&registry_bind.borrow(), global);
@@ -67,7 +68,7 @@ impl PipewireListener {
 
     fn bind_node(
         registry: &Registry,
-        global: &GlobalObject<&DictRef>
+        global: &GlobalObject<&DictRef>,
     ) -> Option<Node> {
         match global.type_ {
             ObjectType::Node => {
@@ -81,7 +82,7 @@ impl PipewireListener {
                         }
                     }
                 }
-            },
+            }
             _ => (),
         }
 
