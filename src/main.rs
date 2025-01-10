@@ -13,9 +13,9 @@ use pipewire::{
 
 use libspa_sys;
 
-use libspa::utils::dict::DictRef;
 use libspa::param::ParamType;
-use libspa::pod::{Pod, deserialize::PodDeserializer, Value::ValueArray};
+use libspa::pod::{deserialize::PodDeserializer, Pod};
+use libspa::utils::dict::DictRef;
 
 const MEDIA_CLASSES: &[&str] = &[
     "Audio/Device",
@@ -37,7 +37,8 @@ impl PipewireListener {
         let context = Context::new(&mainloop)?;
         let core = context.connect(None)?;
         let registry = Rc::new(RefCell::new(core.get_registry()?));
-        let nodes = Rc::new(RefCell::new(HashMap::<u32, (Node, NodeListener)>::new()));
+        let nodes =
+            Rc::new(RefCell::new(HashMap::<u32, (Node, NodeListener)>::new()));
 
         let nodes_remove = Rc::clone(&nodes);
         let registry_bind = Rc::clone(&registry);
@@ -51,22 +52,7 @@ impl PipewireListener {
                     println!("{:?}", global);
                     let listener = node
                         .add_listener_local()
-                        .param(|_, param_type, _, _, pod| {
-                            if param_type == ParamType::Props {
-                                if let Some(pod) = pod {
-                                    if let Ok(obj) = pod.as_object() {
-                                        for prop in obj.props() {
-                                            if prop.key().0 == libspa_sys::SPA_PROP_channelVolumes {
-                                                println!("{:?}", prop.value().as_bytes());
-                                                if let Ok(des) = PodDeserializer::deserialize_from::<Vec<f32>>(prop.value().as_bytes()) {
-                                                    println!("{:?}", des);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        })
+                        .param(Self::node_listen_volume)
                         .register();
                     node.subscribe_params(&[ParamType::Props]);
                     nodes.borrow_mut().insert(global.id, (node, listener));
@@ -96,21 +82,38 @@ impl PipewireListener {
         global: &GlobalObject<&DictRef>,
     ) -> Option<Node> {
         match global.type_ {
-            ObjectType::Node => {
-                if let Some(props) = &global.props {
-                    if let Some(media_class) = props.get("media.class") {
-                        if MEDIA_CLASSES.contains(&media_class) {
-                            if let Ok(node) = registry.bind(global) {
-                                return Some(node);
-                            }
-                        }
-                    }
+            ObjectType::Node => global
+                .props
+                .and_then(|props| props.get("media.class"))
+                .filter(|media_class| MEDIA_CLASSES.contains(&media_class))
+                .and_then(|_| registry.bind(global).ok()),
+            _ => None,
+        }
+    }
+
+    fn node_listen_volume(
+        _seq: i32,
+        id: ParamType,
+        _index: u32,
+        _next: u32,
+        param: Option<&Pod>,
+    ) {
+        if id != ParamType::Props {
+            return;
+        }
+        if let Some(obj) = param.and_then(|p| p.as_object().ok()) {
+            for prop in obj
+                .props()
+                .filter(|p| p.key().0 == libspa_sys::SPA_PROP_channelVolumes)
+            {
+                println!("{:?}", prop.value().as_bytes());
+                if let Ok(des) = PodDeserializer::deserialize_from::<Vec<f32>>(
+                    prop.value().as_bytes(),
+                ) {
+                    println!("{:?}", des);
                 }
             }
-            _ => (),
         }
-
-        None
     }
 }
 
