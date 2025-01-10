@@ -3,13 +3,15 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use pipewire::{
-    main_loop::MainLoop,
     context::Context,
-    registry::Listener,
     core::Core,
+    main_loop::MainLoop,
     node::Node,
+    registry::{ Listener, GlobalObject, Registry },
     types::ObjectType
 };
+
+use libspa::utils::dict::DictRef;
 
 const MEDIA_CLASSES: &[&str] = &[
     "Audio/Device",
@@ -39,20 +41,9 @@ impl PipewireListener {
         let listener = registry.borrow()
             .add_listener_local()
             .global(move |global| {
-                match global.type_ {
-                    ObjectType::Node => {
-                        if let Some(props) = &global.props {
-                            if let Some(media_class) = props.get("media.class") {
-                                if MEDIA_CLASSES.contains(&media_class) {
-                                    println!("{}: {:?}", media_class, global);
-                                    if let Ok(node) = registry_bind.borrow().bind(global) {
-                                        nodes.borrow_mut().insert(global.id, node);
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    _ => (),
+                let bound = Self::bind_node(&registry_bind.borrow(), global);
+                if let Some(node) = bound {
+                    nodes.borrow_mut().insert(global.id, node);
                 }
             })
             .global_remove(move |id| {
@@ -72,6 +63,29 @@ impl PipewireListener {
 
     pub fn run(&self) {
         self.mainloop.run()
+    }
+
+    fn bind_node(
+        registry: &Registry,
+        global: &GlobalObject<&DictRef>
+    ) -> Option<Node> {
+        match global.type_ {
+            ObjectType::Node => {
+                if let Some(props) = &global.props {
+                    if let Some(media_class) = props.get("media.class") {
+                        if MEDIA_CLASSES.contains(&media_class) {
+                            println!("{}: {:?}", media_class, global);
+                            if let Ok(node) = registry.bind(global) {
+                                return Some(node);
+                            }
+                        }
+                    }
+                }
+            },
+            _ => (),
+        }
+
+        None
     }
 }
 
