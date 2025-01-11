@@ -2,6 +2,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use env_logger;
+use log::{info, warn};
+
 use pipewire::{
     context::Context,
     core::Core,
@@ -49,12 +52,12 @@ impl PipewireListener {
             .global(move |global| {
                 let bound = Self::bind_node(&registry_bind.borrow(), global);
                 if let Some(node) = bound {
-                    println!("{:?}", global);
+                    info!("{:?}", global);
                     let node_id = global.id;
                     let listener = node
                         .add_listener_local()
                         .param(move |_, id, _, _, param| {
-                            Self::node_listen_volume(node_id, id, param)
+                            Self::node_param(node_id, id, param)
                         })
                         .register();
                     node.subscribe_params(&[ParamType::Props]);
@@ -63,7 +66,7 @@ impl PipewireListener {
             })
             .global_remove(move |id| {
                 if nodes_remove.borrow_mut().remove(&id).is_some() {
-                    println!("Removed: {}", id);
+                    info!("Removed: {}", id);
                 }
             })
             .register();
@@ -97,47 +100,53 @@ impl PipewireListener {
         registry.bind(global).ok()
     }
 
-    fn node_listen_volume(node_id: u32, id: ParamType, param: Option<&Pod>) {
-        fn pod_get_volume(param: &Pod) -> Option<f32> {
-            let (_, value) =
-                PodDeserializer::deserialize_any_from(param.as_bytes()).ok()?;
-
-            let Value::Object(obj) = value else {
-                return None;
-            };
-
-            let prop = obj
-                .properties
-                .iter()
-                .find(|p| p.key == libspa_sys::SPA_PROP_channelVolumes)?;
-
-            match &prop.value {
-                Value::ValueArray(ValueArray::Float(vec)) => {
-                    // Return the average volume, converted to cubic scale
-                    if vec.is_empty() {
-                        None
-                    } else {
-                        let mean = vec.iter().sum::<f32>() / vec.len() as f32;
-                        Some(mean.cbrt())
-                    }
-                }
-                _ => None,
-            }
+    fn node_param_prop_channel_volumes(node_id: u32, value: &Vec<f32>) {
+        if !value.is_empty() {
+            let mean = value.iter().sum::<f32>() / value.len() as f32;
+            let cubic = mean.cbrt();
+            println!("{} {:?}", node_id, cubic);
         }
+    }
 
+    fn node_param(node_id: u32, id: ParamType, param: Option<&Pod>) {
         if id != ParamType::Props {
+            warn!("Unhandled ParamType {:?}", id);
             return;
         }
 
-        if let Some(param) = param {
-            if let Some(volumes) = pod_get_volume(param) {
-                println!("{} {:?}", node_id, volumes);
+        let Some(param) = param else {
+            return;
+        };
+
+        let Ok((_, value)) =
+            PodDeserializer::deserialize_any_from(param.as_bytes())
+        else {
+            return;
+        };
+
+        let Value::Object(obj) = value else {
+            warn!("Unhandled param value {:?}", value);
+            return;
+        };
+
+        for prop in obj.properties {
+            match prop.key {
+                libspa_sys::SPA_PROP_channelVolumes => {
+                    if let Value::ValueArray(ValueArray::Float(value)) =
+                        &prop.value
+                    {
+                        Self::node_param_prop_channel_volumes(node_id, value);
+                    }
+                }
+                _ => (),
             }
         }
     }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let listener = PipewireListener::try_new()?;
 
     listener.run();
