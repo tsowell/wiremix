@@ -81,14 +81,17 @@ impl PipewireListener {
         registry: &Registry,
         global: &GlobalObject<&DictRef>,
     ) -> Option<Node> {
-        match global.type_ {
-            ObjectType::Node => global
-                .props
-                .and_then(|props| props.get("media.class"))
-                .filter(|media_class| MEDIA_CLASSES.contains(&media_class))
-                .and_then(|_| registry.bind(global).ok()),
-            _ => None,
+        if global.type_ != ObjectType::Node {
+            return None;
         }
+
+        let props = global.props?;
+        let media_class = props.get("media.class")?;
+        if !MEDIA_CLASSES.contains(&media_class) {
+            return None;
+        }
+
+        registry.bind(global).ok()
     }
 
     fn node_listen_volume(
@@ -98,20 +101,24 @@ impl PipewireListener {
         _next: u32,
         param: Option<&Pod>,
     ) {
+        fn pod_get_volume(param: &Pod) -> Option<Vec<f32>> {
+            let obj = param.as_object().ok()?;
+            let prop = obj
+                .props()
+                .find(|p| p.key().0 == libspa_sys::SPA_PROP_channelVolumes)?;
+            let bytes = prop.value().as_bytes();
+            PodDeserializer::deserialize_from::<Vec<f32>>(bytes)
+                .ok()
+                .map(|x| x.1)
+        }
+
         if id != ParamType::Props {
             return;
         }
-        if let Some(obj) = param.and_then(|p| p.as_object().ok()) {
-            for prop in obj
-                .props()
-                .filter(|p| p.key().0 == libspa_sys::SPA_PROP_channelVolumes)
-            {
-                println!("{:?}", prop.value().as_bytes());
-                if let Ok(des) = PodDeserializer::deserialize_from::<Vec<f32>>(
-                    prop.value().as_bytes(),
-                ) {
-                    println!("{:?}", des);
-                }
+
+        if let Some(param) = param {
+            if let Some(volumes) = pod_get_volume(param) {
+                println!("{:?}", volumes);
             }
         }
     }
