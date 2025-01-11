@@ -100,7 +100,11 @@ impl PipewireListener {
         registry.bind(global).ok()
     }
 
-    fn node_param_prop_channel_volumes(node_id: u32, value: &Vec<f32>) {
+    fn node_param_prop_channel_volumes(node_id: u32, value: &Value) {
+        let Value::ValueArray(ValueArray::Float(value)) = value else {
+            return;
+        };
+
         if !value.is_empty() {
             let mean = value.iter().sum::<f32>() / value.len() as f32;
             let cubic = mean.cbrt();
@@ -132,11 +136,7 @@ impl PipewireListener {
         for prop in obj.properties {
             match prop.key {
                 libspa_sys::SPA_PROP_channelVolumes => {
-                    if let Value::ValueArray(ValueArray::Float(value)) =
-                        &prop.value
-                    {
-                        Self::node_param_prop_channel_volumes(node_id, value);
-                    }
+                    Self::node_param_prop_channel_volumes(node_id, &prop.value);
                 }
                 _ => (),
             }
