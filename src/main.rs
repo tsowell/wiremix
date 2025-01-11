@@ -14,7 +14,7 @@ use pipewire::{
 use libspa_sys;
 
 use libspa::param::ParamType;
-use libspa::pod::{deserialize::PodDeserializer, Pod};
+use libspa::pod::{deserialize::PodDeserializer, Pod, Value, ValueArray};
 use libspa::utils::dict::DictRef;
 
 const MEDIA_CLASSES: &[&str] = &[
@@ -50,12 +50,15 @@ impl PipewireListener {
                 let bound = Self::bind_node(&registry_bind.borrow(), global);
                 if let Some(node) = bound {
                     println!("{:?}", global);
+                    let node_id = global.id;
                     let listener = node
                         .add_listener_local()
-                        .param(Self::node_listen_volume)
+                        .param(move |_, id, _, _, param| {
+                            Self::node_listen_volume(node_id, id, param)
+                        })
                         .register();
                     node.subscribe_params(&[ParamType::Props]);
-                    nodes.borrow_mut().insert(global.id, (node, listener));
+                    nodes.borrow_mut().insert(node_id, (node, listener));
                 }
             })
             .global_remove(move |id| {
@@ -94,22 +97,32 @@ impl PipewireListener {
         registry.bind(global).ok()
     }
 
-    fn node_listen_volume(
-        _seq: i32,
-        id: ParamType,
-        _index: u32,
-        _next: u32,
-        param: Option<&Pod>,
-    ) {
-        fn pod_get_volume(param: &Pod) -> Option<Vec<f32>> {
-            let obj = param.as_object().ok()?;
+    fn node_listen_volume(node_id: u32, id: ParamType, param: Option<&Pod>) {
+        fn pod_get_volume(param: &Pod) -> Option<f32> {
+            let (_, value) =
+                PodDeserializer::deserialize_any_from(param.as_bytes()).ok()?;
+
+            let Value::Object(obj) = value else {
+                return None;
+            };
+
             let prop = obj
-                .props()
-                .find(|p| p.key().0 == libspa_sys::SPA_PROP_channelVolumes)?;
-            let bytes = prop.value().as_bytes();
-            PodDeserializer::deserialize_from::<Vec<f32>>(bytes)
-                .ok()
-                .map(|x| x.1)
+                .properties
+                .iter()
+                .find(|p| p.key == libspa_sys::SPA_PROP_channelVolumes)?;
+
+            match &prop.value {
+                Value::ValueArray(ValueArray::Float(vec)) => {
+                    // Return the average volume, converted to cubic scale
+                    if vec.is_empty() {
+                        None
+                    } else {
+                        let mean = vec.iter().sum::<f32>() / vec.len() as f32;
+                        Some(mean.cbrt())
+                    }
+                }
+                _ => None,
+            }
         }
 
         if id != ParamType::Props {
@@ -118,7 +131,7 @@ impl PipewireListener {
 
         if let Some(param) = param {
             if let Some(volumes) = pod_get_volume(param) {
-                println!("{:?}", volumes);
+                println!("{} {:?}", node_id, volumes);
             }
         }
     }
