@@ -113,7 +113,12 @@ impl PipewireListener {
                     Self::param(global_id, id, param)
                 })
                 .register();
-            node.subscribe_params(&[ParamType::Route, ParamType::EnumRoute]);
+            node.subscribe_params(&[
+                ParamType::Route,
+                ParamType::EnumRoute,
+                ParamType::Profile,
+                ParamType::EnumProfile,
+            ]);
             Some((Box::new(node), Box::new(listener)))
         } else {
             None
@@ -161,7 +166,7 @@ impl PipewireListener {
     fn param_route_index(global_id: u32, value: &Value) {
         let Value::Int(value) = value else { return };
 
-        println!("{} index {:?}", global_id, value);
+        println!("{} route index {:?}", global_id, value);
     }
 
     fn param_enum_route(global_id: u32, object: Object) {
@@ -190,6 +195,49 @@ impl PipewireListener {
         println!("{} route {}: {}", global_id, index, description);
     }
 
+    fn param_profile(global_id: u32, object: Object) {
+        for prop in object.properties {
+            match prop.key {
+                libspa_sys::SPA_PARAM_ROUTE_index => {
+                    Self::param_profile_index(global_id, &prop.value);
+                },
+                _ => (),
+            }
+        }
+    }
+
+    fn param_profile_index(global_id: u32, value: &Value) {
+        let Value::Int(value) = value else { return };
+
+        println!("{} profile index {:?}", global_id, value);
+    }
+
+    fn param_enum_profile(global_id: u32, object: Object) {
+        let mut index = None;
+        let mut description = None;
+
+        for prop in object.properties {
+            match prop.key {
+                libspa_sys::SPA_PARAM_PROFILE_index => {
+                    if let Value::Int(value) = prop.value {
+                        index = Some(value);
+                    }
+                },
+                libspa_sys::SPA_PARAM_PROFILE_description => {
+                    if let Value::String(value) = prop.value {
+                        description = Some(value);
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        let Some(index) = index else { return; };
+        let Some(description) = description else { return; };
+
+        println!("{} profile {}: {}", global_id, index, description);
+    }
+
     fn param(global_id: u32, id: ParamType, param: Option<&Pod>) {
         let Some(param) = param else {
             return;
@@ -210,6 +258,8 @@ impl PipewireListener {
             ParamType::Props => Self::param_props(global_id, obj),
             ParamType::Route => Self::param_route(global_id, obj),
             ParamType::EnumRoute => Self::param_enum_route(global_id, obj),
+            ParamType::Profile => Self::param_profile(global_id, obj),
+            ParamType::EnumProfile => Self::param_enum_profile(global_id, obj),
             _ => (),
         }
     }
