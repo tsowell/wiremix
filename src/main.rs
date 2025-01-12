@@ -10,6 +10,7 @@ use pipewire::{
     core::Core,
     main_loop::MainLoop,
     node::{Node, NodeListener},
+    proxy::{Listener as ProxyListener, ProxyT},
     registry::{GlobalObject, Listener, Registry},
     types::ObjectType,
 };
@@ -40,32 +41,49 @@ impl PipewireListener {
         let context = Context::new(&mainloop)?;
         let core = context.connect(None)?;
         let registry = Rc::new(RefCell::new(core.get_registry()?));
-        let nodes =
-            Rc::new(RefCell::new(HashMap::<u32, (Node, NodeListener)>::new()));
+        let objects = Rc::new(RefCell::new(HashMap::<
+            u32,
+            (Box<dyn ProxyT>, Box<dyn ProxyListener>),
+        >::new()));
 
-        let nodes_remove = Rc::clone(&nodes);
+        let objects_bind = Rc::clone(&objects);
+        let objects_remove = Rc::clone(&objects);
         let registry_bind = Rc::clone(&registry);
 
         let listener = registry
             .borrow()
             .add_listener_local()
             .global(move |global| {
-                let bound = Self::bind(&registry_bind.borrow(), global);
-                if let Some(node) = bound {
-                    info!("{:?}", global);
-                    let global_id = global.id;
-                    let listener = node
-                        .add_listener_local()
-                        .param(move |_, id, _, _, param| {
-                            Self::param(global_id, id, param)
-                        })
-                        .register();
-                    node.subscribe_params(&[ParamType::Props]);
-                    nodes.borrow_mut().insert(global_id, (node, listener));
+                if global.type_ == ObjectType::Node {
+                    let Some(props) = global.props else { return };
+                    let Some(media_class) = props.get("media.class") else {
+                        return;
+                    };
+                    if !MEDIA_CLASSES.contains(&media_class) {
+                        return;
+                    }
+
+                    if let Ok(node) =
+                        registry_bind.borrow().bind::<Node, &DictRef>(global)
+                    {
+                        info!("{:?}", global);
+                        let global_id = global.id;
+                        let listener = node
+                            .add_listener_local()
+                            .param(move |_, id, _, _, param| {
+                                Self::param(global_id, id, param)
+                            })
+                            .register();
+                        node.subscribe_params(&[ParamType::Props]);
+                        objects.borrow_mut().insert(
+                            global_id,
+                            (Box::new(node), Box::new(listener)),
+                        );
+                    }
                 }
             })
             .global_remove(move |id| {
-                if nodes_remove.borrow_mut().remove(&id).is_some() {
+                if objects_remove.borrow_mut().remove(&id).is_some() {
                     info!("Removed: {}", id);
                 }
             })
@@ -81,23 +99,6 @@ impl PipewireListener {
 
     pub fn run(&self) {
         self.mainloop.run()
-    }
-
-    fn bind(
-        registry: &Registry,
-        global: &GlobalObject<&DictRef>,
-    ) -> Option<Node> {
-        if global.type_ == ObjectType::Node {
-            let props = global.props?;
-            let media_class = props.get("media.class")?;
-            if !MEDIA_CLASSES.contains(&media_class) {
-                return None;
-            }
-
-            registry.bind(global).ok()
-        } else {
-            None
-        }
     }
 
     fn prop_channel_volumes(global_id: u32, value: &Value) {
