@@ -50,18 +50,18 @@ impl PipewireListener {
             .borrow()
             .add_listener_local()
             .global(move |global| {
-                let bound = Self::bind_node(&registry_bind.borrow(), global);
+                let bound = Self::bind(&registry_bind.borrow(), global);
                 if let Some(node) = bound {
                     info!("{:?}", global);
-                    let node_id = global.id;
+                    let global_id = global.id;
                     let listener = node
                         .add_listener_local()
                         .param(move |_, id, _, _, param| {
-                            Self::node_param(node_id, id, param)
+                            Self::param(global_id, id, param)
                         })
                         .register();
                     node.subscribe_params(&[ParamType::Props]);
-                    nodes.borrow_mut().insert(node_id, (node, listener));
+                    nodes.borrow_mut().insert(global_id, (node, listener));
                 }
             })
             .global_remove(move |id| {
@@ -83,24 +83,24 @@ impl PipewireListener {
         self.mainloop.run()
     }
 
-    fn bind_node(
+    fn bind(
         registry: &Registry,
         global: &GlobalObject<&DictRef>,
     ) -> Option<Node> {
-        if global.type_ != ObjectType::Node {
-            return None;
-        }
+        if global.type_ == ObjectType::Node {
+            let props = global.props?;
+            let media_class = props.get("media.class")?;
+            if !MEDIA_CLASSES.contains(&media_class) {
+                return None;
+            }
 
-        let props = global.props?;
-        let media_class = props.get("media.class")?;
-        if !MEDIA_CLASSES.contains(&media_class) {
-            return None;
+            registry.bind(global).ok()
+        } else {
+            None
         }
-
-        registry.bind(global).ok()
     }
 
-    fn node_param_prop_channel_volumes(node_id: u32, value: &Value) {
+    fn prop_channel_volumes(global_id: u32, value: &Value) {
         let Value::ValueArray(ValueArray::Float(value)) = value else {
             return;
         };
@@ -108,11 +108,11 @@ impl PipewireListener {
         if !value.is_empty() {
             let mean = value.iter().sum::<f32>() / value.len() as f32;
             let cubic = mean.cbrt();
-            println!("{} {:?}", node_id, cubic);
+            println!("{} {:?}", global_id, cubic);
         }
     }
 
-    fn node_param(node_id: u32, id: ParamType, param: Option<&Pod>) {
+    fn param(global_id: u32, id: ParamType, param: Option<&Pod>) {
         if id != ParamType::Props {
             warn!("Unhandled ParamType {:?}", id);
             return;
@@ -136,7 +136,7 @@ impl PipewireListener {
         for prop in obj.properties {
             match prop.key {
                 libspa_sys::SPA_PROP_channelVolumes => {
-                    Self::node_param_prop_channel_volumes(node_id, &prop.value);
+                    Self::prop_channel_volumes(global_id, &prop.value);
                 }
                 _ => (),
             }
