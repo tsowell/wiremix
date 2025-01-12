@@ -54,7 +54,11 @@ impl PipewireListener {
             .borrow()
             .add_listener_local()
             .global(move |global| {
-                Self::bind(&registry_bind.borrow(), &mut *objects_bind.borrow_mut(), global);
+                if let Some(object) =
+                    Self::bind(&registry_bind.borrow(), global)
+                {
+                    objects_bind.borrow_mut().insert(global.id, object);
+                }
             })
             .global_remove(move |id| {
                 if objects_remove.borrow_mut().remove(&id).is_some() {
@@ -73,9 +77,8 @@ impl PipewireListener {
 
     pub fn bind(
         registry: &Registry,
-        objects: &mut HashMap::<u32, (Box<dyn ProxyT>, Box<dyn ProxyListener>)>,
         global: &GlobalObject<&DictRef>,
-    ) -> Option<()> {
+    ) -> Option<(Box<dyn ProxyT>, Box<dyn ProxyListener>)> {
         if global.type_ == ObjectType::Node {
             let props = global.props?;
             let media_class = props.get("media.class")?;
@@ -93,11 +96,7 @@ impl PipewireListener {
                 })
                 .register();
             node.subscribe_params(&[ParamType::Props]);
-            objects.insert(
-                global_id,
-                (Box::new(node), Box::new(listener)),
-            );
-            Some(())
+            Some((Box::new(node), Box::new(listener)))
         } else {
             None
         }
