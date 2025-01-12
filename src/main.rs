@@ -124,6 +124,17 @@ impl PipewireListener {
         self.mainloop.run()
     }
 
+    fn param_props(global_id: u32, object: Object) {
+        for prop in object.properties {
+            match prop.key {
+                libspa_sys::SPA_PROP_channelVolumes => {
+                    Self::prop_channel_volumes(global_id, &prop.value);
+                },
+                _ => (),
+            }
+        }
+    }
+
     fn prop_channel_volumes(global_id: u32, value: &Value) {
         let Value::ValueArray(ValueArray::Float(value)) = value else {
             return;
@@ -136,10 +147,47 @@ impl PipewireListener {
         }
     }
 
+    fn param_route(global_id: u32, object: Object) {
+        for prop in object.properties {
+            match prop.key {
+                libspa_sys::SPA_PARAM_ROUTE_index => {
+                    Self::param_route_index(global_id, &prop.value);
+                },
+                _ => (),
+            }
+        }
+    }
+
     fn param_route_index(global_id: u32, value: &Value) {
         let Value::Int(value) = value else { return };
 
         println!("{} index {:?}", global_id, value);
+    }
+
+    fn param_enum_route(global_id: u32, object: Object) {
+        let mut index = None;
+        let mut description = None;
+
+        for prop in object.properties {
+            match prop.key {
+                libspa_sys::SPA_PARAM_ROUTE_index => {
+                    if let Value::Int(value) = prop.value {
+                        index = Some(value);
+                    }
+                },
+                libspa_sys::SPA_PARAM_ROUTE_description => {
+                    if let Value::String(value) = prop.value {
+                        description = Some(value);
+                    }
+                },
+                _ => (),
+            }
+        }
+
+        let Some(index) = index else { return; };
+        let Some(description) = description else { return; };
+
+        println!("{} route {}: {}", global_id, index, description);
     }
 
     fn param(global_id: u32, id: ParamType, param: Option<&Pod>) {
@@ -158,16 +206,11 @@ impl PipewireListener {
             return;
         };
 
-        for prop in obj.properties {
-            match (id, prop.key) {
-                (ParamType::Props, libspa_sys::SPA_PROP_channelVolumes) => {
-                    Self::prop_channel_volumes(global_id, &prop.value);
-                },
-                (ParamType::Route, libspa_sys::SPA_PARAM_ROUTE_index) => {
-                    Self::param_route_index(global_id, &prop.value);
-                },
-                _ => (),
-            }
+        match id {
+            ParamType::Props => Self::param_props(global_id, obj),
+            ParamType::Route => Self::param_route(global_id, obj),
+            ParamType::EnumRoute => Self::param_enum_route(global_id, obj),
+            _ => (),
         }
     }
 }
