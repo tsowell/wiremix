@@ -9,7 +9,7 @@ use pipewire::{
     context::Context,
     core::Core,
     main_loop::MainLoop,
-    node::{Node, NodeListener},
+    node::Node,
     proxy::{Listener as ProxyListener, ProxyT},
     registry::{GlobalObject, Listener, Registry},
     types::ObjectType,
@@ -54,33 +54,7 @@ impl PipewireListener {
             .borrow()
             .add_listener_local()
             .global(move |global| {
-                if global.type_ == ObjectType::Node {
-                    let Some(props) = global.props else { return };
-                    let Some(media_class) = props.get("media.class") else {
-                        return;
-                    };
-                    if !MEDIA_CLASSES.contains(&media_class) {
-                        return;
-                    }
-
-                    if let Ok(node) =
-                        registry_bind.borrow().bind::<Node, &DictRef>(global)
-                    {
-                        info!("{:?}", global);
-                        let global_id = global.id;
-                        let listener = node
-                            .add_listener_local()
-                            .param(move |_, id, _, _, param| {
-                                Self::param(global_id, id, param)
-                            })
-                            .register();
-                        node.subscribe_params(&[ParamType::Props]);
-                        objects.borrow_mut().insert(
-                            global_id,
-                            (Box::new(node), Box::new(listener)),
-                        );
-                    }
-                }
+                Self::bind(&registry_bind.borrow(), &mut *objects_bind.borrow_mut(), global);
             })
             .global_remove(move |id| {
                 if objects_remove.borrow_mut().remove(&id).is_some() {
@@ -95,6 +69,38 @@ impl PipewireListener {
             _core: core,
             _listener: listener,
         })
+    }
+
+    pub fn bind(
+        registry: &Registry,
+        objects: &mut HashMap::<u32, (Box<dyn ProxyT>, Box<dyn ProxyListener>)>,
+        global: &GlobalObject<&DictRef>,
+    ) -> Option<()> {
+        if global.type_ == ObjectType::Node {
+            let props = global.props?;
+            let media_class = props.get("media.class")?;
+            if !MEDIA_CLASSES.contains(&media_class) {
+                return None;
+            }
+
+            let node = registry.bind::<Node, &DictRef>(global).ok()?;
+            info!("{:?}", global);
+            let global_id = global.id;
+            let listener = node
+                .add_listener_local()
+                .param(move |_, id, _, _, param| {
+                    Self::param(global_id, id, param)
+                })
+                .register();
+            node.subscribe_params(&[ParamType::Props]);
+            objects.insert(
+                global_id,
+                (Box::new(node), Box::new(listener)),
+            );
+            Some(())
+        } else {
+            None
+        }
     }
 
     pub fn run(&self) {
