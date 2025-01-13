@@ -209,24 +209,20 @@ fn monitor(remote: Option<String>) -> Result<()> {
                     .type_
                 {
                     ObjectType::Node => {
-                        if let Some(props) = obj.props {
-                            if let Some(media_class) = props.get("media.class")
-                            {
-                                match media_class {
-                                    "Audio/Sink" => (),
-                                    "Audio/Source" => (),
-                                    "Stream/Output/Audio" => (),
-                                    _ => return,
-                                }
-                            }
-                            if let Some(node_description) =
-                                props.get("node.description")
-                            {
-                                println!(
-                                    "node {} {}",
-                                    obj_id, node_description
-                                );
-                            }
+                        let Some(props) = obj.props else { return };
+                        let Some(media_class) = props.get("media.class") else {
+                            return;
+                        };
+                        match media_class {
+                            "Audio/Sink" => (),
+                            "Audio/Source" => (),
+                            "Stream/Output/Audio" => (),
+                            _ => return,
+                        }
+                        if let Some(node_description) =
+                            props.get("node.description")
+                        {
+                            println!("node {} {}", obj_id, node_description);
                         }
                         let node: Node = registry.bind(obj).unwrap();
                         let obj_listener = node
@@ -247,22 +243,21 @@ fn monitor(remote: Option<String>) -> Result<()> {
                         Some((Box::new(node), Box::new(obj_listener)))
                     }
                     ObjectType::Device => {
-                        if let Some(props) = obj.props {
-                            if let Some(media_class) = props.get("media.class")
-                            {
-                                match media_class {
-                                    "Audio/Device" => (),
-                                    _ => return,
-                                }
-                            }
-                            if let Some(device_description) =
-                                props.get("device.description")
-                            {
-                                println!(
-                                    "device {} {}",
-                                    obj_id, device_description
-                                );
-                            }
+                        let Some(props) = obj.props else { return };
+                        let Some(media_class) = props.get("media.class") else {
+                            return;
+                        };
+                        match media_class {
+                            "Audio/Device" => (),
+                            _ => return,
+                        }
+                        if let Some(device_description) =
+                            props.get("device.description")
+                        {
+                            println!(
+                                "device {} {}",
+                                obj_id, device_description
+                            );
                         }
                         let device: Device = registry.bind(obj).unwrap();
                         let obj_listener = device
