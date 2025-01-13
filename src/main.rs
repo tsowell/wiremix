@@ -135,11 +135,8 @@ impl PipewireListener {
 
     fn param_props(global_id: u32, object: Object) {
         for prop in object.properties {
-            match prop.key {
-                libspa_sys::SPA_PROP_channelVolumes => {
-                    Self::prop_channel_volumes(global_id, &prop.value);
-                },
-                _ => (),
+            if prop.key == libspa_sys::SPA_PROP_channelVolumes {
+                Self::prop_channel_volumes(global_id, &prop.value);
             }
         }
     }
@@ -158,11 +155,8 @@ impl PipewireListener {
 
     fn param_route(global_id: u32, object: Object) {
         for prop in object.properties {
-            match prop.key {
-                libspa_sys::SPA_PARAM_ROUTE_index => {
-                    Self::param_route_index(global_id, &prop.value);
-                },
-                _ => (),
+            if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
+                Self::param_route_index(global_id, &prop.value);
             }
         }
     }
@@ -201,11 +195,8 @@ impl PipewireListener {
 
     fn param_profile(global_id: u32, object: Object) {
         for prop in object.properties {
-            match prop.key {
-                libspa_sys::SPA_PARAM_ROUTE_index => {
-                    Self::param_profile_index(global_id, &prop.value);
-                },
-                _ => (),
+            if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
+                Self::param_profile_index(global_id, &prop.value);
             }
         }
     }
