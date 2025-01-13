@@ -261,7 +261,7 @@ fn monitor(
                         let sender = Rc::clone(&sender);
                         let obj_listener = node
                             .add_listener_local()
-                            .param(move |_, id, _, _, param| {
+                            .param(move |_seq, id, _index, _next, param| {
                                 if let Some(param) = deserialize(param) {
                                     sender.send(match id {
                                         ParamType::Props => {
@@ -300,7 +300,7 @@ fn monitor(
                         let sender = Rc::clone(&sender);
                         let obj_listener = device
                             .add_listener_local()
-                            .param(move |_, id, _, _, param| {
+                            .param(move |_seq, id, _index, _next, param| {
                                 if let Some(param) = deserialize(param) {
                                     sender.send(match id {
                                         ParamType::Route => {
@@ -319,7 +319,7 @@ fn monitor(
                                     });
                                 }
                             })
-                            .info(move |_| {
+                            .info(move |_info| {
                                 // TODO: track each of these and only request if not received yet
                                 info_device.enum_params(0, Some(ParamType::Route), 0, u32::MAX);
                                 info_device.enum_params(0, Some(ParamType::EnumRoute), 0, u32::MAX);
