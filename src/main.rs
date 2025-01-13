@@ -21,6 +21,18 @@ use libspa::pod::{
     deserialize::PodDeserializer, Object, Pod, Value, ValueArray,
 };
 
+#[allow(dead_code)]
+#[derive(Debug)]
+enum MonitorMessage {
+    DeviceDescription(u32, String),
+    NodeDescription(u32, String),
+    DeviceRouteIndex(u32, i32),
+    DeviceRouteDescription(u32, i32, String),
+    DeviceProfileIndex(u32, i32),
+    DeviceProfileDescription(u32, i32, String),
+    NodeVolume(u32, f32),
+}
+
 struct Proxies {
     proxies_t: HashMap<u32, Box<dyn ProxyT>>,
     listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
@@ -79,7 +91,7 @@ fn node_props(id: u32, param: Object) {
                 if !value.is_empty() {
                     let mean = value.iter().sum::<f32>() / value.len() as f32;
                     let cubic = mean.cbrt();
-                    println!("node {} {:?}", id, cubic);
+                    println!("{:?}", MonitorMessage::NodeVolume(id, cubic));
                 }
             }
         }
@@ -90,7 +102,7 @@ fn device_route(id: u32, param: Object) {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                println!("device {} route index {}", id, value);
+                println!("{:?}", MonitorMessage::DeviceRouteIndex(id, value));
             }
         }
     }
@@ -123,14 +135,17 @@ fn device_enum_route(id: u32, param: Object) {
         return;
     };
 
-    println!("device {} route {}: {}", id, index, description);
+    println!(
+        "{:?}",
+        MonitorMessage::DeviceRouteDescription(id, index, description)
+    );
 }
 
 fn device_profile(id: u32, param: Object) {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                println!("device {} profile index {:?}", id, value);
+                println!("{:?}", MonitorMessage::DeviceProfileIndex(id, value));
             }
         }
     }
@@ -163,7 +178,10 @@ fn device_enum_profile(id: u32, param: Object) {
         return;
     };
 
-    println!("device {} profile {}: {}", id, index, description);
+    println!(
+        "{:?}",
+        MonitorMessage::DeviceProfileDescription(id, index, description)
+    );
 }
 
 fn monitor(remote: Option<String>) -> Result<()> {
@@ -224,7 +242,13 @@ fn monitor(remote: Option<String>) -> Result<()> {
                     if let Some(node_description) =
                         props.get("node.description")
                     {
-                        println!("node {} {}", obj_id, node_description);
+                        println!(
+                            "{:?}",
+                            MonitorMessage::NodeDescription(
+                                obj_id,
+                                String::from(node_description)
+                            )
+                        );
                     }
                     let node: Node = registry.bind(obj).unwrap();
                     let obj_listener = node
@@ -256,7 +280,13 @@ fn monitor(remote: Option<String>) -> Result<()> {
                     if let Some(device_description) =
                         props.get("device.description")
                     {
-                        println!("device {} {}", obj_id, device_description);
+                        println!(
+                            "{:?}",
+                            MonitorMessage::DeviceDescription(
+                                obj_id,
+                                String::from(device_description)
+                            )
+                        );
                     }
                     let device: Device = registry.bind(obj).unwrap();
                     let obj_listener = device
