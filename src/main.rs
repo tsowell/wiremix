@@ -204,116 +204,114 @@ fn monitor(remote: Option<String>) -> Result<()> {
         .add_listener_local()
         .global(move |obj| {
             let obj_id = obj.id;
-            if let Some(registry) = registry_weak.upgrade() {
-                let p: Option<(Box<dyn ProxyT>, Box<dyn Listener>)> = match obj
-                    .type_
-                {
-                    ObjectType::Node => {
-                        let Some(props) = obj.props else { return };
-                        let Some(media_class) = props.get("media.class") else {
-                            return;
-                        };
-                        match media_class {
-                            "Audio/Sink" => (),
-                            "Audio/Source" => (),
-                            "Stream/Output/Audio" => (),
-                            _ => return,
-                        }
-                        if let Some(node_description) =
-                            props.get("node.description")
-                        {
-                            println!("node {} {}", obj_id, node_description);
-                        }
-                        let node: Node = registry.bind(obj).unwrap();
-                        let obj_listener = node
-                            .add_listener_local()
-                            .param(move |_, id, _, _, param| {
-                                if let Some(param) = deserialize(param) {
-                                    match id {
-                                        ParamType::Props => {
-                                            node_props(obj_id, param)
-                                        }
-                                        _ => (),
-                                    }
-                                }
-                            })
-                            .register();
-                        node.subscribe_params(&[ParamType::Props]);
-
-                        Some((Box::new(node), Box::new(obj_listener)))
+            let Some(registry) = registry_weak.upgrade() else {
+                return;
+            };
+            let p: Option<(Box<dyn ProxyT>, Box<dyn Listener>)> = match obj
+                .type_
+            {
+                ObjectType::Node => {
+                    let Some(props) = obj.props else { return };
+                    let Some(media_class) = props.get("media.class") else {
+                        return;
+                    };
+                    match media_class {
+                        "Audio/Sink" => (),
+                        "Audio/Source" => (),
+                        "Stream/Output/Audio" => (),
+                        _ => return,
                     }
-                    ObjectType::Device => {
-                        let Some(props) = obj.props else { return };
-                        let Some(media_class) = props.get("media.class") else {
-                            return;
-                        };
-                        match media_class {
-                            "Audio/Device" => (),
-                            _ => return,
-                        }
-                        if let Some(device_description) =
-                            props.get("device.description")
-                        {
-                            println!(
-                                "device {} {}",
-                                obj_id, device_description
-                            );
-                        }
-                        let device: Device = registry.bind(obj).unwrap();
-                        let obj_listener = device
-                            .add_listener_local()
-                            .param(move |_, id, _, _, param| {
-                                if let Some(param) = deserialize(param) {
-                                    match id {
-                                        ParamType::Route => {
-                                            device_route(obj_id, param)
-                                        }
-                                        ParamType::EnumRoute => {
-                                            device_enum_route(obj_id, param)
-                                        }
-                                        ParamType::Profile => {
-                                            device_profile(obj_id, param)
-                                        }
-                                        ParamType::EnumProfile => {
-                                            device_enum_profile(obj_id, param)
-                                        }
-                                        _ => (),
-                                    }
-                                }
-                            })
-                            .register();
-                        device.subscribe_params(&[
-                            ParamType::Route,
-                            ParamType::EnumRoute,
-                            ParamType::Profile,
-                            ParamType::EnumProfile,
-                        ]);
-
-                        Some((Box::new(device), Box::new(obj_listener)))
+                    if let Some(node_description) =
+                        props.get("node.description")
+                    {
+                        println!("node {} {}", obj_id, node_description);
                     }
-                    _ => None,
-                };
-
-                if let Some((proxy_spe, listener_spe)) = p {
-                    let proxy = proxy_spe.upcast_ref();
-                    let proxy_id = proxy.id();
-                    // Use a weak ref to prevent references cycle between Proxy and proxies:
-                    // - ref on proxies in the closure, bound to the Proxy lifetime
-                    // - proxies owning a ref on Proxy as well
-                    let proxies_weak = Rc::downgrade(&proxies);
-
-                    let listener = proxy
+                    let node: Node = registry.bind(obj).unwrap();
+                    let obj_listener = node
                         .add_listener_local()
-                        .removed(move || {
-                            if let Some(proxies) = proxies_weak.upgrade() {
-                                proxies.borrow_mut().remove(proxy_id);
+                        .param(move |_, id, _, _, param| {
+                            if let Some(param) = deserialize(param) {
+                                match id {
+                                    ParamType::Props => {
+                                        node_props(obj_id, param)
+                                    }
+                                    _ => (),
+                                }
                             }
                         })
                         .register();
+                    node.subscribe_params(&[ParamType::Props]);
 
-                    proxies.borrow_mut().add_proxy_t(proxy_spe, listener_spe);
-                    proxies.borrow_mut().add_proxy_listener(proxy_id, listener);
+                    Some((Box::new(node), Box::new(obj_listener)))
                 }
+                ObjectType::Device => {
+                    let Some(props) = obj.props else { return };
+                    let Some(media_class) = props.get("media.class") else {
+                        return;
+                    };
+                    match media_class {
+                        "Audio/Device" => (),
+                        _ => return,
+                    }
+                    if let Some(device_description) =
+                        props.get("device.description")
+                    {
+                        println!("device {} {}", obj_id, device_description);
+                    }
+                    let device: Device = registry.bind(obj).unwrap();
+                    let obj_listener = device
+                        .add_listener_local()
+                        .param(move |_, id, _, _, param| {
+                            if let Some(param) = deserialize(param) {
+                                match id {
+                                    ParamType::Route => {
+                                        device_route(obj_id, param)
+                                    }
+                                    ParamType::EnumRoute => {
+                                        device_enum_route(obj_id, param)
+                                    }
+                                    ParamType::Profile => {
+                                        device_profile(obj_id, param)
+                                    }
+                                    ParamType::EnumProfile => {
+                                        device_enum_profile(obj_id, param)
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        })
+                        .register();
+                    device.subscribe_params(&[
+                        ParamType::Route,
+                        ParamType::EnumRoute,
+                        ParamType::Profile,
+                        ParamType::EnumProfile,
+                    ]);
+
+                    Some((Box::new(device), Box::new(obj_listener)))
+                }
+                _ => None,
+            };
+
+            if let Some((proxy_spe, listener_spe)) = p {
+                let proxy = proxy_spe.upcast_ref();
+                let proxy_id = proxy.id();
+                // Use a weak ref to prevent references cycle between Proxy and proxies:
+                // - ref on proxies in the closure, bound to the Proxy lifetime
+                // - proxies owning a ref on Proxy as well
+                let proxies_weak = Rc::downgrade(&proxies);
+
+                let listener = proxy
+                    .add_listener_local()
+                    .removed(move || {
+                        if let Some(proxies) = proxies_weak.upgrade() {
+                            proxies.borrow_mut().remove(proxy_id);
+                        }
+                    })
+                    .register();
+
+                proxies.borrow_mut().add_proxy_t(proxy_spe, listener_spe);
+                proxies.borrow_mut().add_proxy_listener(proxy_id, listener);
             }
         })
         .register();
