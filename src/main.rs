@@ -37,7 +37,7 @@ enum MonitorMessage {
 }
 
 struct Proxies {
-    proxies_t: HashMap<u32, Box<dyn ProxyT>>,
+    proxies_t: HashMap<u32, Box<Rc<dyn ProxyT>>>,
     listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
 }
 
@@ -51,7 +51,7 @@ impl Proxies {
 
     fn add_proxy_t(
         &mut self,
-        proxy_t: Box<dyn ProxyT>,
+        proxy_t: Box<Rc<dyn ProxyT>>,
         listener: Box<dyn Listener>,
     ) {
         let proxy_id = {
@@ -234,7 +234,7 @@ fn monitor(
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let p: Option<(Box<dyn ProxyT>, Box<dyn Listener>)> =
+            let p: Option<(Box<Rc<dyn ProxyT>>, Box<dyn Listener>)> =
                 match obj.type_ {
                     ObjectType::Node => {
                         let Some(props) = obj.props else { return };
@@ -257,6 +257,7 @@ fn monitor(
                             sender.send(Some(message));
                         }
                         let node: Node = registry.bind(obj).unwrap();
+                        let node = Rc::new(node);
                         let sender = Rc::clone(&sender);
                         let obj_listener = node
                             .add_listener_local()
@@ -294,6 +295,8 @@ fn monitor(
                             sender.send(Some(message));
                         }
                         let device: Device = registry.bind(obj).unwrap();
+                        let device = Rc::new(device);
+                        let info_device = Rc::clone(&device);
                         let sender = Rc::clone(&sender);
                         let obj_listener = device
                             .add_listener_local()
@@ -316,7 +319,15 @@ fn monitor(
                                     });
                                 }
                             })
+                            .info(move |_| {
+                                // TODO: track each of these and only request if not received yet
+                                info_device.enum_params(0, Some(ParamType::Route), 0, u32::MAX);
+                                info_device.enum_params(0, Some(ParamType::EnumRoute), 0, u32::MAX);
+                                info_device.enum_params(0, Some(ParamType::Profile), 0, u32::MAX);
+                                info_device.enum_params(0, Some(ParamType::EnumProfile), 0, u32::MAX);
+                            })
                             .register();
+
                         device.subscribe_params(&[
                             ParamType::Route,
                             ParamType::EnumRoute,
