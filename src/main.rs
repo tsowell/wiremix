@@ -22,8 +22,11 @@ use libspa::param::ParamType;
 use libspa::pod::{deserialize::PodDeserializer, Object, Pod, Value, ValueArray};
 use libspa::utils::dict::DictRef;
 
-const MEDIA_CLASSES: &[&str] = &[
+const DEVICE_MEDIA_CLASSES: &[&str] = &[
     "Audio/Device",
+];
+
+const NODE_MEDIA_CLASSES: &[&str] = &[
     "Audio/Sink",
     "Audio/Source",
     "Stream/Output/Audio",
@@ -84,9 +87,11 @@ impl PipewireListener {
         if global.type_ == ObjectType::Node {
             let props = global.props?;
             let media_class = props.get("media.class")?;
-            if !MEDIA_CLASSES.contains(&media_class) {
+            if !NODE_MEDIA_CLASSES.contains(&media_class) {
                 return None;
             }
+
+            println!("Node {}", media_class);
 
             let node = registry.bind::<Node, &DictRef>(global).ok()?;
             let global_id = global.id;
@@ -101,9 +106,11 @@ impl PipewireListener {
         } else if global.type_ == ObjectType::Device {
             let props = global.props?;
             let media_class = props.get("media.class")?;
-            if !MEDIA_CLASSES.contains(&media_class) {
+            if !DEVICE_MEDIA_CLASSES.contains(&media_class) {
                 return None;
             }
+
+            println!("Device {}", media_class);
 
             let node = registry.bind::<Device, &DictRef>(global).ok()?;
             let global_id = global.id;
