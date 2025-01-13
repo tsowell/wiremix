@@ -5,11 +5,13 @@ use anyhow::Result;
 use clap::Parser;
 use pipewire as pw;
 use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
 use std::{cell::RefCell, collections::HashMap};
 
 use pw::{
     device::Device,
-    loop_::Signal,
+    main_loop::{MainLoop, WeakMainLoop},
     node::Node,
     properties::properties,
     proxy::{Listener, ProxyListener, ProxyT},
@@ -84,31 +86,35 @@ fn deserialize(param: Option<&Pod>) -> Option<Object> {
         })
 }
 
-fn node_props(id: u32, param: Object) {
+fn node_props(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PROP_channelVolumes {
             if let Value::ValueArray(ValueArray::Float(value)) = prop.value {
                 if !value.is_empty() {
                     let mean = value.iter().sum::<f32>() / value.len() as f32;
                     let cubic = mean.cbrt();
-                    println!("{:?}", MonitorMessage::NodeVolume(id, cubic));
+                    return Some(MonitorMessage::NodeVolume(id, cubic));
                 }
             }
         }
     }
+
+    None
 }
 
-fn device_route(id: u32, param: Object) {
+fn device_route(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                println!("{:?}", MonitorMessage::DeviceRouteIndex(id, value));
+                return Some(MonitorMessage::DeviceRouteIndex(id, value));
             }
         }
     }
+
+    None
 }
 
-fn device_enum_route(id: u32, param: Object) {
+fn device_enum_route(id: u32, param: Object) -> Option<MonitorMessage> {
     let mut index = None;
     let mut description = None;
 
@@ -128,30 +134,26 @@ fn device_enum_route(id: u32, param: Object) {
         }
     }
 
-    let Some(index) = index else {
-        return;
-    };
-    let Some(description) = description else {
-        return;
-    };
-
-    println!(
-        "{:?}",
-        MonitorMessage::DeviceRouteDescription(id, index, description)
-    );
+    Some(MonitorMessage::DeviceRouteDescription(
+        id,
+        index?,
+        description?,
+    ))
 }
 
-fn device_profile(id: u32, param: Object) {
+fn device_profile(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                println!("{:?}", MonitorMessage::DeviceProfileIndex(id, value));
+                return Some(MonitorMessage::DeviceProfileIndex(id, value));
             }
         }
     }
+
+    None
 }
 
-fn device_enum_profile(id: u32, param: Object) {
+fn device_enum_profile(id: u32, param: Object) -> Option<MonitorMessage> {
     let mut index = None;
     let mut description = None;
 
@@ -171,38 +173,42 @@ fn device_enum_profile(id: u32, param: Object) {
         }
     }
 
-    let Some(index) = index else {
-        return;
-    };
-    let Some(description) = description else {
-        return;
-    };
-
-    println!(
-        "{:?}",
-        MonitorMessage::DeviceProfileDescription(id, index, description)
-    );
+    Some(MonitorMessage::DeviceProfileDescription(
+        id,
+        index?,
+        description?,
+    ))
 }
 
-fn monitor(remote: Option<String>) -> Result<()> {
-    let main_loop = pw::main_loop::MainLoop::new(None)?;
+struct MessageSender {
+    tx: mpsc::Sender<MonitorMessage>,
+    main_loop_weak: WeakMainLoop,
+}
 
-    let main_loop_weak = main_loop.downgrade();
-    let _sig_int =
-        main_loop.loop_().add_signal_local(Signal::SIGINT, move || {
-            if let Some(main_loop) = main_loop_weak.upgrade() {
-                main_loop.quit();
-            }
-        });
-    let main_loop_weak = main_loop.downgrade();
-    let _sig_term =
-        main_loop
-            .loop_()
-            .add_signal_local(Signal::SIGTERM, move || {
-                if let Some(main_loop) = main_loop_weak.upgrade() {
+impl MessageSender {
+    fn new(
+        tx: mpsc::Sender<MonitorMessage>,
+        main_loop_weak: WeakMainLoop,
+    ) -> Self {
+        Self { tx, main_loop_weak }
+    }
+
+    fn send(&self, message: Option<MonitorMessage>) {
+        if let Some(message) = message {
+            if let Err(_) = self.tx.send(message) {
+                if let Some(main_loop) = self.main_loop_weak.upgrade() {
                     main_loop.quit();
                 }
-            });
+            }
+        }
+    }
+}
+
+fn monitor(
+    remote: Option<String>,
+    tx: mpsc::Sender<MonitorMessage>,
+) -> Result<()> {
+    let main_loop = MainLoop::new(None)?;
 
     let context = pw::context::Context::new(&main_loop)?;
     let props = remote.map(|remote| {
@@ -218,6 +224,7 @@ fn monitor(remote: Option<String>) -> Result<()> {
     // Proxies and their listeners need to stay alive so store them here
     let proxies = Rc::new(RefCell::new(Proxies::new()));
 
+    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
@@ -225,103 +232,100 @@ fn monitor(remote: Option<String>) -> Result<()> {
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let p: Option<(Box<dyn ProxyT>, Box<dyn Listener>)> = match obj
-                .type_
-            {
-                ObjectType::Node => {
-                    let Some(props) = obj.props else { return };
-                    let Some(media_class) = props.get("media.class") else {
-                        return;
-                    };
-                    match media_class {
-                        "Audio/Sink" => (),
-                        "Audio/Source" => (),
-                        "Stream/Output/Audio" => (),
-                        _ => return,
-                    }
-                    if let Some(node_description) =
-                        props.get("node.description")
-                    {
-                        println!(
-                            "{:?}",
-                            MonitorMessage::NodeDescription(
+            let p: Option<(Box<dyn ProxyT>, Box<dyn Listener>)> =
+                match obj.type_ {
+                    ObjectType::Node => {
+                        let Some(props) = obj.props else { return };
+                        let Some(media_class) = props.get("media.class") else {
+                            return;
+                        };
+                        match media_class {
+                            "Audio/Sink" => (),
+                            "Audio/Source" => (),
+                            "Stream/Output/Audio" => (),
+                            _ => return,
+                        }
+                        if let Some(node_description) =
+                            props.get("node.description")
+                        {
+                            let message = MonitorMessage::NodeDescription(
                                 obj_id,
-                                String::from(node_description)
-                            )
-                        );
-                    }
-                    let node: Node = registry.bind(obj).unwrap();
-                    let obj_listener = node
-                        .add_listener_local()
-                        .param(move |_, id, _, _, param| {
-                            if let Some(param) = deserialize(param) {
-                                match id {
-                                    ParamType::Props => {
-                                        node_props(obj_id, param)
-                                    }
-                                    _ => (),
+                                String::from(node_description),
+                            );
+                            sender.send(Some(message));
+                        }
+                        let node: Node = registry.bind(obj).unwrap();
+                        let sender = Rc::clone(&sender);
+                        let obj_listener = node
+                            .add_listener_local()
+                            .param(move |_, id, _, _, param| {
+                                if let Some(param) = deserialize(param) {
+                                    sender.send(match id {
+                                        ParamType::Props => {
+                                            node_props(obj_id, param)
+                                        }
+                                        _ => None,
+                                    });
                                 }
-                            }
-                        })
-                        .register();
-                    node.subscribe_params(&[ParamType::Props]);
+                            })
+                            .register();
+                        node.subscribe_params(&[ParamType::Props]);
 
-                    Some((Box::new(node), Box::new(obj_listener)))
-                }
-                ObjectType::Device => {
-                    let Some(props) = obj.props else { return };
-                    let Some(media_class) = props.get("media.class") else {
-                        return;
-                    };
-                    match media_class {
-                        "Audio/Device" => (),
-                        _ => return,
+                        Some((Box::new(node), Box::new(obj_listener)))
                     }
-                    if let Some(device_description) =
-                        props.get("device.description")
-                    {
-                        println!(
-                            "{:?}",
-                            MonitorMessage::DeviceDescription(
+                    ObjectType::Device => {
+                        let Some(props) = obj.props else { return };
+                        let Some(media_class) = props.get("media.class") else {
+                            return;
+                        };
+                        match media_class {
+                            "Audio/Device" => (),
+                            _ => return,
+                        }
+                        if let Some(device_description) =
+                            props.get("device.description")
+                        {
+                            let message = MonitorMessage::DeviceDescription(
                                 obj_id,
-                                String::from(device_description)
-                            )
-                        );
-                    }
-                    let device: Device = registry.bind(obj).unwrap();
-                    let obj_listener = device
-                        .add_listener_local()
-                        .param(move |_, id, _, _, param| {
-                            if let Some(param) = deserialize(param) {
-                                match id {
-                                    ParamType::Route => {
-                                        device_route(obj_id, param)
-                                    }
-                                    ParamType::EnumRoute => {
-                                        device_enum_route(obj_id, param)
-                                    }
-                                    ParamType::Profile => {
-                                        device_profile(obj_id, param)
-                                    }
-                                    ParamType::EnumProfile => {
-                                        device_enum_profile(obj_id, param)
-                                    }
-                                    _ => (),
+                                String::from(device_description),
+                            );
+                            sender.send(Some(message));
+                        }
+                        let device: Device = registry.bind(obj).unwrap();
+                        let sender = Rc::clone(&sender);
+                        let obj_listener = device
+                            .add_listener_local()
+                            .param(move |_, id, _, _, param| {
+                                if let Some(param) = deserialize(param) {
+                                    sender.send(match id {
+                                        ParamType::Route => {
+                                            device_route(obj_id, param)
+                                        }
+                                        ParamType::EnumRoute => {
+                                            device_enum_route(obj_id, param)
+                                        }
+                                        ParamType::Profile => {
+                                            device_profile(obj_id, param)
+                                        }
+                                        ParamType::EnumProfile => {
+                                            device_enum_profile(obj_id, param)
+                                        }
+                                        _ => None,
+                                    });
                                 }
-                            }
-                        })
-                        .register();
-                    device.subscribe_params(&[
-                        ParamType::Route,
-                        ParamType::EnumRoute,
-                        ParamType::Profile,
-                        ParamType::EnumProfile,
-                    ]);
+                            })
+                            .register();
+                        device.subscribe_params(&[
+                            ParamType::Route,
+                            ParamType::EnumRoute,
+                            ParamType::Profile,
+                            ParamType::EnumProfile,
+                        ]);
 
-                    Some((Box::new(device), Box::new(obj_listener)))
-                }
-                _ => None,
-            };
+                        Some((Box::new(device), Box::new(obj_listener)))
+                    }
+                    _ => None,
+                };
 
             if let Some((proxy_spe, listener_spe)) = p {
                 let proxy = proxy_spe.upcast_ref();
@@ -359,13 +363,21 @@ struct Opt {
 }
 
 fn main() -> Result<()> {
-    pw::init();
+    let (tx, rx) = mpsc::channel();
 
-    let opt = Opt::parse();
-    monitor(opt.remote)?;
+    thread::spawn(move || {
+        pw::init();
 
-    unsafe {
-        pw::deinit();
+        let opt = Opt::parse();
+        let _ = monitor(opt.remote, tx);
+
+        unsafe {
+            pw::deinit();
+        }
+    });
+
+    for received in rx {
+        println!("{:?}", received);
     }
 
     Ok(())
