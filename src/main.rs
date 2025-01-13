@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use env_logger;
 use log::{info, warn};
 
 use pipewire::{
@@ -15,8 +14,6 @@ use pipewire::{
     registry::{GlobalObject, Listener, Registry},
     types::ObjectType,
 };
-
-use libspa_sys;
 
 use libspa::param::ParamType;
 use libspa::pod::{deserialize::PodDeserializer, Object, Pod, Value, ValueArray};
