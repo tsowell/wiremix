@@ -33,6 +33,7 @@ enum MonitorMessage {
     DeviceProfileIndex(u32, i32),
     DeviceProfileDescription(u32, i32, String),
     NodeVolume(u32, f32),
+    Removed(u32),
 }
 
 struct Proxies {
@@ -225,6 +226,7 @@ fn monitor(
     let proxies = Rc::new(RefCell::new(Proxies::new()));
 
     let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
+    let remove_sender = Rc::clone(&sender);
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
@@ -347,6 +349,9 @@ fn monitor(
                 proxies.borrow_mut().add_proxy_t(proxy_spe, listener_spe);
                 proxies.borrow_mut().add_proxy_listener(proxy_id, listener);
             }
+        })
+        .global_remove(move |id| {
+            remove_sender.send(Some(MonitorMessage::Removed(id)));
         })
         .register();
 
