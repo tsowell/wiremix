@@ -185,7 +185,7 @@ fn monitor_node(
     }
 
     let sender = Rc::clone(sender);
-    let obj_listener = node
+    let listener = node
         .add_listener_local()
         .param(move |_seq, id, _index, _next, param| {
             if let Some(param) = deserialize(param) {
@@ -198,7 +198,7 @@ fn monitor_node(
         .register();
     node.subscribe_params(&[ParamType::Props]);
 
-    Some((Box::new(node), Box::new(obj_listener)))
+    Some((Box::new(node), Box::new(listener)))
 }
 
 fn monitor_device(
@@ -234,7 +234,7 @@ fn monitor_device(
     ];
 
     let sender = Rc::clone(sender);
-    let obj_listener = device
+    let listener = device
         .add_listener_local()
         .param({
             let statuses = Rc::clone(statuses);
@@ -281,7 +281,7 @@ fn monitor_device(
 
     device.subscribe_params(&params);
 
-    Some((Box::new(device), Box::new(obj_listener)))
+    Some((Box::new(device), Box::new(listener)))
 }
 
 pub fn monitor_pipewire(
