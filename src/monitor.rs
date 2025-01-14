@@ -350,7 +350,6 @@ fn capture_node(
         )
         .ok()?;
 
-    println!("{}", proxy_id);
     Some((Box::new(stream), Box::new(listener)))
 }
 
