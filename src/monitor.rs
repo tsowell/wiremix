@@ -351,6 +351,7 @@ fn capture_node(
         )
         .ok()?;
 
+    println!("{}", proxy_id);
     Some((Box::new(stream), Box::new(listener)))
 }
 
@@ -525,42 +526,43 @@ pub fn monitor_pipewire(
                 let mut proxies = proxies.borrow_mut();
                 proxies.add_proxy_t(proxy_spe, listener_spe);
                 proxies.add_proxy_listener(proxy_id, listener);
-            }
 
-            if let Some((stream_spe, listener_spe)) = s {
-                let stream_id = stream_spe.node_id();
-                let streams_weak = Rc::downgrade(&streams);
-                let stream_spe_weak = Rc::downgrade(&stream_spe);
-                let listener = stream_spe
-                    .add_local_listener()
-                    .state_changed(
-                        move |stream, user_data, old_state, new_state| {
-                            let Some(streams) = streams_weak.upgrade() else {
-                                return;
-                            };
-                            let Some(stream_spe) = stream_spe_weak.upgrade()
-                            else {
-                                return;
-                            };
-                            match new_state {
-                                StreamState::Error(_)
-                                | StreamState::Unconnected => {
-                                    stream_spe.disconnect();
-                                    streams.borrow_mut().remove(stream_id);
+                if let Some((stream_spe, listener_spe)) = s {
+                    let streams_weak = Rc::downgrade(&streams);
+                    let stream_spe_weak = Rc::downgrade(&stream_spe);
+                    let listener = stream_spe
+                        .add_local_listener()
+                        .state_changed(
+                            move |stream, user_data, old_state, new_state| {
+                                let Some(streams) = streams_weak.upgrade()
+                                else {
+                                    return;
+                                };
+                                let Some(stream_spe) =
+                                    stream_spe_weak.upgrade()
+                                else {
+                                    return;
+                                };
+                                match new_state {
+                                    StreamState::Error(_)
+                                    | StreamState::Unconnected => {
+                                        stream_spe.disconnect();
+                                        streams.borrow_mut().remove(proxy_id);
+                                    }
+                                    _ => (),
                                 }
-                                _ => (),
-                            }
-                        },
-                    )
-                    .register();
+                            },
+                        )
+                        .register();
 
-                let Ok(listener) = listener else {
-                    return;
-                };
+                    let Ok(listener) = listener else {
+                        return;
+                    };
 
-                let mut streams = streams.borrow_mut();
-                streams.add_stream(stream_spe, listener_spe);
-                streams.add_stream_listener(stream_id, listener);
+                    let mut streams = streams.borrow_mut();
+                    streams.add_stream(proxy_id, stream_spe, listener_spe);
+                    streams.add_stream_listener(proxy_id, listener);
+                }
             }
         })
         .register();

@@ -18,11 +18,10 @@ impl<D> Streams<D> {
 
     pub fn add_stream(
         &mut self,
+        stream_id: u32,
         stream: Box<Rc<Stream>>,
         listener: Box<StreamListener<D>>,
     ) {
-        let stream_id = stream.node_id();
-
         self.streams.insert(stream_id, stream);
 
         let v = self.listeners.entry(stream_id).or_default();
