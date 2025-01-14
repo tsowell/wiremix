@@ -325,14 +325,14 @@ fn capture_node(
 
     let mut audio_info = AudioInfoRaw::new();
     audio_info.set_format(AudioFormat::F32LE);
-    let obj = Object {
+    let pod_obj = Object {
         type_: pw::spa::utils::SpaTypes::ObjectParamFormat.as_raw(),
         id: ParamType::EnumFormat.as_raw(),
         properties: audio_info.into(),
     };
     let values: Vec<u8> = pw::spa::pod::serialize::PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
-        &pw::spa::pod::Value::Object(obj),
+        &pw::spa::pod::Value::Object(pod_obj),
     )
     .ok()?
     .0
