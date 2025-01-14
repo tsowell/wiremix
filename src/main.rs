@@ -283,9 +283,8 @@ fn monitor(
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let p: Option<(Box<Rc<dyn ProxyT>>, Box<dyn Listener>)> = match obj
-                .type_
-            {
+            type ProxyResult = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
+            let p: Option<ProxyResult> = match obj.type_ {
                 ObjectType::Node => {
                     let Some(props) = obj.props else { return };
                     let Some(media_class) = props.get("media.class") else {
