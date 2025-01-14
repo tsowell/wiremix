@@ -236,8 +236,10 @@ fn capture_node(
         _ => return None,
     }
 
+    let serial = props.get("object.serial")?;
     let props = properties! {
-        *pw::keys::TARGET_OBJECT => obj.id.to_string()
+        *pw::keys::TARGET_OBJECT => serial.to_string(),
+        *pw::keys::STREAM_CAPTURE_SINK => "true",
     };
 
     let data = StreamData {
