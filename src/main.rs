@@ -272,7 +272,7 @@ fn monitor_node(
         _ => return None,
     }
 
-    let node: Node = registry.bind(obj).unwrap();
+    let node: Node = registry.bind(obj).ok()?;
     let node = Rc::new(node);
     let proxy_id = node.upcast_ref().id();
 
@@ -314,7 +314,7 @@ fn monitor_device(
         _ => return None,
     }
 
-    let device: Device = registry.bind(obj).unwrap();
+    let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
     let proxy_id = device.upcast_ref().id();
 
