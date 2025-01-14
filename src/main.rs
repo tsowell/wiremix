@@ -245,7 +245,7 @@ impl MessageSender {
 
     fn send(&self, message: Option<MonitorMessage>) {
         if let Some(message) = message {
-            if let Err(_) = self.tx.send(message) {
+            if self.tx.send(message).is_err() {
                 if let Some(main_loop) = self.main_loop_weak.upgrade() {
                     main_loop.quit();
                 }
