@@ -226,11 +226,9 @@ fn monitor(
     let proxies = Rc::new(RefCell::new(Proxies::new()));
 
     let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
-    let remove_sender = Rc::clone(&sender);
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
-            let obj_id = obj.id;
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
@@ -247,17 +245,21 @@ fn monitor(
                             "Stream/Output/Audio" => (),
                             _ => return,
                         }
+
+                        let node: Node = registry.bind(obj).unwrap();
+                        let node = Rc::new(node);
+                        let proxy_id = node.upcast_ref().id();
+
                         if let Some(node_description) =
                             props.get("node.description")
                         {
                             let message = MonitorMessage::NodeDescription(
-                                obj_id,
+                                proxy_id,
                                 String::from(node_description),
                             );
                             sender.send(Some(message));
                         }
-                        let node: Node = registry.bind(obj).unwrap();
-                        let node = Rc::new(node);
+
                         let sender = Rc::clone(&sender);
                         let obj_listener = node
                             .add_listener_local()
@@ -265,7 +267,7 @@ fn monitor(
                                 if let Some(param) = deserialize(param) {
                                     sender.send(match id {
                                         ParamType::Props => {
-                                            node_props(obj_id, param)
+                                            node_props(proxy_id, param)
                                         }
                                         _ => None,
                                     });
@@ -285,18 +287,21 @@ fn monitor(
                             "Audio/Device" => (),
                             _ => return,
                         }
+
+                        let device: Device = registry.bind(obj).unwrap();
+                        let device = Rc::new(device);
+                        let proxy_id = device.upcast_ref().id();
+
                         if let Some(device_description) =
                             props.get("device.description")
                         {
                             let message = MonitorMessage::DeviceDescription(
-                                obj_id,
+                                proxy_id,
                                 String::from(device_description),
                             );
                             sender.send(Some(message));
                         }
-                        let device: Device = registry.bind(obj).unwrap();
-                        let device = Rc::new(device);
-                        let info_device = Rc::clone(&device);
+
                         let sender = Rc::clone(&sender);
                         let obj_listener = device
                             .add_listener_local()
@@ -304,27 +309,30 @@ fn monitor(
                                 if let Some(param) = deserialize(param) {
                                     sender.send(match id {
                                         ParamType::Route => {
-                                            device_route(obj_id, param)
+                                            device_route(proxy_id, param)
                                         }
                                         ParamType::EnumRoute => {
-                                            device_enum_route(obj_id, param)
+                                            device_enum_route(proxy_id, param)
                                         }
                                         ParamType::Profile => {
-                                            device_profile(obj_id, param)
+                                            device_profile(proxy_id, param)
                                         }
                                         ParamType::EnumProfile => {
-                                            device_enum_profile(obj_id, param)
+                                            device_enum_profile(proxy_id, param)
                                         }
                                         _ => None,
                                     });
                                 }
                             })
-                            .info(move |_info| {
-                                // TODO: track each of these and only request if not received yet
-                                info_device.enum_params(0, Some(ParamType::Route), 0, u32::MAX);
-                                info_device.enum_params(0, Some(ParamType::EnumRoute), 0, u32::MAX);
-                                info_device.enum_params(0, Some(ParamType::Profile), 0, u32::MAX);
-                                info_device.enum_params(0, Some(ParamType::EnumProfile), 0, u32::MAX);
+                            .info({
+                                let device = Rc::clone(&device);
+                                move |_info| {
+                                    // TODO: track each of these and only request if not received yet
+                                    device.enum_params(0, Some(ParamType::Route), 0, u32::MAX);
+                                    device.enum_params(0, Some(ParamType::EnumRoute), 0, u32::MAX);
+                                    device.enum_params(0, Some(ParamType::Profile), 0, u32::MAX);
+                                    device.enum_params(0, Some(ParamType::EnumProfile), 0, u32::MAX);
+                                }
                             })
                             .register();
 
@@ -348,11 +356,14 @@ fn monitor(
                 // - proxies owning a ref on Proxy as well
                 let proxies_weak = Rc::downgrade(&proxies);
 
+                let sender = Rc::clone(&sender);
                 let listener = proxy
                     .add_listener_local()
                     .removed(move || {
                         if let Some(proxies) = proxies_weak.upgrade() {
                             proxies.borrow_mut().remove(proxy_id);
+                            let message = MonitorMessage::Removed(proxy_id);
+                            sender.send(Some(message));
                         }
                     })
                     .register();
@@ -360,9 +371,6 @@ fn monitor(
                 proxies.borrow_mut().add_proxy_t(proxy_spe, listener_spe);
                 proxies.borrow_mut().add_proxy_listener(proxy_id, listener);
             }
-        })
-        .global_remove(move |id| {
-            remove_sender.send(Some(MonitorMessage::Removed(id)));
         })
         .register();
 
