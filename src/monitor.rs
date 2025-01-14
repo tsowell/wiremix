@@ -1,17 +1,18 @@
-pub mod device;
+mod device;
+mod proxy;
 
 use anyhow::Result;
 use pipewire as pw;
 use std::rc::Rc;
 use std::sync::mpsc;
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use pw::{
     device::Device,
     main_loop::{MainLoop, WeakMainLoop},
     node::Node,
     properties::properties,
-    proxy::{Listener, ProxyListener, ProxyT},
+    proxy::{Listener, ProxyT},
     registry::{GlobalObject, Registry},
     types::ObjectType,
 };
@@ -24,46 +25,7 @@ use libspa::utils::dict::DictRef;
 
 use crate::message::MonitorMessage;
 use crate::monitor::device::DeviceStatusTracker;
-
-struct Proxies {
-    proxies_t: HashMap<u32, Box<Rc<dyn ProxyT>>>,
-    listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
-}
-
-impl Proxies {
-    fn new() -> Self {
-        Self {
-            proxies_t: HashMap::new(),
-            listeners: HashMap::new(),
-        }
-    }
-
-    fn add_proxy_t(
-        &mut self,
-        proxy_t: Box<Rc<dyn ProxyT>>,
-        listener: Box<dyn Listener>,
-    ) {
-        let proxy_id = {
-            let proxy = proxy_t.upcast_ref();
-            proxy.id()
-        };
-
-        self.proxies_t.insert(proxy_id, proxy_t);
-
-        let v = self.listeners.entry(proxy_id).or_default();
-        v.push(listener);
-    }
-
-    fn add_proxy_listener(&mut self, proxy_id: u32, listener: ProxyListener) {
-        let v = self.listeners.entry(proxy_id).or_default();
-        v.push(Box::new(listener));
-    }
-
-    fn remove(&mut self, proxy_id: u32) {
-        self.proxies_t.remove(&proxy_id);
-        self.listeners.remove(&proxy_id);
-    }
-}
+use crate::monitor::proxy::Proxies;
 
 fn deserialize(param: Option<&Pod>) -> Option<Object> {
     param
