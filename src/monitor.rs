@@ -297,7 +297,7 @@ fn capture_node(
                     data.chunk().size() / (mem::size_of::<f32>() as u32);
 
                 if let Some(samples) = data.data() {
-                    let mut sum = 0;
+                    let mut sum = 0.0;
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
                         for n in (c..n_samples).step_by(n_channels as usize) {
@@ -309,8 +309,7 @@ fn capture_node(
                             max = max.max(f.abs());
                         }
 
-                        let peak = ((max * 30.0) as usize).clamp(0, 39);
-                        sum += peak;
+                        sum += max;
                     }
                     let average = sum as f32 / n_channels as f32;
                     sender.send(Some(MonitorMessage::NodePeak(
