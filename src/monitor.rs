@@ -508,6 +508,10 @@ pub fn monitor_pipewire(
                 // - proxies owning a ref on Proxy as well
                 let proxies_weak = Rc::downgrade(&proxies);
 
+                let stream_info = match s {
+                    Some((ref stream_spe, _)) => Some((Rc::downgrade(&streams), Rc::downgrade(&stream_spe))),
+                    None => None,
+                };
                 let sender_weak = Rc::downgrade(&sender);
                 let listener = proxy
                     .add_listener_local()
@@ -519,6 +523,13 @@ pub fn monitor_pipewire(
                             proxies.borrow_mut().remove(proxy_id);
                             let message = MonitorMessage::Removed(proxy_id);
                             sender.send(Some(message));
+
+                            if let Some((streams_weak, stream_spe_weak)) = &stream_info {
+                                if let (Some(streams), Some(stream_spe)) = (streams_weak.upgrade(), stream_spe_weak.upgrade()) {
+                                    stream_spe.disconnect();
+                                    streams.borrow_mut().remove(proxy_id);
+                                }
+                            }
                         }
                     })
                     .register();
