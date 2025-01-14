@@ -1,24 +1,29 @@
 mod device;
 mod proxy;
-//mod stream;
+mod stream;
 
 use anyhow::Result;
 use pipewire as pw;
 use std::cell::RefCell;
+use std::mem;
 use std::rc::Rc;
 use std::sync::mpsc;
 
 use pw::{
+    core::Core,
     device::Device,
     main_loop::{MainLoop, WeakMainLoop},
     node::Node,
     properties::properties,
     proxy::{Listener, ProxyT},
     registry::{GlobalObject, Registry},
+    stream::{Stream, StreamListener, StreamState},
     types::ObjectType,
 };
 
-use libspa::param::ParamType;
+use libspa::param::audio::{AudioFormat, AudioInfoRaw};
+use libspa::param::format::{MediaSubtype, MediaType};
+use libspa::param::{format_utils, ParamType};
 use libspa::pod::{
     deserialize::PodDeserializer, Object, Pod, Value, ValueArray,
 };
@@ -27,6 +32,7 @@ use libspa::utils::dict::DictRef;
 use crate::message::MonitorMessage;
 use crate::monitor::device::DeviceStatusTracker;
 use crate::monitor::proxy::Proxies;
+use crate::monitor::stream::Streams;
 
 fn deserialize(param: Option<&Pod>) -> Option<Object> {
     param
@@ -157,7 +163,14 @@ impl MessageSender {
     }
 }
 
+#[derive(Default)]
+struct StreamData {
+    format: AudioInfoRaw,
+    cursor_move: bool,
+}
+
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
+type StreamInfo = (Box<Rc<Stream>>, Box<StreamListener<StreamData>>);
 
 fn monitor_node(
     registry: &Registry,
@@ -205,6 +218,140 @@ fn monitor_node(
     node.subscribe_params(&[ParamType::Props]);
 
     Some((Box::new(node), Box::new(listener)))
+}
+
+fn capture_node(
+    core: &Core,
+    registry: &Registry,
+    obj: &GlobalObject<&DictRef>,
+    sender: &Rc<MessageSender>,
+    proxy_id: u32,
+) -> Option<StreamInfo> {
+    let props = obj.props?;
+    let media_class = props.get("media.class")?;
+    match media_class {
+        "Audio/Sink" => (),
+        "Audio/Source" => (),
+        "Stream/Output/Audio" => (),
+        _ => return None,
+    }
+
+    let props = properties! {
+        *pw::keys::TARGET_OBJECT => obj.id.to_string()
+    };
+
+    let data = StreamData {
+        format: Default::default(),
+        cursor_move: false,
+    };
+
+    let stream = Stream::new(&core, "pwmixer-capture", props).ok()?;
+    let stream = Rc::new(stream);
+    let listener = stream
+        .add_local_listener_with_user_data(data)
+        .param_changed(move |_stream, user_data, id, param| {
+            // NULL means ot clear the format
+            let Some(param) = param else {
+                return;
+            };
+            if id != ParamType::Format.as_raw() {
+                return;
+            }
+
+            let (media_type, media_subtype) =
+                match format_utils::parse_format(param) {
+                    Ok(v) => v,
+                    Err(_) => return,
+                };
+
+            // only accept raw audio
+            if media_type != MediaType::Audio
+                || media_subtype != MediaSubtype::Raw
+            {
+                return;
+            }
+
+            // call a helper function to parse the format for us.
+            if !user_data.format.parse(param).is_ok() {
+                return;
+            }
+        })
+        .process({
+            let sender_weak = Rc::downgrade(&sender);
+
+            move |stream, user_data| {
+                let Some(mut buffer) = stream.dequeue_buffer() else {
+                    return;
+                };
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                let datas = buffer.datas_mut();
+                if datas.is_empty() {
+                    return;
+                }
+
+                let data = &mut datas[0];
+                let n_channels = user_data.format.channels();
+                let n_samples =
+                    data.chunk().size() / (mem::size_of::<f32>() as u32);
+
+                if let Some(samples) = data.data() {
+                    let mut sum = 0;
+                    for c in 0..n_channels {
+                        let mut max: f32 = 0.0;
+                        for n in (c..n_samples).step_by(n_channels as usize) {
+                            let start = n as usize * mem::size_of::<f32>();
+                            let end = start + mem::size_of::<f32>();
+                            let chan = &samples[start..end];
+                            let f =
+                                f32::from_le_bytes(chan.try_into().unwrap());
+                            max = max.max(f.abs());
+                        }
+
+                        let peak = ((max * 30.0) as usize).clamp(0, 39);
+                        sum += peak;
+                    }
+                    let average = sum as f32 / n_channels as f32;
+                    sender.send(Some(MonitorMessage::NodePeak(
+                        proxy_id, average,
+                    )));
+                    user_data.cursor_move = true;
+                }
+            }
+        })
+        .register()
+        .ok()?;
+
+    let mut audio_info = AudioInfoRaw::new();
+    audio_info.set_format(AudioFormat::F32LE);
+    let obj = Object {
+        type_: pw::spa::utils::SpaTypes::ObjectParamFormat.as_raw(),
+        id: ParamType::EnumFormat.as_raw(),
+        properties: audio_info.into(),
+    };
+    let values: Vec<u8> = pw::spa::pod::serialize::PodSerializer::serialize(
+        std::io::Cursor::new(Vec::new()),
+        &pw::spa::pod::Value::Object(obj),
+    )
+    .ok()?
+    .0
+    .into_inner();
+
+    let mut params = [Pod::from_bytes(&values)?];
+
+    stream
+        .connect(
+            libspa::utils::Direction::Input,
+            None,
+            pw::stream::StreamFlags::AUTOCONNECT
+                | pw::stream::StreamFlags::MAP_BUFFERS
+                | pw::stream::StreamFlags::RT_PROCESS,
+            &mut params,
+        )
+        .ok()?;
+
+    Some((Box::new(stream), Box::new(listener)))
 }
 
 fn monitor_device(
@@ -323,6 +470,7 @@ pub fn monitor_pipewire(
 
     // Proxies and their listeners need to stay alive so store them here
     let proxies = Rc::new(RefCell::new(Proxies::new()));
+    let streams = Rc::new(RefCell::new(Streams::new()));
 
     let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
 
@@ -333,11 +481,14 @@ pub fn monitor_pipewire(
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let (p, s): (Option<ProxyInfo>, Option<()>) = match obj.type_ {
+            let (p, s): (Option<ProxyInfo>, Option<StreamInfo>) = match obj
+                .type_
+            {
                 ObjectType::Node => {
                     let p = monitor_node(&registry, obj, &sender);
-                    if p.is_some() {
-                        (p, None)
+                    if let Some((ref proxy, _)) = p {
+                        let id = proxy.upcast_ref().id();
+                        (p, capture_node(&core, &registry, obj, &sender, id))
                     } else {
                         (p, None)
                     }
@@ -371,8 +522,45 @@ pub fn monitor_pipewire(
                     })
                     .register();
 
-                proxies.borrow_mut().add_proxy_t(proxy_spe, listener_spe);
-                proxies.borrow_mut().add_proxy_listener(proxy_id, listener);
+                let mut proxies = proxies.borrow_mut();
+                proxies.add_proxy_t(proxy_spe, listener_spe);
+                proxies.add_proxy_listener(proxy_id, listener);
+            }
+
+            if let Some((stream_spe, listener_spe)) = s {
+                let stream_id = stream_spe.node_id();
+                let streams_weak = Rc::downgrade(&streams);
+                let stream_spe_weak = Rc::downgrade(&stream_spe);
+                let listener = stream_spe
+                    .add_local_listener()
+                    .state_changed(
+                        move |stream, user_data, old_state, new_state| {
+                            let Some(streams) = streams_weak.upgrade() else {
+                                return;
+                            };
+                            let Some(stream_spe) = stream_spe_weak.upgrade()
+                            else {
+                                return;
+                            };
+                            match new_state {
+                                StreamState::Error(_)
+                                | StreamState::Unconnected => {
+                                    stream_spe.disconnect();
+                                    streams.borrow_mut().remove(stream_id);
+                                }
+                                _ => (),
+                            }
+                        },
+                    )
+                    .register();
+
+                let Ok(listener) = listener else {
+                    return;
+                };
+
+                let mut streams = streams.borrow_mut();
+                streams.add_stream(stream_spe, listener_spe);
+                streams.add_stream_listener(stream_id, listener);
             }
         })
         .register();

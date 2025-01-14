@@ -9,4 +9,4 @@ clap = { version = "4.5.26", features = ["derive"] }
 libspa = "0.8.0"
 libspa-sys = "0.8.0"
 log = "0.4.24"
-pipewire = "0.8.0"
+pipewire = { version = "0.8.0", features = ["v0_3_44"] }

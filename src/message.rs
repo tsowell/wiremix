@@ -8,5 +8,6 @@ pub enum MonitorMessage {
     DeviceProfileIndex(u32, i32),
     DeviceProfileDescription(u32, i32, String),
     NodeVolume(u32, f32),
+    NodePeak(u32, f32),
     Removed(u32),
 }
