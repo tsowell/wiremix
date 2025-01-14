@@ -170,7 +170,7 @@ struct StreamData {
 }
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
-type StreamInfo = (Box<Rc<Stream>>, Box<StreamListener<StreamData>>);
+type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
 
 fn monitor_node(
     registry: &Registry,
@@ -350,7 +350,7 @@ fn capture_node(
         )
         .ok()?;
 
-    Some((Box::new(stream), Box::new(listener)))
+    Some((stream, listener))
 }
 
 fn monitor_device(

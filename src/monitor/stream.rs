@@ -4,8 +4,8 @@ use std::rc::Rc;
 use pipewire::stream::{Stream, StreamListener};
 
 pub struct Streams<D> {
-    streams: HashMap<u32, Box<Rc<Stream>>>,
-    listeners: HashMap<u32, Vec<Box<StreamListener<D>>>>,
+    streams: HashMap<u32, Rc<Stream>>,
+    listeners: HashMap<u32, Vec<StreamListener<D>>>,
 }
 
 impl<D> Streams<D> {
@@ -19,8 +19,8 @@ impl<D> Streams<D> {
     pub fn add_stream(
         &mut self,
         stream_id: u32,
-        stream: Box<Rc<Stream>>,
-        listener: Box<StreamListener<D>>,
+        stream: Rc<Stream>,
+        listener: StreamListener<D>,
     ) {
         self.streams.insert(stream_id, stream);
 
@@ -34,7 +34,7 @@ impl<D> Streams<D> {
         listener: StreamListener<D>,
     ) {
         let v = self.listeners.entry(stream_id).or_default();
-        v.push(Box::new(listener));
+        v.push(listener);
     }
 
     pub fn remove(&mut self, stream_id: u32) {
