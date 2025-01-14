@@ -36,6 +36,55 @@ enum MonitorMessage {
     Removed(u32),
 }
 
+#[derive(Default)]
+struct DeviceStatus {
+    route: bool,
+    enum_route: bool,
+    profile: bool,
+    enum_profile: bool,
+}
+
+impl DeviceStatus {
+    fn set(&mut self, flag: ParamType) {
+        match flag {
+            ParamType::Route => self.route = true,
+            ParamType::EnumRoute => self.enum_route = true,
+            ParamType::Profile => self.profile = true,
+            ParamType::EnumProfile => self.enum_profile = true,
+            _ => (),
+        }
+    }
+
+    fn get(&self, flag: ParamType) -> bool {
+        match flag {
+            ParamType::Route => self.route,
+            ParamType::EnumRoute => self.enum_route,
+            ParamType::Profile => self.profile,
+            ParamType::EnumProfile => self.enum_profile,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Default)]
+struct DeviceStatusTracker {
+    statuses: HashMap<u32, DeviceStatus>,
+}
+
+impl DeviceStatusTracker {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn set(&mut self, id: u32, flag: ParamType) {
+        self.statuses.entry(id).or_default().set(flag);
+    }
+
+    fn get(&self, id: u32) -> Option<&DeviceStatus> {
+        self.statuses.get(&id)
+    }
+}
+
 struct Proxies {
     proxies_t: HashMap<u32, Box<Rc<dyn ProxyT>>>,
     listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
@@ -225,6 +274,8 @@ fn monitor(
     // Proxies and their listeners need to stay alive so store them here
     let proxies = Rc::new(RefCell::new(Proxies::new()));
 
+    let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
+
     let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
     let _registry_listener = registry
         .add_listener_local()
@@ -232,121 +283,170 @@ fn monitor(
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let p: Option<(Box<Rc<dyn ProxyT>>, Box<dyn Listener>)> =
-                match obj.type_ {
-                    ObjectType::Node => {
-                        let Some(props) = obj.props else { return };
-                        let Some(media_class) = props.get("media.class") else {
-                            return;
-                        };
-                        match media_class {
-                            "Audio/Sink" => (),
-                            "Audio/Source" => (),
-                            "Stream/Output/Audio" => (),
-                            _ => return,
-                        }
-
-                        let node: Node = registry.bind(obj).unwrap();
-                        let node = Rc::new(node);
-                        let proxy_id = node.upcast_ref().id();
-
-                        if let Some(node_description) =
-                            props.get("node.description")
-                        {
-                            let message = MonitorMessage::NodeDescription(
-                                proxy_id,
-                                String::from(node_description),
-                            );
-                            sender.send(Some(message));
-                        }
-
-                        let sender = Rc::clone(&sender);
-                        let obj_listener = node
-                            .add_listener_local()
-                            .param(move |_seq, id, _index, _next, param| {
-                                if let Some(param) = deserialize(param) {
-                                    sender.send(match id {
-                                        ParamType::Props => {
-                                            node_props(proxy_id, param)
-                                        }
-                                        _ => None,
-                                    });
-                                }
-                            })
-                            .register();
-                        node.subscribe_params(&[ParamType::Props]);
-
-                        Some((Box::new(node), Box::new(obj_listener)))
+            let p: Option<(Box<Rc<dyn ProxyT>>, Box<dyn Listener>)> = match obj
+                .type_
+            {
+                ObjectType::Node => {
+                    let Some(props) = obj.props else { return };
+                    let Some(media_class) = props.get("media.class") else {
+                        return;
+                    };
+                    match media_class {
+                        "Audio/Sink" => (),
+                        "Audio/Source" => (),
+                        "Stream/Output/Audio" => (),
+                        _ => return,
                     }
-                    ObjectType::Device => {
-                        let Some(props) = obj.props else { return };
-                        let Some(media_class) = props.get("media.class") else {
-                            return;
-                        };
-                        match media_class {
-                            "Audio/Device" => (),
-                            _ => return,
-                        }
 
-                        let device: Device = registry.bind(obj).unwrap();
-                        let device = Rc::new(device);
-                        let proxy_id = device.upcast_ref().id();
+                    let node: Node = registry.bind(obj).unwrap();
+                    let node = Rc::new(node);
+                    let proxy_id = node.upcast_ref().id();
 
-                        if let Some(device_description) =
-                            props.get("device.description")
-                        {
-                            let message = MonitorMessage::DeviceDescription(
-                                proxy_id,
-                                String::from(device_description),
-                            );
-                            sender.send(Some(message));
-                        }
+                    if let Some(node_description) =
+                        props.get("node.description")
+                    {
+                        let message = MonitorMessage::NodeDescription(
+                            proxy_id,
+                            String::from(node_description),
+                        );
+                        sender.send(Some(message));
+                    }
 
-                        let sender = Rc::clone(&sender);
-                        let obj_listener = device
-                            .add_listener_local()
-                            .param(move |_seq, id, _index, _next, param| {
+                    let sender = Rc::clone(&sender);
+                    let obj_listener = node
+                        .add_listener_local()
+                        .param(move |_seq, id, _index, _next, param| {
+                            if let Some(param) = deserialize(param) {
+                                sender.send(match id {
+                                    ParamType::Props => {
+                                        node_props(proxy_id, param)
+                                    }
+                                    _ => None,
+                                });
+                            }
+                        })
+                        .register();
+                    node.subscribe_params(&[ParamType::Props]);
+
+                    Some((Box::new(node), Box::new(obj_listener)))
+                }
+                ObjectType::Device => {
+                    let Some(props) = obj.props else { return };
+                    let Some(media_class) = props.get("media.class") else {
+                        return;
+                    };
+                    match media_class {
+                        "Audio/Device" => (),
+                        _ => return,
+                    }
+
+                    let device: Device = registry.bind(obj).unwrap();
+                    let device = Rc::new(device);
+                    let proxy_id = device.upcast_ref().id();
+
+                    if let Some(device_description) =
+                        props.get("device.description")
+                    {
+                        let message = MonitorMessage::DeviceDescription(
+                            proxy_id,
+                            String::from(device_description),
+                        );
+                        sender.send(Some(message));
+                    }
+
+                    let sender = Rc::clone(&sender);
+                    let obj_listener = device
+                        .add_listener_local()
+                        .param({
+                            let statuses = Rc::clone(&statuses);
+                            move |_seq, id, _index, _next, param| {
                                 if let Some(param) = deserialize(param) {
                                     sender.send(match id {
                                         ParamType::Route => {
+                                            statuses
+                                                .borrow_mut()
+                                                .set(proxy_id, id);
                                             device_route(proxy_id, param)
                                         }
                                         ParamType::EnumRoute => {
+                                            statuses
+                                                .borrow_mut()
+                                                .set(proxy_id, id);
                                             device_enum_route(proxy_id, param)
                                         }
                                         ParamType::Profile => {
+                                            statuses
+                                                .borrow_mut()
+                                                .set(proxy_id, id);
                                             device_profile(proxy_id, param)
                                         }
                                         ParamType::EnumProfile => {
+                                            statuses
+                                                .borrow_mut()
+                                                .set(proxy_id, id);
                                             device_enum_profile(proxy_id, param)
                                         }
                                         _ => None,
                                     });
                                 }
-                            })
-                            .info({
-                                let device = Rc::clone(&device);
-                                move |_info| {
-                                    // TODO: track each of these and only request if not received yet
-                                    device.enum_params(0, Some(ParamType::Route), 0, u32::MAX);
-                                    device.enum_params(0, Some(ParamType::EnumRoute), 0, u32::MAX);
-                                    device.enum_params(0, Some(ParamType::Profile), 0, u32::MAX);
-                                    device.enum_params(0, Some(ParamType::EnumProfile), 0, u32::MAX);
+                            }
+                        })
+                        .info({
+                            let device = Rc::clone(&device);
+                            let statuses = Rc::clone(&statuses);
+                            move |_info| {
+                                let statuses = statuses.borrow();
+                                let Some(status) = statuses.get(proxy_id)
+                                else {
+                                    return;
+                                };
+                                if !status.get(ParamType::Route) {
+                                    device.enum_params(
+                                        0,
+                                        Some(ParamType::Route),
+                                        0,
+                                        u32::MAX,
+                                    );
                                 }
-                            })
-                            .register();
+                                if !status.get(ParamType::EnumRoute) {
+                                    device.enum_params(
+                                        0,
+                                        Some(ParamType::EnumRoute),
+                                        0,
+                                        u32::MAX,
+                                    );
+                                }
+                                if !status.get(ParamType::Profile) {
+                                    device.enum_params(
+                                        0,
+                                        Some(ParamType::Profile),
+                                        0,
+                                        u32::MAX,
+                                    );
+                                }
+                                if !status.get(ParamType::EnumProfile) {
+                                    device.enum_params(
+                                        0,
+                                        Some(ParamType::EnumProfile),
+                                        0,
+                                        u32::MAX,
+                                    );
+                                }
+                            }
+                        })
+                        .register();
 
-                        device.subscribe_params(&[
-                            ParamType::Route,
-                            ParamType::EnumRoute,
-                            ParamType::Profile,
-                            ParamType::EnumProfile,
-                        ]);
+                    device.subscribe_params(&[
+                        ParamType::Route,
+                        ParamType::EnumRoute,
+                        ParamType::Profile,
+                        ParamType::EnumProfile,
+                    ]);
 
-                        Some((Box::new(device), Box::new(obj_listener)))
-                    }
-                    _ => None,
-                };
+                    Some((Box::new(device), Box::new(obj_listener)))
+                }
+                _ => None,
+            };
 
             if let Some((proxy_spe, listener_spe)) = p {
                 let proxy = proxy_spe.upcast_ref();
