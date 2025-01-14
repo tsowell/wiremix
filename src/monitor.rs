@@ -3,9 +3,9 @@ mod proxy;
 
 use anyhow::Result;
 use pipewire as pw;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
-use std::cell::RefCell;
 
 use pw::{
     device::Device,
