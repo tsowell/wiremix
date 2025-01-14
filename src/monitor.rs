@@ -1,5 +1,6 @@
 mod device;
 mod proxy;
+//mod stream;
 
 use anyhow::Result;
 use pipewire as pw;
@@ -184,15 +185,20 @@ fn monitor_node(
         sender.send(Some(message));
     }
 
-    let sender = Rc::clone(sender);
     let listener = node
         .add_listener_local()
-        .param(move |_seq, id, _index, _next, param| {
-            if let Some(param) = deserialize(param) {
-                sender.send(match id {
-                    ParamType::Props => node_props(proxy_id, param),
-                    _ => None,
-                });
+        .param({
+            let sender_weak = Rc::downgrade(&sender);
+            move |_seq, id, _index, _next, param| {
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                if let Some(param) = deserialize(param) {
+                    sender.send(match id {
+                        ParamType::Props => node_props(proxy_id, param),
+                        _ => None,
+                    });
+                }
             }
         })
         .register();
@@ -233,12 +239,18 @@ fn monitor_device(
         ParamType::EnumProfile,
     ];
 
-    let sender = Rc::clone(sender);
     let listener = device
         .add_listener_local()
         .param({
-            let statuses = Rc::clone(statuses);
+            let sender_weak = Rc::downgrade(&sender);
+            let statuses_weak = Rc::downgrade(&statuses);
             move |_seq, id, _index, _next, param| {
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                let Some(statuses) = statuses_weak.upgrade() else {
+                    return;
+                };
                 if let Some(param) = deserialize(param) {
                     sender.send(match id {
                         ParamType::Route => {
@@ -263,9 +275,15 @@ fn monitor_device(
             }
         })
         .info({
-            let device = Rc::clone(&device);
-            let statuses = Rc::clone(statuses);
+            let device_weak = Rc::downgrade(&device);
+            let statuses_weak = Rc::downgrade(&statuses);
             move |_info| {
+                let Some(device) = device_weak.upgrade() else {
+                    return;
+                };
+                let Some(statuses) = statuses_weak.upgrade() else {
+                    return;
+                };
                 let statuses = statuses.borrow();
                 let Some(status) = statuses.get(proxy_id) else {
                     return;
@@ -315,12 +333,19 @@ pub fn monitor_pipewire(
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
-            let p: Option<ProxyInfo> = match obj.type_ {
-                ObjectType::Node => monitor_node(&registry, obj, &sender),
-                ObjectType::Device => {
-                    monitor_device(&registry, obj, &sender, &statuses)
+            let (p, s): (Option<ProxyInfo>, Option<()>) = match obj.type_ {
+                ObjectType::Node => {
+                    let p = monitor_node(&registry, obj, &sender);
+                    if p.is_some() {
+                        (p, None)
+                    } else {
+                        (p, None)
+                    }
                 }
-                _ => None,
+                ObjectType::Device => {
+                    (monitor_device(&registry, obj, &sender, &statuses), None)
+                }
+                _ => (None, None),
             };
 
             if let Some((proxy_spe, listener_spe)) = p {
@@ -331,10 +356,13 @@ pub fn monitor_pipewire(
                 // - proxies owning a ref on Proxy as well
                 let proxies_weak = Rc::downgrade(&proxies);
 
-                let sender = Rc::clone(&sender);
+                let sender_weak = Rc::downgrade(&sender);
                 let listener = proxy
                     .add_listener_local()
                     .removed(move || {
+                        let Some(sender) = sender_weak.upgrade() else {
+                            return;
+                        };
                         if let Some(proxies) = proxies_weak.upgrade() {
                             proxies.borrow_mut().remove(proxy_id);
                             let message = MonitorMessage::Removed(proxy_id);
