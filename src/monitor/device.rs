@@ -25,6 +25,8 @@ pub fn monitor_device(
     sender: &Rc<MessageSender>,
     statuses: &Rc<RefCell<DeviceStatusTracker>>,
 ) -> Option<ProxyInfo> {
+    let obj_id = obj.id;
+
     let props = obj.props?;
     let media_class = props.get("media.class")?;
     match media_class {
@@ -59,19 +61,19 @@ pub fn monitor_device(
                     if let Some(message) = match id {
                         ParamType::Route => {
                             statuses.borrow_mut().set(proxy_id, id);
-                            device_route(proxy_id, param)
+                            device_route(obj_id, param)
                         }
                         ParamType::EnumRoute => {
                             statuses.borrow_mut().set(proxy_id, id);
-                            device_enum_route(proxy_id, param)
+                            device_enum_route(obj_id, param)
                         }
                         ParamType::Profile => {
                             statuses.borrow_mut().set(proxy_id, id);
-                            device_profile(proxy_id, param)
+                            device_profile(obj_id, param)
                         }
                         ParamType::EnumProfile => {
                             statuses.borrow_mut().set(proxy_id, id);
-                            device_enum_profile(proxy_id, param)
+                            device_enum_profile(obj_id, param)
                         }
                         _ => None,
                     } {
@@ -90,7 +92,7 @@ pub fn monitor_device(
                 };
                 for change in info.change_mask().iter() {
                     if change == DeviceChangeMask::PROPS {
-                        device_info_props(&sender, proxy_id, info);
+                        device_info_props(&sender, obj_id, info);
                     }
                 }
 

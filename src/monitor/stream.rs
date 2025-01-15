@@ -31,7 +31,7 @@ pub fn capture_node(
     core: &Core,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<MessageSender>,
-    proxy_id: u32,
+    obj_id: u32,
 ) -> Option<StreamInfo> {
     let props = obj.props?;
     let media_class = props.get("media.class")?;
@@ -118,7 +118,7 @@ pub fn capture_node(
                         sum += max;
                     }
                     let average = sum / n_channels as f32;
-                    sender.send(MonitorMessage::NodePeak(proxy_id, average));
+                    sender.send(MonitorMessage::NodePeak(obj_id, average));
                     user_data.cursor_move = true;
                 }
             }

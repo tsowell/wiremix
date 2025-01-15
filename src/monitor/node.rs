@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use pipewire::{
     node::{Node, NodeChangeMask, NodeInfoRef},
-    proxy::ProxyT,
     registry::{GlobalObject, Registry},
 };
 
@@ -20,6 +19,8 @@ pub fn monitor_node(
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<MessageSender>,
 ) -> Option<ProxyInfo> {
+    let obj_id = obj.id;
+
     let props = obj.props?;
     let media_class = props.get("media.class")?;
     match media_class {
@@ -31,7 +32,6 @@ pub fn monitor_node(
 
     let node: Node = registry.bind(obj).ok()?;
     let node = Rc::new(node);
-    let proxy_id = node.upcast_ref().id();
 
     let listener = node
         .add_listener_local()
@@ -43,7 +43,7 @@ pub fn monitor_node(
                 };
                 for change in info.change_mask().iter() {
                     if change == NodeChangeMask::PROPS {
-                        node_info_props(&sender, proxy_id, info);
+                        node_info_props(&sender, obj_id, info);
                     }
                 }
             }
@@ -56,7 +56,7 @@ pub fn monitor_node(
                 };
                 if let Some(param) = deserialize(param) {
                     if let Some(message) = match id {
-                        ParamType::Props => node_param_props(proxy_id, param),
+                        ParamType::Props => node_param_props(obj_id, param),
                         _ => None,
                     } {
                         sender.send(message);

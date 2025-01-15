@@ -57,6 +57,8 @@ pub fn monitor_pipewire(
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
+            let obj_id = obj.id;
+
             let Some(registry) = registry_weak.upgrade() else {
                 return;
             };
@@ -64,10 +66,7 @@ pub fn monitor_pipewire(
                 ObjectType::Node => {
                     let p = node::monitor_node(&registry, obj, &sender);
                     let s = if is_capture_enabled {
-                        p.as_ref().and_then(|(proxy, _)| {
-                            let id = proxy.upcast_ref().id();
-                            stream::capture_node(&core, obj, &sender, id)
-                        })
+                        stream::capture_node(&core, obj, &sender, obj_id)
                     } else {
                         None
                     };
@@ -108,7 +107,7 @@ pub fn monitor_pipewire(
 
                     proxies.borrow_mut().remove(proxy_id);
 
-                    sender.send(MonitorMessage::Removed(proxy_id));
+                    sender.send(MonitorMessage::Removed(obj_id));
 
                     let Some((ref streams_weak, ref stream_spe_weak)) =
                         stream_info
