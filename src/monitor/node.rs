@@ -93,6 +93,10 @@ fn node_info_props(
             node_description.to_string(),
         ));
     }
+
+    if let Some(media_name) = props.get("media.name") {
+        sender.send(MonitorMessage::NodeMediaName(id, media_name.to_string()));
+    }
 }
 
 fn node_param_props(id: u32, param: Object) -> Option<MonitorMessage> {

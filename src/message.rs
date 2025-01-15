@@ -7,6 +7,7 @@ pub enum MonitorMessage {
     NodeDescription(u32, String),
     NodeName(u32, String),
     NodeNick(u32, String),
+    NodeMediaName(u32, String),
     DeviceRouteIndex(u32, i32),
     DeviceRouteDescription(u32, i32, String),
     DeviceProfileIndex(u32, i32),
