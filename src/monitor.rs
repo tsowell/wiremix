@@ -281,7 +281,7 @@ fn capture_node(
 
                         sum += max;
                     }
-                    let average = sum as f32 / n_channels as f32;
+                    let average = sum / n_channels as f32;
                     sender.send(MonitorMessage::NodePeak(proxy_id, average));
                     user_data.cursor_move = true;
                 }
