@@ -2,6 +2,8 @@
 #[derive(Debug)]
 pub enum MonitorMessage {
     DeviceDescription(u32, String),
+    DeviceName(u32, String),
+    DeviceNick(u32, String),
     NodeDescription(u32, String),
     NodeName(u32, String),
     NodeNick(u32, String),

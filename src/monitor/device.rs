@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use pipewire::{
-    device::Device,
+    device::{Device, DeviceChangeMask, DeviceInfoRef},
     proxy::ProxyT,
     registry::{GlobalObject, Registry},
 };
@@ -35,14 +35,6 @@ pub fn monitor_device(
     let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
     let proxy_id = device.upcast_ref().id();
-
-    if let Some(device_description) = props.get("device.description") {
-        let message = MonitorMessage::DeviceDescription(
-            proxy_id,
-            String::from(device_description),
-        );
-        sender.send(message);
-    }
 
     let params = [
         ParamType::Route,
@@ -89,9 +81,19 @@ pub fn monitor_device(
             }
         })
         .info({
+            let sender_weak = Rc::downgrade(sender);
             let device_weak = Rc::downgrade(&device);
             let statuses_weak = Rc::downgrade(statuses);
-            move |_info| {
+            move |info| {
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                for change in info.change_mask().iter() {
+                    if change == DeviceChangeMask::PROPS {
+                        device_info_props(&sender, proxy_id, info);
+                    }
+                }
+
                 let Some(device) = device_weak.upgrade() else {
                     return;
                 };
@@ -192,4 +194,29 @@ fn device_enum_profile(id: u32, param: Object) -> Option<MonitorMessage> {
         index?,
         description?,
     ))
+}
+
+fn device_info_props(
+    sender: &Rc<MessageSender>,
+    id: u32,
+    device_info: &DeviceInfoRef,
+) {
+    let Some(props) = device_info.props() else {
+        return;
+    };
+
+    if let Some(device_name) = props.get("device.name") {
+        sender.send(MonitorMessage::DeviceName(id, device_name.to_string()));
+    }
+
+    if let Some(device_nick) = props.get("device.nick") {
+        sender.send(MonitorMessage::DeviceNick(id, device_nick.to_string()));
+    }
+
+    if let Some(device_description) = props.get("device.description") {
+        sender.send(MonitorMessage::DeviceDescription(
+            id,
+            device_description.to_string(),
+        ));
+    }
 }
