@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use pipewire::node::Node;
+use pipewire::node::{Node, NodeChangeMask, NodeInfoRef};
 use pipewire::registry::{GlobalObject, Registry};
 
 use libspa::param::ParamType;
@@ -31,16 +31,21 @@ pub fn monitor_node(
     let node = Rc::new(node);
     let proxy_id = node.upcast_ref().id();
 
-    if let Some(node_description) = props.get("node.description") {
-        let message = MonitorMessage::NodeDescription(
-            proxy_id,
-            String::from(node_description),
-        );
-        sender.send(message);
-    }
-
     let listener = node
         .add_listener_local()
+        .info({
+            let sender_weak = Rc::downgrade(sender);
+            move |info| {
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                for change in info.change_mask().iter() {
+                    if change == NodeChangeMask::PROPS {
+                        node_info_props(&sender, proxy_id, info);
+                    }
+                }
+            }
+        })
         .param({
             let sender_weak = Rc::downgrade(sender);
             move |_seq, id, _index, _next, param| {
@@ -49,7 +54,7 @@ pub fn monitor_node(
                 };
                 if let Some(param) = deserialize(param) {
                     if let Some(message) = match id {
-                        ParamType::Props => node_props(proxy_id, param),
+                        ParamType::Props => node_param_props(proxy_id, param),
                         _ => None,
                     } {
                         sender.send(message);
@@ -63,7 +68,32 @@ pub fn monitor_node(
     Some((Box::new(node), Box::new(listener)))
 }
 
-fn node_props(id: u32, param: Object) -> Option<MonitorMessage> {
+fn node_info_props(
+    sender: &Rc<MessageSender>,
+    id: u32,
+    node_info: &NodeInfoRef,
+) {
+    let Some(props) = node_info.props() else {
+        return;
+    };
+
+    if let Some(node_name) = props.get("node.name") {
+        sender.send(MonitorMessage::NodeName(id, node_name.to_string()));
+    }
+
+    if let Some(node_nick) = props.get("node.nick") {
+        sender.send(MonitorMessage::NodeNick(id, node_nick.to_string()));
+    }
+
+    if let Some(node_description) = props.get("node.description") {
+        sender.send(MonitorMessage::NodeDescription(
+            id,
+            node_description.to_string(),
+        ));
+    }
+}
+
+fn node_param_props(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PROP_channelVolumes {
             if let Value::ValueArray(ValueArray::Float(value)) = prop.value {
