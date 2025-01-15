@@ -168,7 +168,7 @@ fn monitor_node(
     let listener = node
         .add_listener_local()
         .param({
-            let sender_weak = Rc::downgrade(&sender);
+            let sender_weak = Rc::downgrade(sender);
             move |_seq, id, _index, _next, param| {
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
@@ -246,7 +246,7 @@ fn capture_node(
             }
         })
         .process({
-            let sender_weak = Rc::downgrade(&sender);
+            let sender_weak = Rc::downgrade(sender);
 
             move |stream, user_data| {
                 let Some(mut buffer) = stream.dequeue_buffer() else {
@@ -355,8 +355,8 @@ fn monitor_device(
     let listener = device
         .add_listener_local()
         .param({
-            let sender_weak = Rc::downgrade(&sender);
-            let statuses_weak = Rc::downgrade(&statuses);
+            let sender_weak = Rc::downgrade(sender);
+            let statuses_weak = Rc::downgrade(statuses);
             move |_seq, id, _index, _next, param| {
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
@@ -390,7 +390,7 @@ fn monitor_device(
         })
         .info({
             let device_weak = Rc::downgrade(&device);
-            let statuses_weak = Rc::downgrade(&statuses);
+            let statuses_weak = Rc::downgrade(statuses);
             move |_info| {
                 let Some(device) = device_weak.upgrade() else {
                     return;
@@ -478,7 +478,7 @@ pub fn monitor_pipewire(
             let proxies_weak = Rc::downgrade(&proxies);
 
             let stream_info = s.as_ref().map(|(stream_spe, _)| {
-                (Rc::downgrade(&streams), Rc::downgrade(&stream_spe))
+                (Rc::downgrade(&streams), Rc::downgrade(stream_spe))
             });
             let sender_weak = Rc::downgrade(&sender);
             let listener = proxy
