@@ -17,7 +17,7 @@ use pw::{
     properties::properties,
     proxy::{Listener, ProxyT},
     registry::{GlobalObject, Registry},
-    stream::{Stream, StreamListener, StreamState},
+    stream::{Stream, StreamListener},
     types::ObjectType,
 };
 
