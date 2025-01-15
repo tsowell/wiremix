@@ -105,8 +105,7 @@ pub fn monitor_pipewire(
                     proxies.borrow_mut().remove(proxy_id);
 
                     sender.send(MonitorMessage::Removed(proxy_id));
-                })
-                .removed(move || {
+
                     let Some((ref streams_weak, ref stream_spe_weak)) =
                         stream_info
                     else {
