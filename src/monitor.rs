@@ -220,7 +220,7 @@ fn capture_node(
     let listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed(move |_stream, user_data, id, param| {
-            // NULL means ot clear the format
+            // NULL means to clear the format
             let Some(param) = param else {
                 return;
             };
