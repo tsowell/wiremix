@@ -5,8 +5,8 @@ use pipewire::registry::{GlobalObject, Registry};
 
 use libspa::param::ParamType;
 use libspa::pod::{Object, Value, ValueArray};
-use pipewire::proxy::ProxyT;
 use libspa::utils::dict::DictRef;
+use pipewire::proxy::ProxyT;
 
 use crate::message::MonitorMessage;
 use crate::monitor::deserialize::deserialize;
