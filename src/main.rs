@@ -13,6 +13,9 @@ use std::thread;
 struct Opt {
     #[clap(short, long, help = "The name of the remote to connect to")]
     remote: Option<String>,
+
+    #[clap(short, long, help = "Disable audio capture for level monitoring)]")]
+    no_capture: bool,
 }
 
 fn main() -> Result<()> {
@@ -20,7 +23,7 @@ fn main() -> Result<()> {
 
     thread::spawn(move || {
         let opt = Opt::parse();
-        let _ = monitor_pipewire(opt.remote, tx);
+        let _ = monitor_pipewire(opt.remote, tx, !opt.no_capture);
     });
 
     for received in rx {

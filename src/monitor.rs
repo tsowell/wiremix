@@ -30,6 +30,7 @@ type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 pub fn monitor_pipewire(
     remote: Option<String>,
     tx: mpsc::Sender<MonitorMessage>,
+    is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
 
@@ -62,12 +63,16 @@ pub fn monitor_pipewire(
             let (p, s) = match obj.type_ {
                 ObjectType::Node => {
                     let p = node::monitor_node(&registry, obj, &sender);
-                    if let Some((ref proxy, _)) = p {
-                        let id = proxy.upcast_ref().id();
-                        (p, stream::capture_node(&core, obj, &sender, id))
+                    let s = if is_capture_enabled {
+                        p.as_ref().and_then(|(proxy, _)| {
+                            let id = proxy.upcast_ref().id();
+                            stream::capture_node(&core, obj, &sender, id)
+                        })
                     } else {
-                        (p, None)
-                    }
+                        None
+                    };
+
+                    (p, s)
                 }
                 ObjectType::Device => (
                     device::monitor_device(&registry, obj, &sender, &statuses),
