@@ -1,3 +1,4 @@
+mod deserialize;
 mod device;
 mod proxy;
 mod stream;
@@ -24,26 +25,14 @@ use pw::{
 use libspa::param::audio::{AudioFormat, AudioInfoRaw};
 use libspa::param::format::{MediaSubtype, MediaType};
 use libspa::param::{format_utils, ParamType};
-use libspa::pod::{
-    deserialize::PodDeserializer, Object, Pod, Value, ValueArray,
-};
+use libspa::pod::{Object, Pod, Value, ValueArray};
 use libspa::utils::dict::DictRef;
 
 use crate::message::MonitorMessage;
+use crate::monitor::deserialize::deserialize;
 use crate::monitor::device::DeviceStatusTracker;
 use crate::monitor::proxy::Proxies;
 use crate::monitor::stream::Streams;
-
-fn deserialize(param: Option<&Pod>) -> Option<Object> {
-    param
-        .and_then(|pod| {
-            PodDeserializer::deserialize_any_from(pod.as_bytes()).ok()
-        })
-        .and_then(|(_, value)| match value {
-            Value::Object(obj) => Some(obj),
-            _ => None,
-        })
-}
 
 fn node_props(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
