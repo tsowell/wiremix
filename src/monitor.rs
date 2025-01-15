@@ -1,6 +1,7 @@
 mod deserialize;
 mod device_status;
 mod message_sender;
+mod node;
 mod proxy_registry;
 mod stream_registry;
 
@@ -15,7 +16,6 @@ use pw::{
     core::Core,
     device::Device,
     main_loop::MainLoop,
-    node::Node,
     properties::properties,
     proxy::{Listener, ProxyT},
     registry::{GlobalObject, Registry},
@@ -26,7 +26,7 @@ use pw::{
 use libspa::param::audio::{AudioFormat, AudioInfoRaw};
 use libspa::param::format::{MediaSubtype, MediaType};
 use libspa::param::{format_utils, ParamType};
-use libspa::pod::{Object, Pod, Value, ValueArray};
+use libspa::pod::{Object, Pod, Value};
 use libspa::utils::dict::DictRef;
 
 use crate::message::MonitorMessage;
@@ -35,22 +35,6 @@ use crate::monitor::device_status::DeviceStatusTracker;
 use crate::monitor::message_sender::MessageSender;
 use crate::monitor::proxy_registry::ProxyRegistry;
 use crate::monitor::stream_registry::StreamRegistry;
-
-fn node_props(id: u32, param: Object) -> Option<MonitorMessage> {
-    for prop in param.properties {
-        if prop.key == libspa_sys::SPA_PROP_channelVolumes {
-            if let Value::ValueArray(ValueArray::Float(value)) = prop.value {
-                if !value.is_empty() {
-                    let mean = value.iter().sum::<f32>() / value.len() as f32;
-                    let cubic = mean.cbrt();
-                    return Some(MonitorMessage::NodeVolume(id, cubic));
-                }
-            }
-        }
-    }
-
-    None
-}
 
 fn device_route(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
@@ -138,56 +122,6 @@ struct StreamData {
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
-
-fn monitor_node(
-    registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
-    sender: &Rc<MessageSender>,
-) -> Option<ProxyInfo> {
-    let props = obj.props?;
-    let media_class = props.get("media.class")?;
-    match media_class {
-        "Audio/Sink" => (),
-        "Audio/Source" => (),
-        "Stream/Output/Audio" => (),
-        _ => return None,
-    }
-
-    let node: Node = registry.bind(obj).ok()?;
-    let node = Rc::new(node);
-    let proxy_id = node.upcast_ref().id();
-
-    if let Some(node_description) = props.get("node.description") {
-        let message = MonitorMessage::NodeDescription(
-            proxy_id,
-            String::from(node_description),
-        );
-        sender.send(message);
-    }
-
-    let listener = node
-        .add_listener_local()
-        .param({
-            let sender_weak = Rc::downgrade(sender);
-            move |_seq, id, _index, _next, param| {
-                let Some(sender) = sender_weak.upgrade() else {
-                    return;
-                };
-                if let Some(param) = deserialize(param) {
-                    if let Some(message) = match id {
-                        ParamType::Props => node_props(proxy_id, param),
-                        _ => None,
-                    } {
-                        sender.send(message);
-                    }
-                }
-            }
-        })
-        .register();
-    node.subscribe_params(&[ParamType::Props]);
-
-    Some((Box::new(node), Box::new(listener)))
-}
 
 fn capture_node(
     core: &Core,
@@ -452,7 +386,7 @@ pub fn monitor_pipewire(
                 .type_
             {
                 ObjectType::Node => {
-                    let p = monitor_node(&registry, obj, &sender);
+                    let p = node::monitor_node(&registry, obj, &sender);
                     if let Some((ref proxy, _)) = p {
                         let id = proxy.upcast_ref().id();
                         (p, capture_node(&core, obj, &sender, id))
