@@ -1,5 +1,5 @@
 mod deserialize;
-mod device;
+mod device_status;
 mod proxy;
 mod stream;
 
@@ -30,7 +30,7 @@ use libspa::utils::dict::DictRef;
 
 use crate::message::MonitorMessage;
 use crate::monitor::deserialize::deserialize;
-use crate::monitor::device::DeviceStatusTracker;
+use crate::monitor::device_status::DeviceStatusTracker;
 use crate::monitor::proxy::Proxies;
 use crate::monitor::stream::Streams;
 
