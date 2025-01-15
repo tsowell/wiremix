@@ -522,21 +522,21 @@ pub fn monitor_pipewire(
                     let Some(sender) = sender_weak.upgrade() else {
                         return;
                     };
-                    if let Some(proxies) = proxies_weak.upgrade() {
-                        proxies.borrow_mut().remove(proxy_id);
-                        let message = MonitorMessage::Removed(proxy_id);
-                        sender.send(message);
+                    let Some(proxies) = proxies_weak.upgrade() else {
+                        return;
+                    };
 
-                        if let Some((streams_weak, stream_spe_weak)) =
-                            &stream_info
+                    proxies.borrow_mut().remove(proxy_id);
+                    let message = MonitorMessage::Removed(proxy_id);
+                    sender.send(message);
+
+                    if let Some((streams_weak, stream_spe_weak)) = &stream_info
+                    {
+                        if let (Some(streams), Some(stream_spe)) =
+                            (streams_weak.upgrade(), stream_spe_weak.upgrade())
                         {
-                            if let (Some(streams), Some(stream_spe)) = (
-                                streams_weak.upgrade(),
-                                stream_spe_weak.upgrade(),
-                            ) {
-                                stream_spe.disconnect();
-                                streams.borrow_mut().remove(proxy_id);
-                            }
+                            stream_spe.disconnect();
+                            streams.borrow_mut().remove(proxy_id);
                         }
                     }
                 })
