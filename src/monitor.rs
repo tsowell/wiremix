@@ -498,48 +498,48 @@ pub fn monitor_pipewire(
                 _ => (None, None),
             };
 
-            if let Some((proxy_spe, listener_spe)) = p {
-                let proxy = proxy_spe.upcast_ref();
-                let proxy_id = proxy.id();
-                // Use a weak ref to prevent references cycle between Proxy and proxies:
-                // - ref on proxies in the closure, bound to the Proxy lifetime
-                // - proxies owning a ref on Proxy as well
-                let proxies_weak = Rc::downgrade(&proxies);
+            let Some((proxy_spe, listener_spe)) = p else { return };
 
-                let stream_info = match s {
-                    Some((ref stream_spe, _)) => Some((Rc::downgrade(&streams), Rc::downgrade(&stream_spe))),
-                    None => None,
-                };
-                let sender_weak = Rc::downgrade(&sender);
-                let listener = proxy
-                    .add_listener_local()
-                    .removed(move || {
-                        let Some(sender) = sender_weak.upgrade() else {
-                            return;
-                        };
-                        if let Some(proxies) = proxies_weak.upgrade() {
-                            proxies.borrow_mut().remove(proxy_id);
-                            let message = MonitorMessage::Removed(proxy_id);
-                            sender.send(message);
+            let proxy = proxy_spe.upcast_ref();
+            let proxy_id = proxy.id();
+            // Use a weak ref to prevent references cycle between Proxy and proxies:
+            // - ref on proxies in the closure, bound to the Proxy lifetime
+            // - proxies owning a ref on Proxy as well
+            let proxies_weak = Rc::downgrade(&proxies);
 
-                            if let Some((streams_weak, stream_spe_weak)) = &stream_info {
-                                if let (Some(streams), Some(stream_spe)) = (streams_weak.upgrade(), stream_spe_weak.upgrade()) {
-                                    stream_spe.disconnect();
-                                    streams.borrow_mut().remove(proxy_id);
-                                }
+            let stream_info = match s {
+                Some((ref stream_spe, _)) => Some((Rc::downgrade(&streams), Rc::downgrade(&stream_spe))),
+                None => None,
+            };
+            let sender_weak = Rc::downgrade(&sender);
+            let listener = proxy
+                .add_listener_local()
+                .removed(move || {
+                    let Some(sender) = sender_weak.upgrade() else {
+                        return;
+                    };
+                    if let Some(proxies) = proxies_weak.upgrade() {
+                        proxies.borrow_mut().remove(proxy_id);
+                        let message = MonitorMessage::Removed(proxy_id);
+                        sender.send(message);
+
+                        if let Some((streams_weak, stream_spe_weak)) = &stream_info {
+                            if let (Some(streams), Some(stream_spe)) = (streams_weak.upgrade(), stream_spe_weak.upgrade()) {
+                                stream_spe.disconnect();
+                                streams.borrow_mut().remove(proxy_id);
                             }
                         }
-                    })
-                    .register();
+                    }
+                })
+                .register();
 
-                let mut proxies = proxies.borrow_mut();
-                proxies.add_proxy_t(proxy_spe, listener_spe);
-                proxies.add_proxy_listener(proxy_id, listener);
+            let mut proxies = proxies.borrow_mut();
+            proxies.add_proxy_t(proxy_spe, listener_spe);
+            proxies.add_proxy_listener(proxy_id, listener);
 
-                if let Some((stream_spe, listener_spe)) = s {
-                    let mut streams = streams.borrow_mut();
-                    streams.add_stream(proxy_id, stream_spe, listener_spe);
-                }
+            if let Some((stream_spe, listener_spe)) = s {
+                let mut streams = streams.borrow_mut();
+                streams.add_stream(proxy_id, stream_spe, listener_spe);
             }
         })
         .register();
