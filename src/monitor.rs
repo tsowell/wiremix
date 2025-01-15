@@ -221,7 +221,6 @@ fn monitor_node(
 
 fn capture_node(
     core: &Core,
-    registry: &Registry,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<MessageSender>,
     proxy_id: u32,
@@ -487,7 +486,7 @@ pub fn monitor_pipewire(
                     let p = monitor_node(&registry, obj, &sender);
                     if let Some((ref proxy, _)) = p {
                         let id = proxy.upcast_ref().id();
-                        (p, capture_node(&core, &registry, obj, &sender, id))
+                        (p, capture_node(&core, obj, &sender, id))
                     } else {
                         (p, None)
                     }
