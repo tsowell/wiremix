@@ -152,12 +152,10 @@ impl MessageSender {
         Self { tx, main_loop_weak }
     }
 
-    fn send(&self, message: Option<MonitorMessage>) {
-        if let Some(message) = message {
-            if self.tx.send(message).is_err() {
-                if let Some(main_loop) = self.main_loop_weak.upgrade() {
-                    main_loop.quit();
-                }
+    fn send(&self, message: MonitorMessage) {
+        if self.tx.send(message).is_err() {
+            if let Some(main_loop) = self.main_loop_weak.upgrade() {
+                main_loop.quit();
             }
         }
     }
@@ -195,7 +193,7 @@ fn monitor_node(
             proxy_id,
             String::from(node_description),
         );
-        sender.send(Some(message));
+        sender.send(message);
     }
 
     let listener = node
@@ -207,10 +205,10 @@ fn monitor_node(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    sender.send(match id {
+                    match id {
                         ParamType::Props => node_props(proxy_id, param),
                         _ => None,
-                    });
+                    }.map(|message| sender.send(message));
                 }
             }
         })
@@ -314,9 +312,9 @@ fn capture_node(
                         sum += max;
                     }
                     let average = sum as f32 / n_channels as f32;
-                    sender.send(Some(MonitorMessage::NodePeak(
+                    sender.send(MonitorMessage::NodePeak(
                         proxy_id, average,
-                    )));
+                    ));
                     user_data.cursor_move = true;
                 }
             }
@@ -377,7 +375,7 @@ fn monitor_device(
             proxy_id,
             String::from(device_description),
         );
-        sender.send(Some(message));
+        sender.send(message);
     }
 
     let params = [
@@ -400,7 +398,7 @@ fn monitor_device(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    sender.send(match id {
+                    match id {
                         ParamType::Route => {
                             statuses.borrow_mut().set(proxy_id, id);
                             device_route(proxy_id, param)
@@ -418,7 +416,7 @@ fn monitor_device(
                             device_enum_profile(proxy_id, param)
                         }
                         _ => None,
-                    });
+                    }.map(|message| sender.send(message));
                 }
             }
         })
@@ -522,7 +520,7 @@ pub fn monitor_pipewire(
                         if let Some(proxies) = proxies_weak.upgrade() {
                             proxies.borrow_mut().remove(proxy_id);
                             let message = MonitorMessage::Removed(proxy_id);
-                            sender.send(Some(message));
+                            sender.send(message);
 
                             if let Some((streams_weak, stream_spe_weak)) = &stream_info {
                                 if let (Some(streams), Some(stream_spe)) = (streams_weak.upgrade(), stream_spe_weak.upgrade()) {
