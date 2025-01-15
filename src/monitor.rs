@@ -208,7 +208,8 @@ fn monitor_node(
                     match id {
                         ParamType::Props => node_props(proxy_id, param),
                         _ => None,
-                    }.map(|message| sender.send(message));
+                    }
+                    .map(|message| sender.send(message));
                 }
             }
         })
@@ -312,9 +313,7 @@ fn capture_node(
                         sum += max;
                     }
                     let average = sum as f32 / n_channels as f32;
-                    sender.send(MonitorMessage::NodePeak(
-                        proxy_id, average,
-                    ));
+                    sender.send(MonitorMessage::NodePeak(proxy_id, average));
                     user_data.cursor_move = true;
                 }
             }
@@ -416,7 +415,8 @@ fn monitor_device(
                             device_enum_profile(proxy_id, param)
                         }
                         _ => None,
-                    }.map(|message| sender.send(message));
+                    }
+                    .map(|message| sender.send(message));
                 }
             }
         })
@@ -498,7 +498,9 @@ pub fn monitor_pipewire(
                 _ => (None, None),
             };
 
-            let Some((proxy_spe, listener_spe)) = p else { return };
+            let Some((proxy_spe, listener_spe)) = p else {
+                return;
+            };
 
             let proxy = proxy_spe.upcast_ref();
             let proxy_id = proxy.id();
@@ -508,7 +510,9 @@ pub fn monitor_pipewire(
             let proxies_weak = Rc::downgrade(&proxies);
 
             let stream_info = match s {
-                Some((ref stream_spe, _)) => Some((Rc::downgrade(&streams), Rc::downgrade(&stream_spe))),
+                Some((ref stream_spe, _)) => {
+                    Some((Rc::downgrade(&streams), Rc::downgrade(&stream_spe)))
+                }
                 None => None,
             };
             let sender_weak = Rc::downgrade(&sender);
@@ -523,8 +527,13 @@ pub fn monitor_pipewire(
                         let message = MonitorMessage::Removed(proxy_id);
                         sender.send(message);
 
-                        if let Some((streams_weak, stream_spe_weak)) = &stream_info {
-                            if let (Some(streams), Some(stream_spe)) = (streams_weak.upgrade(), stream_spe_weak.upgrade()) {
+                        if let Some((streams_weak, stream_spe_weak)) =
+                            &stream_info
+                        {
+                            if let (Some(streams), Some(stream_spe)) = (
+                                streams_weak.upgrade(),
+                                stream_spe_weak.upgrade(),
+                            ) {
                                 stream_spe.disconnect();
                                 streams.borrow_mut().remove(proxy_id);
                             }
