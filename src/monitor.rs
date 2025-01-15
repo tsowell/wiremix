@@ -1,8 +1,8 @@
 mod deserialize;
 mod device_status;
 mod message_sender;
-mod proxy;
-mod stream;
+mod proxy_registry;
+mod stream_registry;
 
 use anyhow::Result;
 use pipewire as pw;
@@ -33,8 +33,8 @@ use crate::message::MonitorMessage;
 use crate::monitor::deserialize::deserialize;
 use crate::monitor::device_status::DeviceStatusTracker;
 use crate::monitor::message_sender::MessageSender;
-use crate::monitor::proxy::Proxies;
-use crate::monitor::stream::Streams;
+use crate::monitor::proxy_registry::ProxyRegistry;
+use crate::monitor::stream_registry::StreamRegistry;
 
 fn node_props(id: u32, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
@@ -436,8 +436,8 @@ pub fn monitor_pipewire(
     let registry_weak = Rc::downgrade(&registry);
 
     // Proxies and their listeners need to stay alive so store them here
-    let proxies = Rc::new(RefCell::new(Proxies::new()));
-    let streams = Rc::new(RefCell::new(Streams::new()));
+    let proxies = Rc::new(RefCell::new(ProxyRegistry::new()));
+    let streams = Rc::new(RefCell::new(StreamRegistry::new()));
 
     let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
 

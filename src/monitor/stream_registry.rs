@@ -3,12 +3,12 @@ use std::rc::Rc;
 
 use pipewire::stream::{Stream, StreamListener};
 
-pub struct Streams<D> {
+pub struct StreamRegistry<D> {
     streams: HashMap<u32, Rc<Stream>>,
     listeners: HashMap<u32, Vec<StreamListener<D>>>,
 }
 
-impl<D> Streams<D> {
+impl<D> StreamRegistry<D> {
     pub fn new() -> Self {
         Self {
             streams: HashMap::new(),

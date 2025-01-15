@@ -3,12 +3,12 @@ use std::rc::Rc;
 
 use pipewire::proxy::{Listener, ProxyListener, ProxyT};
 
-pub struct Proxies {
+pub struct ProxyRegistry {
     proxies_t: HashMap<u32, Box<Rc<dyn ProxyT>>>,
     listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
 }
 
-impl Proxies {
+impl ProxyRegistry {
     pub fn new() -> Self {
         Self {
             proxies_t: HashMap::new(),
