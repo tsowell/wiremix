@@ -14,10 +14,10 @@ use libspa::{
 };
 
 use crate::message::MonitorMessage;
-use crate::monitor::deserialize::deserialize;
-use crate::monitor::device_status::DeviceStatusTracker;
-use crate::monitor::MessageSender;
-use crate::monitor::ProxyInfo;
+use crate::monitor::{
+    deserialize::deserialize, device_status::DeviceStatusTracker,
+    MessageSender, ProxyInfo,
+};
 
 pub fn monitor_device(
     registry: &Registry,

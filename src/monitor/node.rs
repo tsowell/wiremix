@@ -1,17 +1,19 @@
 use std::rc::Rc;
 
-use pipewire::node::{Node, NodeChangeMask, NodeInfoRef};
-use pipewire::registry::{GlobalObject, Registry};
+use pipewire::{
+    node::{Node, NodeChangeMask, NodeInfoRef},
+    proxy::ProxyT,
+    registry::{GlobalObject, Registry},
+};
 
-use libspa::param::ParamType;
-use libspa::pod::{Object, Value, ValueArray};
-use libspa::utils::dict::DictRef;
-use pipewire::proxy::ProxyT;
+use libspa::{
+    param::ParamType,
+    pod::{Object, Value, ValueArray},
+    utils::dict::DictRef,
+};
 
 use crate::message::MonitorMessage;
-use crate::monitor::deserialize::deserialize;
-use crate::monitor::MessageSender;
-use crate::monitor::ProxyInfo;
+use crate::monitor::{deserialize::deserialize, MessageSender, ProxyInfo};
 
 pub fn monitor_node(
     registry: &Registry,

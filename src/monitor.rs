@@ -8,12 +8,11 @@ mod stream;
 mod stream_registry;
 
 use anyhow::Result;
-use pipewire as pw;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::mpsc;
 
-use pw::{
+use pipewire::{
     main_loop::MainLoop,
     properties::properties,
     proxy::{Listener, ProxyT},
@@ -21,10 +20,10 @@ use pw::{
 };
 
 use crate::message::MonitorMessage;
-use crate::monitor::device_status::DeviceStatusTracker;
-use crate::monitor::message_sender::MessageSender;
-use crate::monitor::proxy_registry::ProxyRegistry;
-use crate::monitor::stream_registry::StreamRegistry;
+use crate::monitor::{
+    device_status::DeviceStatusTracker, message_sender::MessageSender,
+    proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
+};
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
@@ -32,14 +31,14 @@ pub fn monitor_pipewire(
     remote: Option<String>,
     tx: mpsc::Sender<MonitorMessage>,
 ) -> Result<()> {
-    pw::init();
+    pipewire::init();
 
     let main_loop = MainLoop::new(None)?;
 
-    let context = pw::context::Context::new(&main_loop)?;
+    let context = pipewire::context::Context::new(&main_loop)?;
     let props = remote.map(|remote| {
         properties! {
-            *pw::keys::REMOTE_NAME => remote
+            *pipewire::keys::REMOTE_NAME => remote
         }
     });
     let core = context.connect(props)?;
@@ -137,7 +136,7 @@ pub fn monitor_pipewire(
     main_loop.run();
 
     unsafe {
-        pw::deinit();
+        pipewire::deinit();
     }
 
     Ok(())
