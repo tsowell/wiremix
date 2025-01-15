@@ -19,7 +19,7 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::message::MonitorMessage;
+use crate::message::{MonitorMessage, ObjectId};
 use crate::monitor::{
     device_status::DeviceStatusTracker, message_sender::MessageSender,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
@@ -57,7 +57,7 @@ pub fn monitor_pipewire(
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
-            let obj_id = obj.id;
+            let obj_id = ObjectId::from(obj);
 
             let Some(registry) = registry_weak.upgrade() else {
                 return;

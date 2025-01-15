@@ -16,7 +16,7 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::message::MonitorMessage;
+use crate::message::{MonitorMessage, ObjectId};
 use crate::monitor::MessageSender;
 
 type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
@@ -31,7 +31,7 @@ pub fn capture_node(
     core: &Core,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<MessageSender>,
-    obj_id: u32,
+    obj_id: ObjectId,
 ) -> Option<StreamInfo> {
     let props = obj.props?;
     let media_class = props.get("media.class")?;

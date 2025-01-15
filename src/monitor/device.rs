@@ -13,7 +13,7 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::message::MonitorMessage;
+use crate::message::{MonitorMessage, ObjectId};
 use crate::monitor::{
     deserialize::deserialize, device_status::DeviceStatusTracker,
     MessageSender, ProxyInfo,
@@ -25,7 +25,7 @@ pub fn monitor_device(
     sender: &Rc<MessageSender>,
     statuses: &Rc<RefCell<DeviceStatusTracker>>,
 ) -> Option<ProxyInfo> {
-    let obj_id = obj.id;
+    let obj_id = ObjectId::from(obj);
 
     let props = obj.props?;
     let media_class = props.get("media.class")?;
@@ -120,7 +120,7 @@ pub fn monitor_device(
     Some((Box::new(device), Box::new(listener)))
 }
 
-fn device_route(id: u32, param: Object) -> Option<MonitorMessage> {
+fn device_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
@@ -132,7 +132,7 @@ fn device_route(id: u32, param: Object) -> Option<MonitorMessage> {
     None
 }
 
-fn device_enum_route(id: u32, param: Object) -> Option<MonitorMessage> {
+fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     let mut index = None;
     let mut description = None;
 
@@ -159,7 +159,7 @@ fn device_enum_route(id: u32, param: Object) -> Option<MonitorMessage> {
     ))
 }
 
-fn device_profile(id: u32, param: Object) -> Option<MonitorMessage> {
+fn device_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
@@ -171,7 +171,7 @@ fn device_profile(id: u32, param: Object) -> Option<MonitorMessage> {
     None
 }
 
-fn device_enum_profile(id: u32, param: Object) -> Option<MonitorMessage> {
+fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     let mut index = None;
     let mut description = None;
 
@@ -200,7 +200,7 @@ fn device_enum_profile(id: u32, param: Object) -> Option<MonitorMessage> {
 
 fn device_info_props(
     sender: &Rc<MessageSender>,
-    id: u32,
+    id: ObjectId,
     device_info: &DeviceInfoRef,
 ) {
     let Some(props) = device_info.props() else {

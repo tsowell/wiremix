@@ -11,7 +11,7 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::message::MonitorMessage;
+use crate::message::{MonitorMessage, ObjectId};
 use crate::monitor::{deserialize::deserialize, MessageSender, ProxyInfo};
 
 pub fn monitor_node(
@@ -19,7 +19,7 @@ pub fn monitor_node(
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<MessageSender>,
 ) -> Option<ProxyInfo> {
-    let obj_id = obj.id;
+    let obj_id = ObjectId::from(obj);
 
     let props = obj.props?;
     let media_class = props.get("media.class")?;
@@ -72,7 +72,7 @@ pub fn monitor_node(
 
 fn node_info_props(
     sender: &Rc<MessageSender>,
-    id: u32,
+    id: ObjectId,
     node_info: &NodeInfoRef,
 ) {
     let Some(props) = node_info.props() else {
@@ -99,7 +99,7 @@ fn node_info_props(
     }
 }
 
-fn node_param_props(id: u32, param: Object) -> Option<MonitorMessage> {
+fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PROP_channelVolumes {
             if let Value::ValueArray(ValueArray::Float(value)) = prop.value {

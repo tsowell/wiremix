@@ -1,18 +1,31 @@
+use libspa::utils::dict::DictRef;
+use pipewire::registry::GlobalObject;
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ObjectId(u32);
+
+impl From<&GlobalObject<&DictRef>> for ObjectId {
+    fn from(obj: &GlobalObject<&DictRef>) -> Self {
+        ObjectId(obj.id)
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorMessage {
-    DeviceDescription(u32, String),
-    DeviceName(u32, String),
-    DeviceNick(u32, String),
-    NodeDescription(u32, String),
-    NodeName(u32, String),
-    NodeNick(u32, String),
-    NodeMediaName(u32, String),
-    DeviceRouteIndex(u32, i32),
-    DeviceRouteDescription(u32, i32, String),
-    DeviceProfileIndex(u32, i32),
-    DeviceProfileDescription(u32, i32, String),
-    NodeVolume(u32, f32),
-    NodePeak(u32, f32),
-    Removed(u32),
+    DeviceDescription(ObjectId, String),
+    DeviceName(ObjectId, String),
+    DeviceNick(ObjectId, String),
+    NodeDescription(ObjectId, String),
+    NodeName(ObjectId, String),
+    NodeNick(ObjectId, String),
+    NodeMediaName(ObjectId, String),
+    DeviceRouteIndex(ObjectId, i32),
+    DeviceRouteDescription(ObjectId, i32, String),
+    DeviceProfileIndex(ObjectId, i32),
+    DeviceProfileDescription(ObjectId, i32, String),
+    NodeVolume(ObjectId, f32),
+    NodePeak(ObjectId, f32),
+    Removed(ObjectId),
 }
