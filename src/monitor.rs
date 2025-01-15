@@ -1,6 +1,7 @@
 mod deserialize;
 mod device;
 mod device_status;
+mod link;
 mod message_sender;
 mod node;
 mod proxy_registry;
@@ -77,6 +78,9 @@ pub fn monitor_pipewire(
                     device::monitor_device(&registry, obj, &sender, &statuses),
                     None,
                 ),
+                ObjectType::Link => {
+                    (link::monitor_link(&registry, obj, &sender), None)
+                }
                 _ => (None, None),
             };
 

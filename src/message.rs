@@ -1,5 +1,5 @@
 use libspa::utils::dict::DictRef;
-use pipewire::registry::GlobalObject;
+use pipewire::{link::LinkInfoRef, registry::GlobalObject};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -28,4 +28,14 @@ pub enum MonitorMessage {
     NodeVolume(ObjectId, f32),
     NodePeak(ObjectId, f32),
     Removed(ObjectId),
+    Link(ObjectId, ObjectId),
+}
+
+impl From<&LinkInfoRef> for MonitorMessage {
+    fn from(link_info: &LinkInfoRef) -> Self {
+        MonitorMessage::Link(
+            ObjectId(link_info.output_node_id()),
+            ObjectId(link_info.input_node_id()),
+        )
+    }
 }
