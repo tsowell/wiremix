@@ -242,9 +242,7 @@ fn capture_node(
             }
 
             // call a helper function to parse the format for us.
-            if !user_data.format.parse(param).is_ok() {
-                return;
-            }
+            let _ = user_data.format.parse(param);
         })
         .process({
             let sender_weak = Rc::downgrade(sender);
