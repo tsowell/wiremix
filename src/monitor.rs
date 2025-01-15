@@ -174,11 +174,12 @@ fn monitor_node(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    match id {
+                    if let Some(message) = match id {
                         ParamType::Props => node_props(proxy_id, param),
                         _ => None,
+                    } {
+                        sender.send(message);
                     }
-                    .map(|message| sender.send(message));
                 }
             }
         })
@@ -365,7 +366,7 @@ fn monitor_device(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    match id {
+                    if let Some(message) = match id {
                         ParamType::Route => {
                             statuses.borrow_mut().set(proxy_id, id);
                             device_route(proxy_id, param)
@@ -383,8 +384,9 @@ fn monitor_device(
                             device_enum_profile(proxy_id, param)
                         }
                         _ => None,
+                    } {
+                        sender.send(message);
                     }
-                    .map(|message| sender.send(message));
                 }
             }
         })
