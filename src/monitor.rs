@@ -215,7 +215,7 @@ fn capture_node(
         cursor_move: false,
     };
 
-    let stream = Stream::new(&core, "pwmixer-capture", props).ok()?;
+    let stream = Stream::new(core, "pwmixer-capture", props).ok()?;
     let stream = Rc::new(stream);
     let listener = stream
         .add_local_listener_with_user_data(data)
