@@ -28,15 +28,6 @@ impl<D> Streams<D> {
         v.push(listener);
     }
 
-    pub fn add_stream_listener(
-        &mut self,
-        stream_id: u32,
-        listener: StreamListener<D>,
-    ) {
-        let v = self.listeners.entry(stream_id).or_default();
-        v.push(listener);
-    }
-
     pub fn remove(&mut self, stream_id: u32) {
         self.streams.remove(&stream_id);
         self.listeners.remove(&stream_id);
