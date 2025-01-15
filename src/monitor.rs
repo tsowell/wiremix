@@ -1,5 +1,6 @@
 mod deserialize;
 mod device_status;
+mod message_sender;
 mod proxy;
 mod stream;
 
@@ -13,7 +14,7 @@ use std::sync::mpsc;
 use pw::{
     core::Core,
     device::Device,
-    main_loop::{MainLoop, WeakMainLoop},
+    main_loop::MainLoop,
     node::Node,
     properties::properties,
     proxy::{Listener, ProxyT},
@@ -31,6 +32,7 @@ use libspa::utils::dict::DictRef;
 use crate::message::MonitorMessage;
 use crate::monitor::deserialize::deserialize;
 use crate::monitor::device_status::DeviceStatusTracker;
+use crate::monitor::message_sender::MessageSender;
 use crate::monitor::proxy::Proxies;
 use crate::monitor::stream::Streams;
 
@@ -126,28 +128,6 @@ fn device_enum_profile(id: u32, param: Object) -> Option<MonitorMessage> {
         index?,
         description?,
     ))
-}
-
-struct MessageSender {
-    tx: mpsc::Sender<MonitorMessage>,
-    main_loop_weak: WeakMainLoop,
-}
-
-impl MessageSender {
-    fn new(
-        tx: mpsc::Sender<MonitorMessage>,
-        main_loop_weak: WeakMainLoop,
-    ) -> Self {
-        Self { tx, main_loop_weak }
-    }
-
-    fn send(&self, message: MonitorMessage) {
-        if self.tx.send(message).is_err() {
-            if let Some(main_loop) = self.main_loop_weak.upgrade() {
-                main_loop.quit();
-            }
-        }
-    }
 }
 
 #[derive(Default)]
