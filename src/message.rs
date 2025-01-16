@@ -33,6 +33,7 @@ pub enum MonitorMessage {
     NodePeak(ObjectId, f32),
     Removed(ObjectId),
     Link(ObjectId, ObjectId),
+    Reset(),
 }
 
 impl From<&LinkInfoRef> for MonitorMessage {

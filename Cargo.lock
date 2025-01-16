@@ -767,6 +767,7 @@ dependencies = [
  "log",
  "pipewire",
  "ratatui",
+ "scopeguard",
 ]
 
 [[package]]

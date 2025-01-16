@@ -28,13 +28,27 @@ use crate::monitor::{
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
-pub fn monitor_pipewire(
+pub fn run(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Message>>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
 
+    let _guard = scopeguard::guard((), |_| unsafe {
+        pipewire::deinit();
+    });
+
+    monitor_pipewire(remote, tx, is_capture_enabled)?;
+
+    Ok(())
+}
+
+fn monitor_pipewire(
+    remote: Option<String>,
+    tx: Arc<mpsc::Sender<Message>>,
+    is_capture_enabled: bool,
+) -> Result<()> {
     let main_loop = MainLoop::new(None)?;
 
     let context = pipewire::context::Context::new(&main_loop)?;
@@ -45,6 +59,24 @@ pub fn monitor_pipewire(
     });
     let core = context.connect(props)?;
 
+    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
+
+    let _core_listener = core
+        .add_listener_local()
+        .error({
+            let main_loop_weak = main_loop.downgrade();
+            let sender_weak = Rc::downgrade(&sender);
+            move |_id, _seq, _res, _message| {
+                if let Some(sender) = sender_weak.upgrade() {
+                    sender.send(MonitorMessage::Reset());
+                };
+                if let Some(main_loop) = main_loop_weak.upgrade() {
+                    main_loop.quit();
+                }
+            }
+        })
+        .register();
+
     let registry = Rc::new(core.get_registry()?);
     let registry_weak = Rc::downgrade(&registry);
 
@@ -54,7 +86,6 @@ pub fn monitor_pipewire(
 
     let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
 
-    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
     let _registry_listener = registry
         .add_listener_local()
         .global(move |obj| {
@@ -142,10 +173,6 @@ pub fn monitor_pipewire(
         .register();
 
     main_loop.run();
-
-    unsafe {
-        pipewire::deinit();
-    }
 
     Ok(())
 }

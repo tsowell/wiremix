@@ -14,3 +14,4 @@ libspa-sys = "0.8.0"
 log = "0.4.24"
 pipewire = { version = "0.8.0", features = ["v0_3_44"] }
 ratatui = "0.29.0"
+scopeguard = "1.2.0"

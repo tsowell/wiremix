@@ -9,7 +9,7 @@ use clap::Parser;
 
 use pwmixer::app;
 use pwmixer::input;
-use pwmixer::monitor::monitor_pipewire;
+use pwmixer::monitor;
 
 #[derive(Parser)]
 #[clap(name = "pwmixer", about = "PipeWire mixer")]
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         let monitor_tx = Arc::clone(&monitor_tx);
         move || {
             let opt = Opt::parse();
-            let _ = monitor_pipewire(opt.remote, monitor_tx, !opt.no_capture);
+            let _ = monitor::run(opt.remote, monitor_tx, !opt.no_capture);
         }
     });
 
@@ -42,8 +42,10 @@ fn main() -> Result<()> {
     app_result
 
     /*
-    for received in rx {
-        println!("{:?}", received);
+    for received in monitor_rx {
+        if let pwmixer::message::Message::Monitor(message) = received {
+            println!("{:?}", message);
+        }
     }
 
     Ok(())
