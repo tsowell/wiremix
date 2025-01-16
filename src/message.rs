@@ -37,7 +37,7 @@ pub enum MonitorMessage {
 
     Removed(ObjectId),
 
-    Reset(),
+    Reset,
 }
 
 impl From<&LinkInfoRef> for MonitorMessage {

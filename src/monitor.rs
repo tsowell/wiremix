@@ -118,7 +118,7 @@ fn monitor_pipewire(
             let sender_weak = Rc::downgrade(&sender);
             move |_id, _seq, _res, _message| {
                 if let Some(sender) = sender_weak.upgrade() {
-                    sender.send(MonitorMessage::Reset());
+                    sender.send(MonitorMessage::Reset);
                 };
                 if let Some(main_loop) = main_loop_weak.upgrade() {
                     main_loop.quit();
