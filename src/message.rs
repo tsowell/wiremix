@@ -36,8 +36,6 @@ pub enum MonitorMessage {
     Link(ObjectId, ObjectId),
 
     Removed(ObjectId),
-
-    Reset,
 }
 
 impl From<&LinkInfoRef> for MonitorMessage {
@@ -52,6 +50,7 @@ impl From<&LinkInfoRef> for MonitorMessage {
 pub enum Message {
     Input(InputMessage),
     Monitor(MonitorMessage),
+    Quit,
 }
 
 impl From<crossterm::event::Event> for Message {

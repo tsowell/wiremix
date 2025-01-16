@@ -70,6 +70,9 @@ impl App {
     fn handle_message(&mut self, message: Message) -> Result<()> {
         if let Message::Input(InputMessage::Event(event)) = message {
             self.handle_event(event)
+        } else if let Message::Quit = message {
+            self.exit();
+            Ok(())
         } else if let Message::Monitor(message) = message {
             self.log.push(format!("{:?}", message));
             self.state.update(message);

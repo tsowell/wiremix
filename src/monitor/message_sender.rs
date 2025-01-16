@@ -24,4 +24,12 @@ impl MessageSender {
             }
         }
     }
+
+    pub fn send_quit(&self) {
+        if self.tx.send(Message::Quit).is_err() {
+            if let Some(main_loop) = self.main_loop_weak.upgrade() {
+                main_loop.quit();
+            }
+        }
+    }
 }

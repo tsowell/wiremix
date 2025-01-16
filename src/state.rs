@@ -107,11 +107,6 @@ impl State {
                 self.nodes.remove(&id);
                 self.links.remove(&id);
             }
-            MonitorMessage::Reset => {
-                self.devices.clear();
-                self.nodes.clear();
-                self.links.clear();
-            }
         }
     }
 
