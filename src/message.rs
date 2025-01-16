@@ -49,3 +49,9 @@ pub enum Message {
     Input(InputMessage),
     Monitor(MonitorMessage),
 }
+
+impl From<crossterm::event::Event> for Message {
+    fn from(event: crossterm::event::Event) -> Self {
+        Message::Input(InputMessage::Event(event))
+    }
+}

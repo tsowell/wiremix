@@ -6,7 +6,7 @@ use crossterm::event::EventStream;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use futures_timer::Delay;
 
-use crate::message::{InputMessage, Message};
+use crate::message::Message;
 
 pub fn spawn(
     tx: Arc<mpsc::Sender<Message>>,
@@ -53,7 +53,7 @@ async fn input_loop(
             maybe_event = event => {
                 match maybe_event {
                     Some(Ok(event)) => {
-                        let _ = tx.send(Message::Input(InputMessage::Event(event)));
+                        let _ = tx.send(Message::from(event));
                     }
                     None => break,
                     _ => {},
