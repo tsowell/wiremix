@@ -6,10 +6,10 @@ use crossterm::event::EventStream;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use futures_timer::Delay;
 
-use crate::message::MonitorMessage;
+use crate::message::{InputMessage, Message};
 
 pub fn input_thread_spawn(
-    monitor_tx: Arc<mpsc::Sender<MonitorMessage>>,
+    monitor_tx: Arc<mpsc::Sender<Message>>,
 ) -> oneshot::Sender<()> {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
@@ -24,7 +24,7 @@ pub fn input_thread_spawn(
 
 async fn input_loop(
     shutdown_rx: oneshot::Receiver<()>,
-    monitor_tx: Arc<mpsc::Sender<MonitorMessage>>,
+    monitor_tx: Arc<mpsc::Sender<Message>>,
 ) {
     let mut reader = EventStream::new();
     let mut shutdown = shutdown_rx.fuse();
@@ -39,7 +39,7 @@ async fn input_loop(
             maybe_event = event => {
                 match maybe_event {
                     Some(Ok(event)) => {
-                        let _ = monitor_tx.send(MonitorMessage::Event(event));
+                        let _ = monitor_tx.send(Message::Input(InputMessage::Event(event)));
                     }
                     None => break,
                     _ => {},

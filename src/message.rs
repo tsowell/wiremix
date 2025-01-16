@@ -11,10 +11,13 @@ impl From<&GlobalObject<&DictRef>> for ObjectId {
     }
 }
 
+pub enum InputMessage {
+    Event(crossterm::event::Event),
+}
+
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorMessage {
-    Event(crossterm::event::Event),
     DeviceDescription(ObjectId, String),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
@@ -39,4 +42,9 @@ impl From<&LinkInfoRef> for MonitorMessage {
             ObjectId(link_info.input_node_id()),
         )
     }
+}
+
+pub enum Message {
+    Input(InputMessage),
+    Monitor(MonitorMessage),
 }

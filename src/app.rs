@@ -10,16 +10,16 @@ use ratatui::{
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
-use crate::message::MonitorMessage;
+use crate::message::{InputMessage, Message};
 
 pub struct App {
     exit: bool,
-    rx: mpsc::Receiver<MonitorMessage>,
+    rx: mpsc::Receiver<Message>,
     log: Vec<String>,
 }
 
 impl App {
-    pub fn new(rx: mpsc::Receiver<MonitorMessage>) -> Self {
+    pub fn new(rx: mpsc::Receiver<Message>) -> Self {
         App {
             exit: Default::default(),
             rx,
@@ -62,11 +62,13 @@ impl App {
         self.exit = true;
     }
 
-    fn handle_message(&mut self, message: MonitorMessage) -> Result<()> {
-        if let MonitorMessage::Event(event) = message {
+    fn handle_message(&mut self, message: Message) -> Result<()> {
+        if let Message::Input(InputMessage::Event(event)) = message {
             self.handle_event(event)
-        } else {
+        } else if let Message::Monitor(message) = message {
             self.log.push(format!("{:?}", message));
+            Ok(())
+        } else {
             Ok(())
         }
     }

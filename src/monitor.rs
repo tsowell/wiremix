@@ -20,7 +20,7 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::message::{MonitorMessage, ObjectId};
+use crate::message::{Message, MonitorMessage, ObjectId};
 use crate::monitor::{
     device_status::DeviceStatusTracker, message_sender::MessageSender,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
@@ -30,7 +30,7 @@ type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
 pub fn monitor_pipewire(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<MonitorMessage>>,
+    tx: Arc<mpsc::Sender<Message>>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
