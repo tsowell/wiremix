@@ -8,18 +8,32 @@ use futures_timer::Delay;
 
 use crate::message::{InputMessage, Message};
 
-pub fn input_thread_spawn(
+pub fn spawn(
     monitor_tx: Arc<mpsc::Sender<Message>>,
-) -> oneshot::Sender<()> {
+) -> (thread::JoinHandle<()>, InputShutdown) {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
-    thread::spawn(move || {
+    let join_handle = thread::spawn(move || {
         futures::executor::block_on(async move {
             input_loop(shutdown_rx, monitor_tx).await;
         });
     });
 
-    shutdown_tx
+    (join_handle, InputShutdown::from(shutdown_tx))
+}
+
+pub struct InputShutdown {
+    tx: oneshot::Sender<()>,
+}
+
+impl InputShutdown {
+    pub fn from(tx: oneshot::Sender<()>) -> Self {
+        Self { tx }
+    }
+
+    pub fn trigger(self) {
+        let _ = self.tx.send(());
+    }
 }
 
 async fn input_loop(

@@ -19,7 +19,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(rx: mpsc::Receiver<Message>) -> Self {
+    pub fn new(
+        rx: mpsc::Receiver<Message>,
+    ) -> Self {
         App {
             exit: Default::default(),
             rx,

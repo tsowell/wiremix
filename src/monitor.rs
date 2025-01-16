@@ -12,6 +12,10 @@ use anyhow::Result;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{mpsc, Arc};
+use std::thread;
+
+use nix::sys::eventfd::{EfdFlags, EventFd};
+use std::os::fd::AsRawFd;
 
 use pipewire::{
     main_loop::MainLoop,
@@ -28,9 +32,26 @@ use crate::monitor::{
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
-pub fn run(
+pub fn spawn(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Message>>,
+    is_capture_enabled: bool,
+) -> Result<(thread::JoinHandle<()>, Arc<MonitorShutdown>)> {
+    let shutdown = Arc::new(MonitorShutdown::new()?);
+    let join_handle = thread::spawn({
+        let shutdown = Arc::clone(&shutdown);
+        move || {
+            let _ = run(remote, tx, shutdown, is_capture_enabled);
+        }
+    });
+
+    Ok((join_handle, shutdown))
+}
+
+fn run(
+    remote: Option<String>,
+    tx: Arc<mpsc::Sender<Message>>,
+    shutdown: Arc<MonitorShutdown>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
@@ -39,14 +60,30 @@ pub fn run(
         pipewire::deinit();
     });
 
-    monitor_pipewire(remote, tx, is_capture_enabled)?;
+    monitor_pipewire(remote, tx, shutdown, is_capture_enabled)?;
 
     Ok(())
+}
+
+pub struct MonitorShutdown {
+    fd: EventFd,
+}
+
+impl MonitorShutdown {
+    pub fn new() -> nix::Result<Self> {
+        let fd = EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?;
+        Ok(Self { fd })
+    }
+
+    pub fn trigger(&self) {
+        let _ = self.fd.arm();
+    }
 }
 
 fn monitor_pipewire(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Message>>,
+    shutdown: Arc<MonitorShutdown>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     let main_loop = MainLoop::new(None)?;
@@ -60,6 +97,19 @@ fn monitor_pipewire(
     let core = context.connect(props)?;
 
     let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
+
+    let fd = shutdown.fd.as_raw_fd();
+    let _shutdown_watch =
+        main_loop
+            .loop_()
+            .add_io(fd, libspa::support::system::IoFlags::IN, {
+                let main_loop_weak = main_loop.downgrade();
+                move |_status| {
+                    if let Some(main_loop) = main_loop_weak.upgrade() {
+                        main_loop.quit();
+                    }
+                }
+            });
 
     let _core_listener = core
         .add_listener_local()

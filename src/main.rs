@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 use std::sync::{mpsc, Arc};
-use std::thread;
 
 use anyhow::Result;
 use clap::Parser;
@@ -25,20 +24,24 @@ fn main() -> Result<()> {
     let (monitor_tx, monitor_rx) = mpsc::channel();
     let monitor_tx = Arc::new(monitor_tx);
 
-    thread::spawn({
-        let monitor_tx = Arc::clone(&monitor_tx);
-        move || {
-            let opt = Opt::parse();
-            let _ = monitor::run(opt.remote, monitor_tx, !opt.no_capture);
-        }
-    });
+    let opt = Opt::parse();
+    let (monitor_thread, monitor_shutdown) =
+        monitor::spawn(opt.remote, Arc::clone(&monitor_tx), !opt.no_capture)?;
 
     // Thread will get cleaned up when shutdown sender is dropped.
-    let _input_shutdown = input::input_thread_spawn(Arc::clone(&monitor_tx));
+    let (input_thread, input_shutdown) = input::spawn(Arc::clone(&monitor_tx));
 
     let mut terminal = ratatui::init();
-    let app_result = app::App::new(monitor_rx).run(&mut terminal);
+    let app_result =
+        app::App::new(monitor_rx).run(&mut terminal);
     ratatui::restore();
+
+    input_shutdown.trigger();
+    monitor_shutdown.trigger();
+
+    input_thread.join().unwrap();
+    monitor_thread.join().unwrap();
+
     app_result
 
     /*
