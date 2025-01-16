@@ -18,21 +18,25 @@ pub enum InputMessage {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorMessage {
-    DeviceDescription(ObjectId, String),
     DeviceName(ObjectId, String),
+    DeviceDescription(ObjectId, String),
     DeviceNick(ObjectId, String),
-    NodeDescription(ObjectId, String),
-    NodeName(ObjectId, String),
-    NodeNick(ObjectId, String),
-    NodeMediaName(ObjectId, String),
     DeviceRouteIndex(ObjectId, i32),
     DeviceRouteDescription(ObjectId, i32, String),
     DeviceProfileIndex(ObjectId, i32),
     DeviceProfileDescription(ObjectId, i32, String),
+
+    NodeName(ObjectId, String),
+    NodeDescription(ObjectId, String),
+    NodeNick(ObjectId, String),
+    NodeMediaName(ObjectId, String),
     NodeVolume(ObjectId, f32),
     NodePeak(ObjectId, f32),
-    Removed(ObjectId),
+
     Link(ObjectId, ObjectId),
+
+    Removed(ObjectId),
+
     Reset(),
 }
 
