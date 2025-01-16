@@ -11,7 +11,7 @@ mod stream_registry;
 use anyhow::Result;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use pipewire::{
     main_loop::MainLoop,
@@ -30,7 +30,7 @@ type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
 pub fn monitor_pipewire(
     remote: Option<String>,
-    tx: mpsc::Sender<MonitorMessage>,
+    tx: Arc<mpsc::Sender<MonitorMessage>>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();

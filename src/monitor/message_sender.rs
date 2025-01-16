@@ -1,17 +1,17 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use pipewire::main_loop::WeakMainLoop;
 
 use crate::monitor::MonitorMessage;
 
 pub struct MessageSender {
-    tx: mpsc::Sender<MonitorMessage>,
+    tx: Arc<mpsc::Sender<MonitorMessage>>,
     main_loop_weak: WeakMainLoop,
 }
 
 impl MessageSender {
     pub fn new(
-        tx: mpsc::Sender<MonitorMessage>,
+        tx: Arc<mpsc::Sender<MonitorMessage>>,
         main_loop_weak: WeakMainLoop,
     ) -> Self {
         Self { tx, main_loop_weak }

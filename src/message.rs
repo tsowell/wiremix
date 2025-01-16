@@ -14,6 +14,7 @@ impl From<&GlobalObject<&DictRef>> for ObjectId {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorMessage {
+    Event(crossterm::event::Event),
     DeviceDescription(ObjectId, String),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
