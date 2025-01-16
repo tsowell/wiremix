@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         }
     });
 
-    /* Thread will get cleaned up when shutdown sender is dropped. */
+    // Thread will get cleaned up when shutdown sender is dropped.
     let _input_shutdown = input::input_thread_spawn(Arc::clone(&monitor_tx));
 
     let mut terminal = ratatui::init();

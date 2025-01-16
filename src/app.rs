@@ -74,9 +74,9 @@ impl App {
     }
 
     fn handle_messages(&mut self) -> Result<()> {
-        /* Block on getting the next message */
+        // Block on getting the next message.
         self.handle_message(self.rx.recv()?)?;
-        /* Then handle the rest that are available */
+        // Then handle the rest that are available.
         while let Ok(message) = self.rx.try_recv() {
             self.handle_message(message)?;
         }

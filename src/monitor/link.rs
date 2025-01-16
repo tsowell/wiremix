@@ -39,6 +39,6 @@ pub fn monitor_link(
 }
 
 fn link_info_props(sender: &Rc<MessageSender>, link_info: &LinkInfoRef) {
-    /* Ignore props and get the nodes directly from the link info */
+    // Ignore props and get the nodes directly from the link info.
     sender.send(MonitorMessage::from(link_info));
 }
