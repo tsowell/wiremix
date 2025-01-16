@@ -11,14 +11,16 @@ use ratatui::{
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
 use crate::message::{InputMessage, Message};
+use crate::state::State;
 
 #[cfg(feature = "trace")]
-use crate::{trace_dbg, trace};
+use crate::{trace, trace_dbg};
 
 pub struct App {
     exit: bool,
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
+    state: State,
 }
 
 impl App {
@@ -27,6 +29,7 @@ impl App {
             exit: Default::default(),
             rx,
             log: Default::default(),
+            state: Default::default(),
         }
     }
 
@@ -37,6 +40,9 @@ impl App {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_messages()?;
+
+            #[cfg(feature = "trace")]
+            trace_dbg!(&self.state);
         }
 
         Ok(())
@@ -46,37 +52,8 @@ impl App {
         frame.render_widget(self, frame.area());
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
-        match event {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        };
-
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            _ => {}
-        }
-    }
-
     fn exit(&mut self) {
         self.exit = true;
-    }
-
-    fn handle_message(&mut self, message: Message) -> Result<()> {
-        if let Message::Input(InputMessage::Event(event)) = message {
-            self.handle_event(event)
-        } else if let Message::Monitor(message) = message {
-            self.log.push(format!("{:?}", message));
-            Ok(())
-        } else {
-            Ok(())
-        }
     }
 
     fn handle_messages(&mut self) -> Result<()> {
@@ -88,6 +65,36 @@ impl App {
         }
 
         Ok(())
+    }
+
+    fn handle_message(&mut self, message: Message) -> Result<()> {
+        if let Message::Input(InputMessage::Event(event)) = message {
+            self.handle_event(event)
+        } else if let Message::Monitor(message) = message {
+            self.log.push(format!("{:?}", message));
+            self.state.update(message);
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn handle_event(&mut self, event: Event) -> Result<()> {
+        match event {
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event)
+            }
+            _ => (),
+        };
+
+        Ok(())
+    }
+
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit(),
+            _ => (),
+        }
     }
 }
 
