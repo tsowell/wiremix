@@ -9,13 +9,13 @@ use futures_timer::Delay;
 use crate::message::{InputMessage, Message};
 
 pub fn spawn(
-    monitor_tx: Arc<mpsc::Sender<Message>>,
+    tx: Arc<mpsc::Sender<Message>>,
 ) -> (thread::JoinHandle<()>, InputShutdown) {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
     let join_handle = thread::spawn(move || {
         futures::executor::block_on(async move {
-            input_loop(shutdown_rx, monitor_tx).await;
+            input_loop(shutdown_rx, tx).await;
         });
     });
 
@@ -38,7 +38,7 @@ impl InputShutdown {
 
 async fn input_loop(
     shutdown_rx: oneshot::Receiver<()>,
-    monitor_tx: Arc<mpsc::Sender<Message>>,
+    tx: Arc<mpsc::Sender<Message>>,
 ) {
     let mut reader = EventStream::new();
     let mut shutdown = shutdown_rx.fuse();
@@ -53,7 +53,7 @@ async fn input_loop(
             maybe_event = event => {
                 match maybe_event {
                     Some(Ok(event)) => {
-                        let _ = monitor_tx.send(Message::Input(InputMessage::Event(event)));
+                        let _ = tx.send(Message::Input(InputMessage::Event(event)));
                     }
                     None => break,
                     _ => {},

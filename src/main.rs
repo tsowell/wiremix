@@ -21,19 +21,18 @@ struct Opt {
 }
 
 fn main() -> Result<()> {
-    let (monitor_tx, monitor_rx) = mpsc::channel();
-    let monitor_tx = Arc::new(monitor_tx);
+    let (tx, rx) = mpsc::channel();
+    let tx = Arc::new(tx);
 
     let opt = Opt::parse();
     let (monitor_thread, monitor_shutdown) =
-        monitor::spawn(opt.remote, Arc::clone(&monitor_tx), !opt.no_capture)?;
+        monitor::spawn(opt.remote, Arc::clone(&tx), !opt.no_capture)?;
 
     // Thread will get cleaned up when shutdown sender is dropped.
-    let (input_thread, input_shutdown) = input::spawn(Arc::clone(&monitor_tx));
+    let (input_thread, input_shutdown) = input::spawn(Arc::clone(&tx));
 
     let mut terminal = ratatui::init();
-    let app_result =
-        app::App::new(monitor_rx).run(&mut terminal);
+    let app_result = app::App::new(rx).run(&mut terminal);
     ratatui::restore();
 
     input_shutdown.trigger();
@@ -45,7 +44,7 @@ fn main() -> Result<()> {
     app_result
 
     /*
-    for received in monitor_rx {
+    for received in rx {
         if let pwmixer::message::Message::Monitor(message) = received {
             println!("{:?}", message);
         }
