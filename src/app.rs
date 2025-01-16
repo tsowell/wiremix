@@ -12,6 +12,9 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
 use crate::message::{InputMessage, Message};
 
+#[cfg(feature = "trace")]
+use crate::{trace_dbg, trace};
+
 pub struct App {
     exit: bool,
     rx: mpsc::Receiver<Message>,
@@ -28,6 +31,9 @@ impl App {
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+        #[cfg(feature = "trace")]
+        trace::initialize_logging()?;
+
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_messages()?;
