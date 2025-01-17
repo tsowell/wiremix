@@ -11,6 +11,7 @@ impl From<&GlobalObject<&DictRef>> for ObjectId {
     }
 }
 
+#[derive(Debug)]
 pub enum InputMessage {
     Event(crossterm::event::Event),
 }
@@ -47,10 +48,11 @@ impl From<&LinkInfoRef> for MonitorMessage {
     }
 }
 
+#[derive(Debug)]
 pub enum Message {
     Input(InputMessage),
     Monitor(MonitorMessage),
-    Quit,
+    Error(String),
 }
 
 impl From<crossterm::event::Event> for Message {

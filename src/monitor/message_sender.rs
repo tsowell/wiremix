@@ -25,8 +25,8 @@ impl MessageSender {
         }
     }
 
-    pub fn send_quit(&self) {
-        if self.tx.send(Message::Quit).is_err() {
+    pub fn send_error(&self, error: String) {
+        if self.tx.send(Message::Error(error)).is_err() {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }

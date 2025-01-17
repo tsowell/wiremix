@@ -1,6 +1,6 @@
 use std::sync::mpsc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use ratatui::{
     prelude::{Buffer, Rect},
@@ -21,6 +21,7 @@ pub struct App {
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
     state: State,
+    error_message: Option<String>,
 }
 
 impl App {
@@ -30,10 +31,11 @@ impl App {
             rx,
             log: Default::default(),
             state: Default::default(),
+            error_message: Default::default(),
         }
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+    pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         #[cfg(feature = "trace")]
         trace::initialize_logging()?;
 
@@ -45,15 +47,16 @@ impl App {
             trace_dbg!(&self.state);
         }
 
-        Ok(())
+        self.error_message.map_or(Ok(()), |s| Err(anyhow!(s)))
     }
 
     fn draw(&self, frame: &mut Frame) {
         frame.render_widget(self, frame.area());
     }
 
-    fn exit(&mut self) {
+    fn exit(&mut self, error_message: Option<String>) {
         self.exit = true;
+        self.error_message = error_message;
     }
 
     fn handle_messages(&mut self) -> Result<()> {
@@ -70,8 +73,8 @@ impl App {
     fn handle_message(&mut self, message: Message) -> Result<()> {
         if let Message::Input(InputMessage::Event(event)) = message {
             self.handle_event(event)
-        } else if let Message::Quit = message {
-            self.exit();
+        } else if let Message::Error(error) = message {
+            self.exit(Some(error));
             Ok(())
         } else if let Message::Monitor(message) = message {
             self.log.push(format!("{:?}", message));
@@ -95,7 +98,7 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('q') => self.exit(None),
             _ => (),
         }
     }

@@ -45,8 +45,9 @@ fn main() -> Result<()> {
 
     /*
     for received in rx {
-        if let pwmixer::message::Message::Monitor(message) = received {
-            println!("{:?}", message);
+        match received {
+            pwmixer::message::Message::Monitor(message) => println!("{:?}", message),
+            message => println!("{:?}", message),
         }
     }
 

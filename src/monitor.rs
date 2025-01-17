@@ -60,7 +60,13 @@ fn run(
         pipewire::deinit();
     });
 
-    monitor_pipewire(remote, tx, shutdown, is_capture_enabled)?;
+    let main_loop = MainLoop::new(None)?;
+    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
+
+    let err_sender = Rc::clone(&sender);
+    monitor_pipewire(remote, main_loop, sender, shutdown, is_capture_enabled).unwrap_or_else(move |e| {
+        err_sender.send_error(e.to_string());
+    });
 
     Ok(())
 }
@@ -82,12 +88,11 @@ impl MonitorShutdown {
 
 fn monitor_pipewire(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<Message>>,
+    main_loop: MainLoop,
+    sender: Rc<MessageSender>,
     shutdown: Arc<MonitorShutdown>,
     is_capture_enabled: bool,
 ) -> Result<()> {
-    let main_loop = MainLoop::new(None)?;
-
     let context = pipewire::context::Context::new(&main_loop)?;
     let props = remote.map(|remote| {
         properties! {
@@ -95,8 +100,6 @@ fn monitor_pipewire(
         }
     });
     let core = context.connect(props)?;
-
-    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
 
     let fd = shutdown.fd.as_raw_fd();
     let _shutdown_watch =
@@ -116,12 +119,12 @@ fn monitor_pipewire(
         .error({
             let main_loop_weak = main_loop.downgrade();
             let sender_weak = Rc::downgrade(&sender);
-            move |_id, _seq, _res, _message| {
+            move |_id, _seq, _res, message| {
                 if let Some(main_loop) = main_loop_weak.upgrade() {
                     main_loop.quit();
                 }
                 if let Some(sender) = sender_weak.upgrade() {
-                    sender.send_quit();
+                    sender.send_error(message.to_string());
                 };
             }
         })
