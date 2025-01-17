@@ -110,8 +110,9 @@ pub fn capture_node(
                             let start = n as usize * mem::size_of::<f32>();
                             let end = start + mem::size_of::<f32>();
                             let chan = &samples[start..end];
-                            let f =
-                                f32::from_le_bytes(chan.try_into().unwrap());
+                            let f = f32::from_le_bytes(
+                                chan.try_into().unwrap_or([0; 4]),
+                            );
                             max = max.max(f.abs());
                         }
 
