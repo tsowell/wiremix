@@ -36,22 +36,27 @@ pub fn spawn(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Message>>,
     is_capture_enabled: bool,
-) -> Result<(thread::JoinHandle<()>, Arc<MonitorShutdown>)> {
-    let shutdown = Arc::new(MonitorShutdown::new()?);
-    let join_handle = thread::spawn({
-        let shutdown = Arc::clone(&shutdown);
+) -> Result<MonitorHandle> {
+    let shutdown_fd =
+        Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
+
+    let handle = thread::spawn({
+        let shutdown_fd = Arc::clone(&shutdown_fd);
         move || {
-            let _ = run(remote, tx, shutdown, is_capture_enabled);
+            let _ = run(remote, tx, shutdown_fd, is_capture_enabled);
         }
     });
 
-    Ok((join_handle, shutdown))
+    Ok(MonitorHandle {
+        fd: Some(shutdown_fd),
+        handle: Some(handle),
+    })
 }
 
 fn run(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Message>>,
-    shutdown: Arc<MonitorShutdown>,
+    shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
@@ -64,25 +69,33 @@ fn run(
     let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
 
     let err_sender = Rc::clone(&sender);
-    monitor_pipewire(remote, main_loop, sender, shutdown, is_capture_enabled).unwrap_or_else(move |e| {
+    monitor_pipewire(
+        remote,
+        main_loop,
+        sender,
+        shutdown_fd,
+        is_capture_enabled,
+    )
+    .unwrap_or_else(move |e| {
         err_sender.send_error(e.to_string());
     });
 
     Ok(())
 }
 
-pub struct MonitorShutdown {
-    fd: EventFd,
+pub struct MonitorHandle {
+    fd: Option<Arc<EventFd>>,
+    handle: Option<thread::JoinHandle<()>>,
 }
 
-impl MonitorShutdown {
-    pub fn new() -> nix::Result<Self> {
-        let fd = EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?;
-        Ok(Self { fd })
-    }
-
-    pub fn trigger(&self) {
-        let _ = self.fd.arm();
+impl Drop for MonitorHandle {
+    fn drop(&mut self) {
+        if let Some(fd) = self.fd.take() {
+            let _ = fd.arm();
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 
@@ -90,7 +103,7 @@ fn monitor_pipewire(
     remote: Option<String>,
     main_loop: MainLoop,
     sender: Rc<MessageSender>,
-    shutdown: Arc<MonitorShutdown>,
+    shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
     let context = pipewire::context::Context::new(&main_loop)?;
@@ -101,7 +114,7 @@ fn monitor_pipewire(
     });
     let core = context.connect(props)?;
 
-    let fd = shutdown.fd.as_raw_fd();
+    let fd = shutdown_fd.as_raw_fd();
     let _shutdown_watch =
         main_loop
             .loop_()

@@ -25,21 +25,13 @@ fn main() -> Result<()> {
     let tx = Arc::new(tx);
 
     let opt = Opt::parse();
-    let (monitor_thread, monitor_shutdown) =
+    let _monitor_handle =
         monitor::spawn(opt.remote, Arc::clone(&tx), !opt.no_capture)?;
-
-    // Thread will get cleaned up when shutdown sender is dropped.
-    let (input_thread, input_shutdown) = input::spawn(Arc::clone(&tx));
+    let _input_handle = input::spawn(Arc::clone(&tx));
 
     let mut terminal = ratatui::init();
     let app_result = app::App::new(rx).run(&mut terminal);
     ratatui::restore();
-
-    input_shutdown.trigger();
-    monitor_shutdown.trigger();
-
-    input_thread.join().unwrap();
-    monitor_thread.join().unwrap();
 
     app_result
 

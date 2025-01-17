@@ -8,31 +8,34 @@ use futures_timer::Delay;
 
 use crate::message::Message;
 
-pub fn spawn(
-    tx: Arc<mpsc::Sender<Message>>,
-) -> (thread::JoinHandle<()>, InputShutdown) {
+pub fn spawn(tx: Arc<mpsc::Sender<Message>>) -> InputHandle {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
-    let join_handle = thread::spawn(move || {
+    let handle = thread::spawn(move || {
         futures::executor::block_on(async move {
             input_loop(shutdown_rx, tx).await;
         });
     });
 
-    (join_handle, InputShutdown::from(shutdown_tx))
-}
-
-pub struct InputShutdown {
-    tx: oneshot::Sender<()>,
-}
-
-impl InputShutdown {
-    pub fn from(tx: oneshot::Sender<()>) -> Self {
-        Self { tx }
+    InputHandle {
+        tx: Some(shutdown_tx),
+        handle: Some(handle),
     }
+}
 
-    pub fn trigger(self) {
-        let _ = self.tx.send(());
+pub struct InputHandle {
+    tx: Option<oneshot::Sender<()>>,
+    handle: Option<thread::JoinHandle<()>>,
+}
+
+impl Drop for InputHandle {
+    fn drop(&mut self) {
+        if let Some(tx) = self.tx.take() {
+            let _ = tx.send(());
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 
