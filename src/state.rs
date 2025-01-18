@@ -4,51 +4,51 @@ use crate::message::{MonitorMessage, ObjectId};
 
 #[allow(dead_code)]
 #[derive(Debug)]
-struct Profile {
-    index: i32,
-    description: String,
+pub struct Profile {
+    pub index: i32,
+    pub description: String,
 }
 
 #[allow(dead_code)]
 #[derive(Debug)]
-struct Route {
-    index: i32,
-    description: String,
+pub struct Route {
+    pub index: i32,
+    pub description: String,
 }
 
 #[allow(dead_code)]
 #[derive(Default, Debug)]
-struct Device {
-    id: ObjectId,
-    name: Option<String>,
-    nick: Option<String>,
-    description: Option<String>,
-    media_class: Option<String>,
-    profile_index: Option<i32>,
-    profiles: HashMap<i32, Profile>,
-    route_index: Option<i32>,
-    routes: HashMap<i32, Route>,
+pub struct Device {
+    pub id: ObjectId,
+    pub name: Option<String>,
+    pub nick: Option<String>,
+    pub description: Option<String>,
+    pub media_class: Option<String>,
+    pub profile_index: Option<i32>,
+    pub profiles: HashMap<i32, Profile>,
+    pub route_index: Option<i32>,
+    pub routes: HashMap<i32, Route>,
 }
 
 #[allow(dead_code)]
 #[derive(Default, Debug)]
-struct Node {
-    id: ObjectId,
-    name: Option<String>,
-    nick: Option<String>,
-    description: Option<String>,
-    media_class: Option<String>,
-    media_name: Option<String>,
-    volume: Option<f32>,
-    peak: Option<f32>,
+pub struct Node {
+    pub id: ObjectId,
+    pub name: Option<String>,
+    pub nick: Option<String>,
+    pub description: Option<String>,
+    pub media_class: Option<String>,
+    pub media_name: Option<String>,
+    pub volume: Option<f32>,
+    pub peak: Option<f32>,
 }
 
 #[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct State {
-    nodes: HashMap<ObjectId, Node>,
-    devices: HashMap<ObjectId, Device>,
-    links: HashMap<ObjectId, ObjectId>,
+    pub nodes: HashMap<ObjectId, Node>,
+    pub devices: HashMap<ObjectId, Device>,
+    pub links: HashMap<ObjectId, ObjectId>,
 }
 
 impl State {
