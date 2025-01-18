@@ -16,8 +16,11 @@ struct Opt {
     #[clap(short, long, help = "The name of the remote to connect to")]
     remote: Option<String>,
 
-    #[clap(short, long, help = "Disable audio capture for level monitoring)]")]
+    #[clap(short, long, help = "Disable audio capture for level monitoring")]
     no_capture: bool,
+
+    #[clap(short, long, help = "Dump events without showing interface")]
+    dump_events: bool,
 }
 
 fn main() -> Result<()> {
@@ -29,20 +32,32 @@ fn main() -> Result<()> {
         monitor::spawn(opt.remote, Arc::clone(&tx), !opt.no_capture)?;
     let _input_handle = input::spawn(Arc::clone(&tx));
 
-    let mut terminal = ratatui::init();
-    let app_result = app::App::new(rx).run(&mut terminal);
-    ratatui::restore();
-
-    app_result
-
-    /*
-    for received in rx {
-        match received {
-            pwmixer::message::Message::Monitor(message) => println!("{:?}", message),
-            message => println!("{:?}", message),
+    if opt.dump_events {
+        crossterm::terminal::enable_raw_mode()?;
+        let _guard = scopeguard::guard((), |_| {
+            let _ = crossterm::terminal::disable_raw_mode();
+        });
+        for received in rx {
+            use crossterm::event::{Event, KeyCode, KeyEvent};
+            use pwmixer::message::{InputMessage, Message};
+            match received {
+                Message::Monitor(message) => print!("{:?}\r\n", message),
+                Message::Input(InputMessage::Event(Event::Key(KeyEvent {
+                    code: KeyCode::Char('q'),
+                    ..
+                }))) => break,
+                message => {
+                    print!("{:?}\r\n", message);
+                }
+            }
         }
-    }
 
-    Ok(())
-    */
+        Ok(())
+    } else {
+        let mut terminal = ratatui::init();
+        let app_result = app::App::new(rx).run(&mut terminal);
+        ratatui::restore();
+
+        app_result
+    }
 }
