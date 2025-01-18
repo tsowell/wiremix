@@ -20,6 +20,7 @@ pub enum InputMessage {
 #[derive(Debug)]
 pub enum MonitorMessage {
     DeviceDescription(ObjectId, String),
+    DeviceMediaClass(ObjectId, String),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
     DeviceProfileDescription(ObjectId, i32, String),
@@ -28,6 +29,7 @@ pub enum MonitorMessage {
     DeviceRouteIndex(ObjectId, i32),
 
     NodeDescription(ObjectId, String),
+    NodeMediaClass(ObjectId, String),
     NodeMediaName(ObjectId, String),
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),

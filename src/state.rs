@@ -23,6 +23,7 @@ struct Device {
     name: Option<String>,
     nick: Option<String>,
     description: Option<String>,
+    media_class: Option<String>,
     profile_index: Option<i32>,
     profiles: HashMap<i32, Profile>,
     route_index: Option<i32>,
@@ -36,6 +37,7 @@ struct Node {
     name: Option<String>,
     nick: Option<String>,
     description: Option<String>,
+    media_class: Option<String>,
     media_name: Option<String>,
     volume: Option<f32>,
     peak: Option<f32>,
@@ -52,6 +54,9 @@ pub struct State {
 impl State {
     pub fn update(&mut self, message: MonitorMessage) {
         match message {
+            MonitorMessage::DeviceMediaClass(id, media_class) => {
+                self.device_entry(id).media_class = Some(media_class);
+            }
             MonitorMessage::DeviceName(id, name) => {
                 self.device_entry(id).name = Some(name);
             }
@@ -80,6 +85,9 @@ impl State {
                 self.device_entry(id)
                     .profiles
                     .insert(index, Profile { index, description });
+            }
+            MonitorMessage::NodeMediaClass(id, media_class) => {
+                self.node_entry(id).media_class = Some(media_class);
             }
             MonitorMessage::NodeName(id, name) => {
                 self.node_entry(id).name = Some(name);

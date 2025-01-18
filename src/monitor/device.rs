@@ -34,6 +34,11 @@ pub fn monitor_device(
         _ => return None,
     }
 
+    sender.send(MonitorMessage::DeviceMediaClass(
+        obj_id,
+        media_class.to_string(),
+    ));
+
     let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
     let proxy_id = device.upcast_ref().id();

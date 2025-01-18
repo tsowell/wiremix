@@ -30,6 +30,11 @@ pub fn monitor_node(
         _ => return None,
     }
 
+    sender.send(MonitorMessage::NodeMediaClass(
+        obj_id,
+        media_class.to_string(),
+    ));
+
     let node: Node = registry.bind(obj).ok()?;
     let node = Rc::new(node);
 
