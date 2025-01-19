@@ -111,11 +111,7 @@ fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PROP_channelVolumes {
             if let Value::ValueArray(ValueArray::Float(value)) = prop.value {
-                if !value.is_empty() {
-                    let mean = value.iter().sum::<f32>() / value.len() as f32;
-                    let cubic = mean.cbrt();
-                    return Some(MonitorMessage::NodeVolume(id, cubic));
-                }
+                return Some(MonitorMessage::NodeVolumes(id, value));
             }
         }
     }

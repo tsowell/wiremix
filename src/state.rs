@@ -39,7 +39,7 @@ pub struct Node {
     pub description: Option<String>,
     pub media_class: Option<String>,
     pub media_name: Option<String>,
-    pub volume: Option<f32>,
+    pub volumes: Option<Vec<f32>>,
     pub peak: Option<f32>,
     pub positions: Option<Vec<u32>>,
 }
@@ -102,8 +102,8 @@ impl State {
             MonitorMessage::NodeMediaName(id, media_name) => {
                 self.node_entry(id).media_name = Some(media_name);
             }
-            MonitorMessage::NodeVolume(id, volume) => {
-                self.node_entry(id).volume = Some(volume);
+            MonitorMessage::NodeVolumes(id, volumes) => {
+                self.node_entry(id).volumes = Some(volumes);
             }
             MonitorMessage::NodePositions(id, positions) => {
                 self.node_entry(id).positions = Some(positions);
