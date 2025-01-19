@@ -157,10 +157,13 @@ impl Widget for &state::Node {
             }
         }
 
-        if let Some(peak) = &self.peak {
-            let count = (peak * area.width as f32) as usize;
-            Paragraph::new("=".repeat(count).to_string())
-                .render(layout[2], buf);
+        if let Some(peaks) = &self.peaks {
+            if !peaks.is_empty() {
+                let peak = peaks.iter().sum::<f32>() / peaks.len() as f32;
+                let count = (peak * area.width as f32) as usize;
+                Paragraph::new("=".repeat(count).to_string())
+                    .render(layout[2], buf);
+            }
         }
     }
 }

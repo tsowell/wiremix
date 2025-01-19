@@ -33,7 +33,7 @@ pub enum MonitorMessage {
     NodeMediaName(ObjectId, String),
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),
-    NodePeak(ObjectId, f32),
+    NodePeaks(ObjectId, Vec<f32>),
     NodePositions(ObjectId, Vec<u32>),
     NodeVolumes(ObjectId, Vec<f32>),
 

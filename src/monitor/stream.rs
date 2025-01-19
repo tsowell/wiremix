@@ -103,7 +103,7 @@ pub fn capture_node(
                     data.chunk().size() / (mem::size_of::<f32>() as u32);
 
                 if let Some(samples) = data.data() {
-                    let mut sum = 0.0;
+                    let mut peaks = Vec::new();
                     for c in 0..n_channels {
                         let mut max: f32 = 0.0;
                         for n in (c..n_samples).step_by(n_channels as usize) {
@@ -116,10 +116,9 @@ pub fn capture_node(
                             max = max.max(f.abs());
                         }
 
-                        sum += max;
+                        peaks.push(max);
                     }
-                    let average = sum / n_channels as f32;
-                    sender.send(MonitorMessage::NodePeak(obj_id, average));
+                    sender.send(MonitorMessage::NodePeaks(obj_id, peaks));
                     user_data.cursor_move = true;
                 }
             }

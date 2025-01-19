@@ -40,7 +40,7 @@ pub struct Node {
     pub media_class: Option<String>,
     pub media_name: Option<String>,
     pub volumes: Option<Vec<f32>>,
-    pub peak: Option<f32>,
+    pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
 }
 
@@ -108,8 +108,8 @@ impl State {
             MonitorMessage::NodePositions(id, positions) => {
                 self.node_entry(id).positions = Some(positions);
             }
-            MonitorMessage::NodePeak(id, peak) => {
-                self.node_entry(id).peak = Some(peak);
+            MonitorMessage::NodePeaks(id, peaks) => {
+                self.node_entry(id).peaks = Some(peaks);
             }
             MonitorMessage::Link(output, input) => {
                 self.links.insert(output, input);
