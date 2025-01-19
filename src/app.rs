@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     text::Line,
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, Borders, Widget},
     DefaultTerminal, Frame,
 };
 
@@ -223,24 +223,61 @@ impl Widget for &state::Node {
         let left = truncate(&left, header[0].width as usize);
         Line::from(left).render(header[0], buf);
 
+        let volume_line = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(4),
+                Constraint::Length(1), // Padding
+                Constraint::Min(0),
+            ])
+            .split(layout[1]);
+
         if let Some(volumes) = &self.volumes {
             if !volumes.is_empty() {
+                let area = volume_line[0];
+
                 let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 let volume = mean.cbrt();
+                let percent = (volume * 100.0) as u32;
+
+                Line::from(format!("{}%", percent))
+                    .alignment(Alignment::Right)
+                    .render(area, buf);
+
+                let area = volume_line[2];
 
                 let count = ((volume / 1.5) * area.width as f32) as usize;
-                let percent = (volume * 100.0) as u32;
-                Paragraph::new(format!("{}| {}%", " ".repeat(count), percent))
-                    .render(layout[1], buf);
+
+                let filled = "=".repeat(count);
+                let blank = "-".repeat(area.width as usize - count);
+                Line::from(format!("{}{}", filled, blank)).render(area, buf);
             }
         }
 
+        let meter = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Fill(1),
+                Constraint::Length(4),
+                Constraint::Fill(1),
+            ])
+            .split(layout[2]);
+
+        Line::from(format!("[~~]")).render(meter[1], buf);
+
         if let Some(peaks) = &self.peaks {
-            if !peaks.is_empty() {
-                let peak = peaks.iter().sum::<f32>() / peaks.len() as f32;
-                let count = (peak * area.width as f32) as usize;
-                Paragraph::new("=".repeat(count).to_string())
-                    .render(layout[2], buf);
+            if peaks.len() == 2 {
+                fn render_peak(peak: f32, area: Rect) -> String {
+                    let count = (peak.cbrt() * area.width as f32) as usize;
+                    return "#".repeat(count).to_string();
+                }
+
+                let area = meter[0];
+                Line::from(render_peak(peaks[0], area))
+                    .alignment(Alignment::Right)
+                    .render(area, buf);
+                let area = meter[2];
+                Line::from(render_peak(peaks[1], area)).render(area, buf);
             }
         }
     }
