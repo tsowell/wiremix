@@ -135,31 +135,30 @@ fn truncate(text: &str, len: usize) -> String {
     truncated + &".".repeat(std::cmp::min(len, 3))
 }
 
-impl Widget for &state::Node {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let border_block = Block::default().borders(Borders::ALL);
-        let layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
-            .split(border_block.inner(area));
-        border_block.render(area, buf);
+fn node_header_left(node: &state::Node) -> String {
+    if let Some(description) = &node.description {
+        description.clone()
+    } else if let (Some(name), Some(media_name)) =
+        (&node.name, &node.media_name)
+    {
+        format!("{}: {}", name, media_name).to_string()
+    } else {
+        "".to_string()
+    }
+}
 
-        let left = if let Some(description) = &self.description {
-            description.clone()
-        } else if let (Some(name), Some(media_name)) =
-            (&self.name, &self.media_name)
-        {
-            format!("{}: {}", name, media_name).to_string()
-        } else {
-            "".to_string()
-        };
+fn node_header_right(node: &state::Node) -> String {
+    let mut right = Default::default();
 
-        let mut right = String::new();
+    let Some(ref media_class) = node.media_class else {
+        return right;
+    };
+    if media_class == "Audio/Sink" {
         STATE.with_borrow(|state| {
-            let Some(device_id) = &self.device_id else {
+            let Some(device_id) = node.device_id else {
                 return;
             };
-            let Some(device) = state.devices.get(device_id) else {
+            let Some(device) = state.devices.get(&device_id) else {
                 return;
             };
             let Some(route_index) = device.route_index else {
@@ -170,6 +169,44 @@ impl Widget for &state::Node {
             };
             right = route.description.clone();
         });
+    } else if media_class == "Stream/Output/Audio" {
+        STATE.with_borrow(|state| {
+            let Some(outputs) = state.links.get(&node.id) else {
+                return;
+            };
+            for output in outputs {
+                let Some(output_node) = state.nodes.get(output) else {
+                    continue;
+                };
+                let Some(ref media_class) = output_node.media_class else {
+                    continue;
+                };
+                if media_class != "Audio/Sink" {
+                    continue;
+                };
+                let Some(ref description) = output_node.description else {
+                    return;
+                };
+                right = description.clone();
+                break;
+            }
+        });
+    }
+
+    right
+}
+
+impl Widget for &state::Node {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_block = Block::default().borders(Borders::ALL);
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
+            .split(border_block.inner(area));
+        border_block.render(area, buf);
+
+        let left = node_header_left(self);
+        let right = node_header_right(self);
 
         let header = Layout::default()
             .direction(Direction::Horizontal)
