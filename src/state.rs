@@ -55,28 +55,17 @@ pub struct State {
 impl State {
     pub fn update(&mut self, message: MonitorMessage) {
         match message {
+            MonitorMessage::DeviceDescription(id, description) => {
+                self.device_entry(id).description = Some(description);
+            }
             MonitorMessage::DeviceMediaClass(id, media_class) => {
                 self.device_entry(id).media_class = Some(media_class);
             }
             MonitorMessage::DeviceName(id, name) => {
                 self.device_entry(id).name = Some(name);
             }
-            MonitorMessage::DeviceDescription(id, description) => {
-                self.device_entry(id).description = Some(description);
-            }
             MonitorMessage::DeviceNick(id, nick) => {
                 self.device_entry(id).nick = Some(nick);
-            }
-            MonitorMessage::DeviceRouteIndex(id, index) => {
-                self.device_entry(id).route_index = Some(index);
-            }
-            MonitorMessage::DeviceRouteDescription(id, index, description) => {
-                self.device_entry(id)
-                    .routes
-                    .insert(index, Route { index, description });
-            }
-            MonitorMessage::DeviceProfileIndex(id, index) => {
-                self.device_entry(id).profile_index = Some(index);
             }
             MonitorMessage::DeviceProfileDescription(
                 id,
@@ -87,29 +76,40 @@ impl State {
                     .profiles
                     .insert(index, Profile { index, description });
             }
-            MonitorMessage::NodeMediaClass(id, media_class) => {
-                self.node_entry(id).media_class = Some(media_class);
+            MonitorMessage::DeviceProfileIndex(id, index) => {
+                self.device_entry(id).profile_index = Some(index);
             }
-            MonitorMessage::NodeName(id, name) => {
-                self.node_entry(id).name = Some(name);
+            MonitorMessage::DeviceRouteDescription(id, index, description) => {
+                self.device_entry(id)
+                    .routes
+                    .insert(index, Route { index, description });
+            }
+            MonitorMessage::DeviceRouteIndex(id, index) => {
+                self.device_entry(id).route_index = Some(index);
             }
             MonitorMessage::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);
             }
-            MonitorMessage::NodeNick(id, nick) => {
-                self.node_entry(id).nick = Some(nick);
+            MonitorMessage::NodeMediaClass(id, media_class) => {
+                self.node_entry(id).media_class = Some(media_class);
             }
             MonitorMessage::NodeMediaName(id, media_name) => {
                 self.node_entry(id).media_name = Some(media_name);
             }
-            MonitorMessage::NodeVolumes(id, volumes) => {
-                self.node_entry(id).volumes = Some(volumes);
+            MonitorMessage::NodeName(id, name) => {
+                self.node_entry(id).name = Some(name);
+            }
+            MonitorMessage::NodeNick(id, nick) => {
+                self.node_entry(id).nick = Some(nick);
+            }
+            MonitorMessage::NodePeaks(id, peaks) => {
+                self.node_entry(id).peaks = Some(peaks);
             }
             MonitorMessage::NodePositions(id, positions) => {
                 self.node_entry(id).positions = Some(positions);
             }
-            MonitorMessage::NodePeaks(id, peaks) => {
-                self.node_entry(id).peaks = Some(peaks);
+            MonitorMessage::NodeVolumes(id, volumes) => {
+                self.node_entry(id).volumes = Some(volumes);
             }
             MonitorMessage::Link(output, input) => {
                 self.links.insert(output, input);
