@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::message::{MonitorMessage, ObjectId};
 
@@ -50,7 +51,7 @@ pub struct Node {
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
-    pub links: HashMap<ObjectId, ObjectId>,
+    pub links: HashMap<ObjectId, HashSet<ObjectId>>,
 }
 
 impl State {
@@ -116,7 +117,7 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorMessage::Link(output, input) => {
-                self.links.insert(output, input);
+                self.links.entry(output).or_default().insert(input);
             }
             MonitorMessage::Removed(id) => {
                 self.devices.remove(&id);
