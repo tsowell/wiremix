@@ -4,8 +4,9 @@ use std::sync::mpsc;
 use anyhow::{anyhow, Result};
 
 use ratatui::{
-    prelude::{Buffer, Rect},
-    widgets::{Paragraph, Widget},
+    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    text::Line,
+    widgets::{Block, Borders, Paragraph, Widget},
     DefaultTerminal, Frame,
 };
 
@@ -106,10 +107,55 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let log = &self.log;
-        let scroll = (log.len().saturating_sub(area.height as usize)) as u16;
-        Paragraph::new(log.join("\n"))
-            .scroll((scroll, 0))
-            .render(area, buf);
+        STATE.with_borrow(|state| {
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(state.nodes.iter().map(|_| Constraint::Length(5)))
+                .split(area);
+            for (node, area) in state.nodes.values().zip(layout.iter()) {
+                node.render(*area, buf);
+            }
+        })
+    }
+}
+
+impl Widget for &state::Node {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let border_block = Block::default().borders(Borders::ALL);
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
+            .split(border_block.inner(area));
+        border_block.render(area, buf);
+
+        let header = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(80), Constraint::Min(0)])
+            .split(layout[0]);
+
+        let left = if let Some(description) = &self.description {
+            description.clone()
+        } else if let (Some(name), Some(media_name)) =
+            (&self.name, &self.media_name)
+        {
+            format!("{}: {}", name, media_name).to_string()
+        } else {
+            "".to_string()
+        };
+
+        Line::from(left).render(header[0], buf);
+
+        if let Some(volume) = &self.volume {
+            let count = (volume * area.width as f32) as usize;
+            let percent = (volume * 100.0) as u32;
+            Paragraph::new(format!("{}| {}%", " ".repeat(count), percent))
+                .render(layout[1], buf);
+        }
+
+        if let Some(peak) = &self.peak {
+            let count = (peak * area.width as f32) as usize;
+            Paragraph::new("=".repeat(count).to_string())
+                .render(layout[2], buf);
+        }
     }
 }
