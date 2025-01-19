@@ -228,7 +228,7 @@ impl Widget for &state::Node {
                 let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 let volume = mean.cbrt();
 
-                let count = (volume * area.width as f32) as usize;
+                let count = ((volume / 1.5) * area.width as f32) as usize;
                 let percent = (volume * 100.0) as u32;
                 Paragraph::new(format!("{}| {}%", " ".repeat(count), percent))
                     .render(layout[1], buf);
