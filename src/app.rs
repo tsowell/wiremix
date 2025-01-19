@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::mpsc;
 
 use anyhow::{anyhow, Result};
@@ -11,16 +12,19 @@ use ratatui::{
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
 use crate::message::{InputMessage, Message};
-use crate::state::State;
+use crate::state;
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
+
+thread_local! {
+    pub static STATE: RefCell<state::State> = RefCell::new(Default::default());
+}
 
 pub struct App {
     exit: bool,
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
-    state: State,
     error_message: Option<String>,
 }
 
@@ -30,7 +34,6 @@ impl App {
             exit: Default::default(),
             rx,
             log: Default::default(),
-            state: Default::default(),
             error_message: Default::default(),
         }
     }
@@ -42,9 +45,6 @@ impl App {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_messages()?;
-
-            #[cfg(feature = "trace")]
-            trace_dbg!(&self.state);
         }
 
         self.error_message.map_or(Ok(()), |s| Err(anyhow!(s)))
@@ -78,7 +78,7 @@ impl App {
             Ok(())
         } else if let Message::Monitor(message) = message {
             self.log.push(format!("{:?}", message));
-            self.state.update(message);
+            STATE.with_borrow_mut(|s| s.update(message));
             Ok(())
         } else {
             Ok(())
