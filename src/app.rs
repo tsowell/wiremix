@@ -119,6 +119,22 @@ impl Widget for &App {
     }
 }
 
+fn truncate(text: &str, len: usize) -> String {
+    if text.len() <= len {
+        return text.to_string();
+    }
+
+    let left = len.saturating_sub(3);
+
+    let truncated = text
+        .char_indices()
+        .take_while(|(i, _)| *i < left)
+        .map(|(_, c)| c)
+        .collect::<String>();
+
+    truncated + &".".repeat(std::cmp::min(len, 3))
+}
+
 impl Widget for &state::Node {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border_block = Block::default().borders(Borders::ALL);
@@ -127,11 +143,6 @@ impl Widget for &state::Node {
             .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
             .split(border_block.inner(area));
         border_block.render(area, buf);
-
-        let header = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(80), Constraint::Min(0)])
-            .split(layout[0]);
 
         let left = if let Some(description) = &self.description {
             description.clone()
@@ -143,6 +154,36 @@ impl Widget for &state::Node {
             "".to_string()
         };
 
+        let mut right = String::new();
+        STATE.with_borrow(|state| {
+            let Some(device_id) = &self.device_id else {
+                return;
+            };
+            let Some(device) = state.devices.get(device_id) else {
+                return;
+            };
+            let Some(route_index) = device.route_index else {
+                return;
+            };
+            let Some(route) = device.routes.get(&route_index) else {
+                return;
+            };
+            right = route.description.clone();
+        });
+
+        let header = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(0),
+                Constraint::Length(1), // Padding
+                Constraint::Length(right.len() as u16),
+            ])
+            .split(layout[0]);
+
+        Line::from(right)
+            .alignment(Alignment::Right)
+            .render(header[2], buf);
+        let left = truncate(&left, header[0].width as usize);
         Line::from(left).render(header[0], buf);
 
         if let Some(volumes) = &self.volumes {
@@ -165,5 +206,40 @@ impl Widget for &state::Node {
                     .render(layout[2], buf);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_test_equal() {
+        assert_eq!(truncate("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_test_larger() {
+        assert_eq!(truncate("hello", 6), "hello");
+    }
+
+    #[test]
+    fn truncate_test_shorter() {
+        assert_eq!(truncate("hello", 4), "h...");
+    }
+
+    #[test]
+    fn truncate_test_too_short() {
+        assert_eq!(truncate("hello", 3), "...");
+    }
+
+    #[test]
+    fn truncate_test_much_too_short() {
+        assert_eq!(truncate("hello", 2), "..");
+    }
+
+    #[test]
+    fn truncate_test_empty() {
+        assert_eq!(truncate("hello", 0), "");
     }
 }
