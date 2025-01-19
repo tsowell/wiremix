@@ -62,6 +62,9 @@ pub fn monitor_node(
                 if let Some(param) = deserialize(param) {
                     if let Some(message) = match id {
                         ParamType::Props => node_param_props(obj_id, param),
+                        ParamType::PortConfig => {
+                            node_param_port_config(obj_id, param)
+                        }
                         _ => None,
                     } {
                         sender.send(message);
@@ -70,7 +73,7 @@ pub fn monitor_node(
             }
         })
         .register();
-    node.subscribe_params(&[ParamType::Props]);
+    node.subscribe_params(&[ParamType::Props, ParamType::PortConfig]);
 
     Some((Box::new(node), Box::new(listener)))
 }
@@ -118,4 +121,29 @@ fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     }
 
     None
+}
+
+fn node_param_port_config(
+    id: ObjectId,
+    param: Object,
+) -> Option<MonitorMessage> {
+    let format_prop = param
+        .properties
+        .into_iter()
+        .find(|prop| prop.key == libspa_sys::SPA_PARAM_PORT_CONFIG_format)?;
+
+    let Value::Object(Object { properties, .. }) = format_prop.value else {
+        return None;
+    };
+
+    let position_prop = properties
+        .into_iter()
+        .find(|prop| prop.key == libspa_sys::SPA_FORMAT_AUDIO_position)?;
+
+    let Value::ValueArray(ValueArray::Id(value)) = position_prop.value else {
+        return None;
+    };
+
+    let positions = value.into_iter().map(|x| x.0).collect();
+    Some(MonitorMessage::NodePositions(id, positions))
 }

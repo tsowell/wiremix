@@ -34,6 +34,7 @@ pub enum MonitorMessage {
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),
     NodePeak(ObjectId, f32),
+    NodePositions(ObjectId, Vec<u32>),
     NodeVolume(ObjectId, f32),
 
     Link(ObjectId, ObjectId),

@@ -41,6 +41,7 @@ pub struct Node {
     pub media_name: Option<String>,
     pub volume: Option<f32>,
     pub peak: Option<f32>,
+    pub positions: Option<Vec<u32>>,
 }
 
 #[allow(dead_code)]
@@ -103,6 +104,9 @@ impl State {
             }
             MonitorMessage::NodeVolume(id, volume) => {
                 self.node_entry(id).volume = Some(volume);
+            }
+            MonitorMessage::NodePositions(id, positions) => {
+                self.node_entry(id).positions = Some(positions);
             }
             MonitorMessage::NodePeak(id, peak) => {
                 self.node_entry(id).peak = Some(peak);
