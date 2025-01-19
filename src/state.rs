@@ -42,6 +42,7 @@ pub struct Node {
     pub volumes: Option<Vec<f32>>,
     pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
+    pub device_id: Option<ObjectId>,
 }
 
 #[allow(dead_code)]
@@ -89,6 +90,9 @@ impl State {
             }
             MonitorMessage::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);
+            }
+            MonitorMessage::NodeDeviceId(id, device_id) => {
+                self.node_entry(id).device_id = Some(device_id);
             }
             MonitorMessage::NodeMediaClass(id, media_class) => {
                 self.node_entry(id).media_class = Some(media_class);

@@ -11,6 +11,12 @@ impl From<&GlobalObject<&DictRef>> for ObjectId {
     }
 }
 
+impl ObjectId {
+    pub fn from_raw_id(id: u32) -> Self {
+        ObjectId(id)
+    }
+}
+
 #[derive(Debug)]
 pub enum InputMessage {
     Event(crossterm::event::Event),
@@ -29,6 +35,7 @@ pub enum MonitorMessage {
     DeviceRouteIndex(ObjectId, i32),
 
     NodeDescription(ObjectId, String),
+    NodeDeviceId(ObjectId, ObjectId),
     NodeMediaClass(ObjectId, String),
     NodeMediaName(ObjectId, String),
     NodeName(ObjectId, String),

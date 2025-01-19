@@ -105,6 +105,15 @@ fn node_info_props(
     if let Some(media_name) = props.get("media.name") {
         sender.send(MonitorMessage::NodeMediaName(id, media_name.to_string()));
     }
+
+    if let Some(device_id) = props.get("device.id") {
+        if let Ok(device_id) = device_id.parse() {
+            sender.send(MonitorMessage::NodeDeviceId(
+                id,
+                ObjectId::from_raw_id(device_id),
+            ));
+        }
+    }
 }
 
 fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorMessage> {
