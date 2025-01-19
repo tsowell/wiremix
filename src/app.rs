@@ -5,7 +5,8 @@ use anyhow::{anyhow, Result};
 
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    text::Line,
+    style::{Color, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, Widget},
     DefaultTerminal, Frame,
 };
@@ -198,7 +199,7 @@ fn node_header_right(node: &state::Node) -> String {
 
 impl Widget for &state::Node {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border_block = Block::default().borders(Borders::ALL);
+        let border_block = Block::default().borders(Borders::NONE);
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
@@ -223,6 +224,15 @@ impl Widget for &state::Node {
         let left = truncate(&left, header[0].width as usize);
         Line::from(left).render(header[0], buf);
 
+        let second_line = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Fill(2),
+                Constraint::Fill(1),
+                Constraint::Fill(2),
+            ])
+            .split(layout[2]);
+
         let volume_line = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
@@ -230,7 +240,7 @@ impl Widget for &state::Node {
                 Constraint::Length(1), // Padding
                 Constraint::Min(0),
             ])
-            .split(layout[1]);
+            .split(second_line[2]);
 
         if let Some(volumes) = &self.volumes {
             if !volumes.is_empty() {
@@ -257,27 +267,75 @@ impl Widget for &state::Node {
         let meter = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Fill(1),
+                Constraint::Fill(2),
                 Constraint::Length(4),
-                Constraint::Fill(1),
+                Constraint::Fill(2),
             ])
-            .split(layout[2]);
+            .split(second_line[0]);
 
-        Line::from(format!("[~~]")).render(meter[1], buf);
+        let meter_center = meter[1];
+        let meter_left = meter[0];
+        let meter_right = meter[2];
 
+        Line::from("[  ]".to_string()).render(meter_center, buf);
         if let Some(peaks) = &self.peaks {
             if peaks.len() == 2 {
-                fn render_peak(peak: f32, area: Rect) -> String {
-                    let count = (peak.cbrt() * area.width as f32) as usize;
-                    return "#".repeat(count).to_string();
+                fn render_peak(
+                    peak: f32,
+                    area: Rect,
+                ) -> (String, String, String) {
+                    let peak = peak.cbrt();
+                    let total_width = area.width as usize;
+                    let lit_width = (peak * area.width as f32) as usize;
+
+                    let hilit_width = ((peak - 0.70).clamp(0.0, 1.0)
+                        * area.width as f32)
+                        as usize;
+
+                    let unlit_width = total_width - lit_width;
+                    let lit_width = lit_width - hilit_width;
+
+                    let ch = "▮";
+
+                    (
+                        ch.repeat(lit_width),
+                        ch.repeat(hilit_width),
+                        ch.repeat(unlit_width),
+                    )
                 }
 
-                let area = meter[0];
-                Line::from(render_peak(peaks[0], area))
-                    .alignment(Alignment::Right)
-                    .render(area, buf);
-                let area = meter[2];
-                Line::from(render_peak(peaks[1], area)).render(area, buf);
+                let area = meter_left;
+                let (lit_peak, hilit_peak, unlit_peak) =
+                    render_peak(peaks[0], area);
+                Line::from(vec![
+                    Span::styled(
+                        unlit_peak,
+                        Style::default().fg(Color::Magenta),
+                    ),
+                    Span::styled(hilit_peak, Style::default().fg(Color::Red)),
+                    Span::styled(
+                        lit_peak,
+                        Style::default().fg(Color::LightGreen),
+                    ),
+                ])
+                .alignment(Alignment::Right)
+                .render(area, buf);
+
+                let area = meter_right;
+                let (lit_peak, hilit_peak, unlit_peak) =
+                    render_peak(peaks[1], area);
+                Line::from(vec![
+                    Span::styled(
+                        lit_peak,
+                        Style::default().fg(Color::LightGreen),
+                    ),
+                    Span::styled(hilit_peak, Style::default().fg(Color::Red)),
+                    Span::styled(
+                        unlit_peak,
+                        Style::default().fg(Color::Magenta),
+                    ),
+                ])
+                .render(area, buf);
             }
         }
     }
