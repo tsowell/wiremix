@@ -116,10 +116,8 @@ macro_rules! with_named_constraints {
                 (constraint, Some::<&mut Rect>(var)) => {
                     names.push((var, index));
                     vec.push(constraint)
-                },
-                (constraint, None) => {
-                    vec.push(constraint)
-                },
+                }
+                (constraint, None) => vec.push(constraint),
             }
             index += 1;
         }
@@ -225,10 +223,22 @@ fn node_header_right(node: &state::Node) -> String {
 impl Widget for &state::Node {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border_block = Block::default().borders(Borders::NONE);
-        let layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([1, 1, 1].iter().map(|&c| Constraint::Length(c)))
-            .split(border_block.inner(area));
+        let mut header_area = Default::default();
+        let mut bar_area = Default::default();
+        with_named_constraints!(
+            [
+                (Constraint::Length(1), None),
+                (Constraint::Length(1), Some(&mut header_area)),
+                (Constraint::Length(1), None),
+                (Constraint::Length(1), Some(&mut bar_area)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(border_block.inner(area))
+            }
+        );
         border_block.render(area, buf);
 
         let left = node_header_left(self);
@@ -236,16 +246,22 @@ impl Widget for &state::Node {
 
         let mut header_left = Default::default();
         let mut header_right = Default::default();
-        with_named_constraints!([
-            (Constraint::Min(0), Some(&mut header_left)),
-            (Constraint::Length(1), None), // Padding
-            (Constraint::Length(right.len() as u16), Some(&mut header_right)),
-        ], |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(layout[0])
-        });
+        with_named_constraints!(
+            [
+                (Constraint::Min(0), Some(&mut header_left)),
+                (Constraint::Length(1), None), // Padding
+                (
+                    Constraint::Length(right.len() as u16),
+                    Some(&mut header_right)
+                ),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(constraints)
+                    .split(header_area)
+            }
+        );
 
         Line::from(right)
             .alignment(Alignment::Right)
@@ -253,31 +269,39 @@ impl Widget for &state::Node {
         let left = truncate(&left, header_left.width as usize);
         Line::from(left).render(header_left, buf);
 
-        let mut second_line_left = Default::default();
-        let mut second_line_right = Default::default();
-        with_named_constraints!([
-            (Constraint::Fill(2), Some(&mut second_line_left)),
-            (Constraint::Fill(1), None),
-            (Constraint::Fill(2), Some(&mut second_line_right)),
-        ], |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(layout[2])
-        });
+        let mut volume_area = Default::default();
+        let mut meter_area = Default::default();
+        with_named_constraints!(
+            [
+                (Constraint::Length(1), None),
+                (Constraint::Fill(4), Some(&mut volume_area)),
+                (Constraint::Fill(1), None),
+                (Constraint::Fill(4), Some(&mut meter_area)),
+                (Constraint::Fill(1), None),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(constraints)
+                    .split(bar_area)
+            }
+        );
 
         let mut volume_label = Default::default();
         let mut volume_bar = Default::default();
-        with_named_constraints!([
-            (Constraint::Length(4), Some(&mut volume_label)),
-            (Constraint::Length(1), None), // Padding
-            (Constraint::Min(0), Some(&mut volume_bar)),
-        ], |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(second_line_right)
-        });
+        with_named_constraints!(
+            [
+                (Constraint::Length(4), Some(&mut volume_label)),
+                (Constraint::Length(1), None), // Padding
+                (Constraint::Min(0), Some(&mut volume_bar)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(constraints)
+                    .split(volume_area)
+            }
+        );
 
         if let Some(volumes) = &self.volumes {
             if !volumes.is_empty() {
@@ -292,25 +316,33 @@ impl Widget for &state::Node {
 
                 let count = ((volume / 1.5) * volume_bar.width as f32) as usize;
 
-                let filled = "=".repeat(count);
-                let blank = "-".repeat(volume_bar.width as usize - count);
-                Line::from(format!("{}{}", filled, blank)).render(volume_bar, buf);
+                let filled = "━".repeat(count);
+                let blank = "╌".repeat(volume_bar.width as usize - count);
+                Line::from(vec![
+                    Span::styled(filled, Style::default().fg(Color::Blue)),
+                    Span::styled(blank, Style::default().fg(Color::Blue)),
+                ])
+                .render(volume_bar, buf);
             }
         }
 
         let mut meter_left = Default::default();
         let mut meter_center = Default::default();
         let mut meter_right = Default::default();
-        with_named_constraints!([
-            (Constraint::Fill(2), Some(&mut meter_left)),
-            (Constraint::Length(4), Some(&mut meter_center)),
-            (Constraint::Fill(2), Some(&mut meter_right)),
-        ], |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(second_line_left)
-        });
+
+        with_named_constraints!(
+            [
+                (Constraint::Fill(2), Some(&mut meter_left)),
+                (Constraint::Length(4), Some(&mut meter_center)),
+                (Constraint::Fill(2), Some(&mut meter_right)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(constraints)
+                    .split(meter_area)
+            }
+        );
 
         Line::from("[  ]".to_string()).render(meter_center, buf);
         if let Some(peaks) = &self.peaks {
