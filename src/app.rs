@@ -106,6 +106,31 @@ impl App {
     }
 }
 
+macro_rules! with_named_constraints {
+    ($constraints:expr, $closure:expr) => {{
+        let mut vec = Vec::new();
+        let mut names = Vec::new();
+        let mut index = 0;
+        for constraint in $constraints {
+            match constraint {
+                (constraint, Some::<&mut Rect>(var)) => {
+                    names.push((var, index));
+                    vec.push(constraint)
+                },
+                (constraint, None) => {
+                    vec.push(constraint)
+                },
+            }
+            index += 1;
+        }
+        let layout = $closure(vec);
+        for (var, index) in names {
+            *var = layout[index];
+        }
+        layout
+    }};
+}
+
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         STATE.with_borrow(|state| {
@@ -209,73 +234,83 @@ impl Widget for &state::Node {
         let left = node_header_left(self);
         let right = node_header_right(self);
 
-        let header = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Min(0),
-                Constraint::Length(1), // Padding
-                Constraint::Length(right.len() as u16),
-            ])
-            .split(layout[0]);
+        let mut header_left = Default::default();
+        let mut header_right = Default::default();
+        with_named_constraints!([
+            (Constraint::Min(0), Some(&mut header_left)),
+            (Constraint::Length(1), None), // Padding
+            (Constraint::Length(right.len() as u16), Some(&mut header_right)),
+        ], |constraints| {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(constraints)
+                .split(layout[0])
+        });
 
         Line::from(right)
             .alignment(Alignment::Right)
-            .render(header[2], buf);
-        let left = truncate(&left, header[0].width as usize);
-        Line::from(left).render(header[0], buf);
+            .render(header_right, buf);
+        let left = truncate(&left, header_left.width as usize);
+        Line::from(left).render(header_left, buf);
 
-        let second_line = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Fill(2),
-                Constraint::Fill(1),
-                Constraint::Fill(2),
-            ])
-            .split(layout[2]);
+        let mut second_line_left = Default::default();
+        let mut second_line_right = Default::default();
+        with_named_constraints!([
+            (Constraint::Fill(2), Some(&mut second_line_left)),
+            (Constraint::Fill(1), None),
+            (Constraint::Fill(2), Some(&mut second_line_right)),
+        ], |constraints| {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(constraints)
+                .split(layout[2])
+        });
 
-        let volume_line = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(4),
-                Constraint::Length(1), // Padding
-                Constraint::Min(0),
-            ])
-            .split(second_line[2]);
+        let mut volume_label = Default::default();
+        let mut volume_bar = Default::default();
+        with_named_constraints!([
+            (Constraint::Length(4), Some(&mut volume_label)),
+            (Constraint::Length(1), None), // Padding
+            (Constraint::Min(0), Some(&mut volume_bar)),
+        ], |constraints| {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(constraints)
+                .split(second_line_right)
+        });
 
         if let Some(volumes) = &self.volumes {
             if !volumes.is_empty() {
-                let area = volume_line[0];
-
                 let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 let volume = mean.cbrt();
                 let percent = (volume * 100.0) as u32;
 
                 Line::from(format!("{}%", percent))
                     .alignment(Alignment::Right)
-                    .render(area, buf);
+                    .render(volume_label, buf);
 
-                let area = volume_line[2];
 
-                let count = ((volume / 1.5) * area.width as f32) as usize;
+                let count = ((volume / 1.5) * volume_bar.width as f32) as usize;
 
                 let filled = "=".repeat(count);
-                let blank = "-".repeat(area.width as usize - count);
-                Line::from(format!("{}{}", filled, blank)).render(area, buf);
+                let blank = "-".repeat(volume_bar.width as usize - count);
+                Line::from(format!("{}{}", filled, blank)).render(volume_bar, buf);
             }
         }
 
-        let meter = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Fill(2),
-                Constraint::Length(4),
-                Constraint::Fill(2),
-            ])
-            .split(second_line[0]);
-
-        let meter_center = meter[1];
-        let meter_left = meter[0];
-        let meter_right = meter[2];
+        let mut meter_left = Default::default();
+        let mut meter_center = Default::default();
+        let mut meter_right = Default::default();
+        with_named_constraints!([
+            (Constraint::Fill(2), Some(&mut meter_left)),
+            (Constraint::Length(4), Some(&mut meter_center)),
+            (Constraint::Fill(2), Some(&mut meter_right)),
+        ], |constraints| {
+            Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(constraints)
+                .split(second_line_left)
+        });
 
         Line::from("[  ]".to_string()).render(meter_center, buf);
         if let Some(peaks) = &self.peaks {
