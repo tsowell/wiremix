@@ -313,7 +313,6 @@ impl Widget for &state::Node {
                     .alignment(Alignment::Right)
                     .render(volume_label, buf);
 
-
                 let count = ((volume / 1.5) * volume_bar.width as f32) as usize;
 
                 let filled = "━".repeat(count);
