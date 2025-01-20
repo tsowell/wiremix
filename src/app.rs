@@ -333,7 +333,9 @@ impl Widget for &state::Node {
         with_named_constraints!(
             [
                 (Constraint::Fill(2), Some(&mut meter_left)),
-                (Constraint::Length(4), Some(&mut meter_center)),
+                (Constraint::Length(1), None),
+                (Constraint::Length(2), Some(&mut meter_center)),
+                (Constraint::Length(1), None),
                 (Constraint::Fill(2), Some(&mut meter_right)),
             ],
             |constraints| {
@@ -344,7 +346,6 @@ impl Widget for &state::Node {
             }
         );
 
-        Line::from("[  ]".to_string()).render(meter_center, buf);
         if let Some(peaks) = &self.peaks {
             if peaks.len() == 2 {
                 fn render_peak(
@@ -377,7 +378,7 @@ impl Widget for &state::Node {
                 Line::from(vec![
                     Span::styled(
                         unlit_peak,
-                        Style::default().fg(Color::Magenta),
+                        Style::default().fg(Color::DarkGray),
                     ),
                     Span::styled(hilit_peak, Style::default().fg(Color::Red)),
                     Span::styled(
@@ -399,11 +400,37 @@ impl Widget for &state::Node {
                     Span::styled(hilit_peak, Style::default().fg(Color::Red)),
                     Span::styled(
                         unlit_peak,
-                        Style::default().fg(Color::Magenta),
+                        Style::default().fg(Color::DarkGray),
                     ),
                 ])
                 .render(area, buf);
+
+                Line::from(Span::styled(
+                    "■■".to_string(),
+                    Style::default().fg(Color::LightGreen),
+                ))
+                .render(meter_center, buf);
             }
+        } else {
+            let ch = "▮";
+            let area = meter_left;
+            Line::from(Span::styled(
+                ch.repeat(area.width as usize),
+                Style::default().fg(Color::DarkGray),
+            ))
+            .render(area, buf);
+            let area = meter_right;
+            Line::from(Span::styled(
+                ch.repeat(area.width as usize),
+                Style::default().fg(Color::DarkGray),
+            ))
+            .render(area, buf);
+
+            Line::from(Span::styled(
+                "■■".to_string(),
+                Style::default().fg(Color::DarkGray),
+            ))
+            .render(meter_center, buf);
         }
     }
 }
