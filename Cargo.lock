@@ -825,6 +825,7 @@ dependencies = [
  "pipewire",
  "ratatui",
  "scopeguard",
+ "serde_json",
  "tracing",
  "tracing-error",
  "tracing-subscriber",
@@ -976,6 +977,18 @@ version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1d4ddca14104cd60529e8c7f7ba71a2c8acd8f7f5cfcdc2faf97eeb7c3010a4"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_json"
+version = "1.0.137"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "930cfb6e6abf99298aaad7d29abbef7a9999a9a8806a40088f55f0dcec03146b"
+dependencies = [
+ "itoa",
+ "memchr",
+ "ryu",
  "serde",
 ]
 

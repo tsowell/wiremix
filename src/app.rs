@@ -160,15 +160,22 @@ fn truncate(text: &str, len: usize) -> String {
 }
 
 fn node_header_left(node: &state::Node) -> String {
-    if let Some(description) = &node.description {
-        description.clone()
-    } else if let (Some(name), Some(media_name)) =
-        (&node.name, &node.media_name)
-    {
-        format!("{}: {}", name, media_name).to_string()
-    } else {
-        "".to_string()
-    }
+    let default_string = STATE
+        .with_borrow(|state| -> Option<String> {
+            let metadata = state.get_metadata_by_name("default")?;
+            let json = metadata.properties.get("default.audio.sink")?;
+            let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
+            let default_name = obj["name"].as_str()?;
+            let node_name = node.name.as_ref()?;
+            (default_name == node_name).then_some("⯁ ".to_string())
+        })
+        .unwrap_or_default();
+    let title = match (&node.description, &node.name, &node.media_name) {
+        (Some(description), _, _) => description.clone(),
+        (None, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
+        _ => String::new(),
+    };
+    format!("{}{}", default_string, title)
 }
 
 fn node_header_right(node: &state::Node) -> String {
