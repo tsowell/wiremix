@@ -179,52 +179,43 @@ fn node_header_left(node: &state::Node) -> String {
 }
 
 fn node_header_right(node: &state::Node) -> String {
-    let mut right = Default::default();
-
     let Some(ref media_class) = node.media_class else {
-        return right;
+        return Default::default();
     };
     if media_class == "Audio/Sink" {
-        STATE.with_borrow(|state| {
-            let Some(device_id) = node.device_id else {
-                return;
-            };
-            let Some(device) = state.devices.get(&device_id) else {
-                return;
-            };
-            let Some(route_index) = device.route_index else {
-                return;
-            };
-            let Some(route) = device.routes.get(&route_index) else {
-                return;
-            };
-            right = route.description.clone();
-        });
+        STATE
+            .with_borrow(|state| -> Option<String> {
+                let device_id = node.device_id?;
+                let device = state.devices.get(&device_id)?;
+                let route_index = device.route_index?;
+                let route = device.routes.get(&route_index)?;
+                Some(route.description.clone())
+            })
+            .unwrap_or_default()
     } else if media_class == "Stream/Output/Audio" {
-        STATE.with_borrow(|state| {
-            let Some(outputs) = state.links.get(&node.id) else {
-                return;
-            };
-            for output in outputs {
-                let Some(output_node) = state.nodes.get(output) else {
-                    continue;
-                };
-                let Some(ref media_class) = output_node.media_class else {
-                    continue;
-                };
-                if media_class != "Audio/Sink" {
-                    continue;
-                };
-                let Some(ref description) = output_node.description else {
-                    return;
-                };
-                right = description.clone();
-                break;
-            }
-        });
-    }
+        STATE
+            .with_borrow(|state| -> Option<String> {
+                let outputs = state.links.get(&node.id)?;
+                for output in outputs {
+                    let Some(output_node) = state.nodes.get(output) else {
+                        continue;
+                    };
+                    let Some(ref media_class) = output_node.media_class else {
+                        continue;
+                    };
+                    if media_class != "Audio/Sink" {
+                        continue;
+                    };
+                    let description = output_node.description.as_ref()?;
+                    return Some(description.to_owned());
+                }
 
-    right
+                None
+            })
+            .unwrap_or_default()
+    } else {
+        Default::default()
+    }
 }
 
 impl Widget for &state::Node {
