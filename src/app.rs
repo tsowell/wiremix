@@ -159,17 +159,26 @@ fn truncate(text: &str, len: usize) -> String {
     truncated + &".".repeat(std::cmp::min(len, 3))
 }
 
-fn node_header_left(node: &state::Node) -> String {
-    let default_string = STATE
-        .with_borrow(|state| -> Option<String> {
+fn is_default_for(node: &state::Node, which: &str) -> bool {
+    STATE
+        .with_borrow(|state| -> Option<bool> {
             let metadata = state.get_metadata_by_name("default")?;
-            let json = metadata.properties.get("default.audio.sink")?;
+            let json = metadata.properties.get(which)?;
             let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
             let default_name = obj["name"].as_str()?;
             let node_name = node.name.as_ref()?;
-            (default_name == node_name).then_some("⯁ ".to_string())
+            Some(default_name == node_name)
         })
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+fn is_default(node: &state::Node) -> bool {
+    return is_default_for(node, "default.audio.sink")
+        || is_default_for(node, "default.audio.source");
+}
+
+fn node_header_left(node: &state::Node) -> String {
+    let default_string = if is_default(node) { "⯁ " } else { "" };
     let title = match (&node.description, &node.name, &node.media_name) {
         (Some(description), _, _) => description.clone(),
         (None, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
