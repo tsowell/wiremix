@@ -180,8 +180,8 @@ fn is_default(node: &state::Node) -> bool {
 fn node_header_left(node: &state::Node) -> String {
     let default_string = if is_default(node) { "⯁ " } else { "" };
     let title = match (&node.description, &node.name, &node.media_name) {
+        (_, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
         (Some(description), _, _) => description.clone(),
-        (None, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
         _ => String::new(),
     };
     format!("{}{}", default_string, title)
