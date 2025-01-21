@@ -34,6 +34,9 @@ pub enum MonitorMessage {
     DeviceRouteDescription(ObjectId, i32, String),
     DeviceRouteIndex(ObjectId, i32),
 
+    MetadataMetadataName(ObjectId, String),
+    MetadataProperty(ObjectId, String, Option<String>),
+
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),
     NodeMediaClass(ObjectId, String),

@@ -48,10 +48,20 @@ pub struct Node {
 
 #[allow(dead_code)]
 #[derive(Default, Debug)]
+pub struct Metadata {
+    pub id: ObjectId,
+    pub metadata_name: Option<String>,
+    pub properties: HashMap<String, String>,
+}
+
+#[allow(dead_code)]
+#[derive(Default, Debug)]
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
     pub links: HashMap<ObjectId, HashSet<ObjectId>>,
+    pub metadatas: HashMap<ObjectId, Metadata>,
+    pub metadatas_by_name: HashMap<String, ObjectId>,
 }
 
 impl State {
@@ -119,12 +129,38 @@ impl State {
             MonitorMessage::Link(output, input) => {
                 self.links.entry(output).or_default().insert(input);
             }
+            MonitorMessage::MetadataMetadataName(id, metadata_name) => {
+                self.metadata_entry(id).metadata_name =
+                    Some(metadata_name.clone());
+                self.metadatas_by_name.insert(metadata_name, id);
+            }
+            MonitorMessage::MetadataProperty(id, key, value) => {
+                match value {
+                    Some(value) => {
+                        self.metadata_entry(id).properties.insert(key, value)
+                    }
+                    None => self.metadata_entry(id).properties.remove(&key),
+                };
+            }
             MonitorMessage::Removed(id) => {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
                 self.links.remove(&id);
+                if let Some(metadata) = self.metadatas.remove(&id) {
+                    if let Some(metadata_name) = metadata.metadata_name {
+                        self.metadatas_by_name.remove(&metadata_name);
+                    }
+                }
             }
         }
+    }
+
+    pub fn get_metadata_by_name(
+        &self,
+        metadata_name: &str,
+    ) -> Option<&Metadata> {
+        self.metadatas
+            .get(self.metadatas_by_name.get(metadata_name)?)
     }
 
     fn node_entry(&mut self, id: ObjectId) -> &mut Node {
@@ -139,5 +175,85 @@ impl State {
             id,
             ..Default::default()
         })
+    }
+
+    fn metadata_entry(&mut self, id: ObjectId) -> &mut Metadata {
+        self.metadatas.entry(id).or_insert_with(|| Metadata {
+            id,
+            ..Default::default()
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_metadata_insert() {
+        let mut state: State = Default::default();
+        let obj_id = ObjectId::from_raw_id(0);
+        let metadata_name = "metadata0".to_string();
+        state.update(MonitorMessage::MetadataMetadataName(
+            obj_id,
+            metadata_name.clone(),
+        ));
+
+        let metadata = state.metadatas.get(&obj_id).unwrap();
+        assert_eq!(metadata.metadata_name, Some(metadata_name.clone()));
+
+        let metadata = state.get_metadata_by_name(&metadata_name).unwrap();
+        assert_eq!(metadata.metadata_name, Some(metadata_name));
+    }
+
+    #[test]
+    fn state_metadata_remove() {
+        let mut state: State = Default::default();
+        let obj_id = ObjectId::from_raw_id(0);
+        let metadata_name = "metadata0".to_string();
+        state.update(MonitorMessage::MetadataMetadataName(
+            obj_id,
+            metadata_name.clone(),
+        ));
+
+        state.update(MonitorMessage::Removed(obj_id));
+
+        assert!(state.metadatas.get(&obj_id).is_none());
+        assert!(state.metadatas_by_name.get(&metadata_name).is_none());
+        assert!(state.get_metadata_by_name(&metadata_name).is_none());
+    }
+
+    #[test]
+    fn state_metadata_clear_property() {
+        let mut state: State = Default::default();
+        let obj_id = ObjectId::from_raw_id(0);
+        let metadata_name = "metadata0".to_string();
+        state.update(MonitorMessage::MetadataMetadataName(
+            obj_id,
+            metadata_name.clone(),
+        ));
+
+        let key = "key".to_string();
+        let value = "value".to_string();
+
+        state.update(MonitorMessage::MetadataProperty(
+            obj_id,
+            key.clone(),
+            Some(value.clone()),
+        ));
+        assert_eq!(
+            state.metadatas.get(&obj_id).unwrap().properties.get(&key),
+            Some(&value)
+        );
+
+        state.update(MonitorMessage::MetadataProperty(
+            obj_id,
+            key.clone(),
+            None,
+        ));
+        assert_eq!(
+            state.metadatas.get(&obj_id).unwrap().properties.get(&key),
+            None
+        );
     }
 }

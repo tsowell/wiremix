@@ -3,6 +3,7 @@ mod device;
 mod device_status;
 mod link;
 mod message_sender;
+mod metadata;
 mod node;
 mod proxy_registry;
 mod stream;
@@ -177,6 +178,9 @@ fn monitor_pipewire(
                 ),
                 ObjectType::Link => {
                     (link::monitor_link(&registry, obj, &sender), None)
+                }
+                ObjectType::Metadata => {
+                    (metadata::monitor_metadata(&registry, obj, &sender), None)
                 }
                 _ => (None, None),
             };
