@@ -182,8 +182,8 @@ fn node_header_right(node: &state::Node) -> String {
     let Some(ref media_class) = node.media_class else {
         return Default::default();
     };
-    if media_class == "Audio/Sink" {
-        STATE
+    match media_class.as_str() {
+        "Audio/Sink" | "Audio/Source" => STATE
             .with_borrow(|state| -> Option<String> {
                 let device_id = node.device_id?;
                 let device = state.devices.get(&device_id)?;
@@ -191,9 +191,8 @@ fn node_header_right(node: &state::Node) -> String {
                 let route = device.routes.get(&route_index)?;
                 Some(route.description.clone())
             })
-            .unwrap_or_default()
-    } else if media_class == "Stream/Output/Audio" {
-        STATE
+            .unwrap_or_default(),
+        "Stream/Output/Audio" => STATE
             .with_borrow(|state| -> Option<String> {
                 let outputs = state.links.get(&node.id)?;
                 for output in outputs {
@@ -212,9 +211,8 @@ fn node_header_right(node: &state::Node) -> String {
 
                 None
             })
-            .unwrap_or_default()
-    } else {
-        Default::default()
+            .unwrap_or_default(),
+        _ => Default::default(),
     }
 }
 
