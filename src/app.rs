@@ -14,8 +14,9 @@ use ratatui::{
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
 use crate::message::{InputMessage, Message};
-use crate::state;
+use crate::meter;
 use crate::named_constraints::with_named_constraints;
+use crate::state;
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
@@ -310,111 +311,25 @@ impl Widget for &state::Node {
             }
         }
 
-        let mut meter_left = Default::default();
-        let mut meter_center = Default::default();
-        let mut meter_right = Default::default();
-
-        with_named_constraints!(
-            [
-                (Constraint::Fill(2), Some(&mut meter_left)),
-                (Constraint::Length(1), None),
-                (Constraint::Length(2), Some(&mut meter_center)),
-                (Constraint::Length(1), None),
-                (Constraint::Fill(2), Some(&mut meter_right)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(meter_area)
+        if let Some(positions) = &self.positions {
+            match positions.len() {
+                2 => meter::render_stereo(
+                    meter_area,
+                    buf,
+                    self.peaks.as_ref().and_then(|peaks| {
+                        (peaks.len() == 2).then_some((peaks[0], peaks[1]))
+                    }),
+                ),
+                _ => meter::render_mono(
+                    meter_area,
+                    buf,
+                    self.peaks.as_ref().and_then(|peaks| {
+                        (!peaks.is_empty()).then_some(
+                            peaks.iter().sum::<f32>() / peaks.len() as f32,
+                        )
+                    }),
+                ),
             }
-        );
-
-        if let Some(peaks) = &self.peaks {
-            if peaks.len() == 2 {
-                fn render_peak(
-                    peak: f32,
-                    area: Rect,
-                ) -> (String, String, String) {
-                    let peak = peak.cbrt();
-                    let total_width = area.width as usize;
-                    let lit_width = (peak * area.width as f32) as usize;
-
-                    let hilit_width = ((peak - 0.70).clamp(0.0, 1.0)
-                        * area.width as f32)
-                        as usize;
-
-                    let unlit_width = total_width - lit_width;
-                    let lit_width = lit_width - hilit_width;
-
-                    let ch = "▮";
-
-                    (
-                        ch.repeat(lit_width),
-                        ch.repeat(hilit_width),
-                        ch.repeat(unlit_width),
-                    )
-                }
-
-                let area = meter_left;
-                let (lit_peak, hilit_peak, unlit_peak) =
-                    render_peak(peaks[0], area);
-                Line::from(vec![
-                    Span::styled(
-                        unlit_peak,
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                    Span::styled(hilit_peak, Style::default().fg(Color::Red)),
-                    Span::styled(
-                        lit_peak,
-                        Style::default().fg(Color::LightGreen),
-                    ),
-                ])
-                .alignment(Alignment::Right)
-                .render(area, buf);
-
-                let area = meter_right;
-                let (lit_peak, hilit_peak, unlit_peak) =
-                    render_peak(peaks[1], area);
-                Line::from(vec![
-                    Span::styled(
-                        lit_peak,
-                        Style::default().fg(Color::LightGreen),
-                    ),
-                    Span::styled(hilit_peak, Style::default().fg(Color::Red)),
-                    Span::styled(
-                        unlit_peak,
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                ])
-                .render(area, buf);
-
-                Line::from(Span::styled(
-                    "■■".to_string(),
-                    Style::default().fg(Color::LightGreen),
-                ))
-                .render(meter_center, buf);
-            }
-        } else {
-            let ch = "▮";
-            let area = meter_left;
-            Line::from(Span::styled(
-                ch.repeat(area.width as usize),
-                Style::default().fg(Color::DarkGray),
-            ))
-            .render(area, buf);
-            let area = meter_right;
-            Line::from(Span::styled(
-                ch.repeat(area.width as usize),
-                Style::default().fg(Color::DarkGray),
-            ))
-            .render(area, buf);
-
-            Line::from(Span::styled(
-                "■■".to_string(),
-                Style::default().fg(Color::DarkGray),
-            ))
-            .render(meter_center, buf);
         }
     }
 }
