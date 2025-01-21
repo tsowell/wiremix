@@ -248,12 +248,14 @@ impl Widget for &state::Node {
         let mut header_right = Default::default();
         with_named_constraints!(
             [
+                (Constraint::Length(1), None),
                 (Constraint::Min(0), Some(&mut header_left)),
                 (Constraint::Length(1), None), // Padding
                 (
                     Constraint::Length(right.len() as u16),
                     Some(&mut header_right)
                 ),
+                (Constraint::Length(1), None),
             ],
             |constraints| {
                 Layout::default()
