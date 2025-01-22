@@ -10,9 +10,14 @@ use crate::message::ObjectId;
 use crate::node_widget::NodeWidget;
 use crate::state;
 
+/// NodeList stores information for filtering and displaying a subset of Nodes
+/// from the global STATE.
 pub struct NodeList {
+    /// Index of the first node in viewport
     top: usize,
+    /// ID of the currently selected node
     selected: Option<ObjectId>,
+    /// Predicate by which to filter the global nodes
     filter: Box<dyn Fn(&state::Node) -> bool>,
 }
 
@@ -34,6 +39,7 @@ impl NodeList {
                 .sorted_by_key(|node| node.id)
                 .collect();
 
+            // TODO cache the selected index
             let new_selected_index = match self.selected {
                 None => 0,
                 Some(selected) => {
@@ -49,14 +55,17 @@ impl NodeList {
         });
     }
 
+    /// Selects the previous node.
     pub fn up(&mut self) {
         self.move_selected(|selected| selected.saturating_sub(1));
     }
 
+    /// Selects the next node.
     pub fn down(&mut self) {
         self.move_selected(|selected| selected.saturating_add(1));
     }
 
+    /// Reconciles changes to nodes, viewport, and selection.
     pub fn update(&mut self, area: Rect) {
         let nodes_visible = (area.height / NodeWidget::height()) as usize;
         STATE.with_borrow(|state| -> Option<()> {
@@ -67,10 +76,15 @@ impl NodeList {
                 .sorted_by_key(|node| node.id)
                 .collect();
 
+            // If nodes were removed and the viewport is now below the visible
+            // nodes, move the viewport up so that the bottom of the node list
+            // is visible.
             if self.top >= nodes.len() {
                 self.top = nodes.len().saturating_sub(nodes_visible);
             }
 
+            // Make sure the selected node is visible and adjust the viewport
+            // if necessary.
             if let Some(selected) = self.selected {
                 match nodes.iter().position(|node| node.id == selected) {
                     Some(selected_index) => {
@@ -79,7 +93,6 @@ impl NodeList {
                                 nodes_visible - 1,
                             );
                         } else if selected_index < self.top {
-                            // Selected is below viewpoint, scroll down to it
                             self.top = selected_index;
                         }
                     }
