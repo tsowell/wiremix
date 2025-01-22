@@ -4,6 +4,7 @@ pub mod message;
 pub mod meter;
 pub mod monitor;
 pub mod named_constraints;
+pub mod node_list;
 pub mod state;
 
 #[cfg(feature = "trace")]
