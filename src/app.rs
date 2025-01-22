@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Widget},
     DefaultTerminal, Frame,
@@ -13,7 +13,7 @@ use ratatui::{
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
-use crate::message::{InputMessage, Message};
+use crate::message::{InputMessage, Message, ObjectId};
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
 use crate::state;
@@ -30,6 +30,7 @@ pub struct App {
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
     error_message: Option<String>,
+    node_list: NodeList,
 }
 
 impl App {
@@ -39,6 +40,7 @@ impl App {
             rx,
             log: Default::default(),
             error_message: Default::default(),
+            node_list: NodeList::new(Box::new(|_node| true)),
         }
     }
 
@@ -47,7 +49,10 @@ impl App {
         trace::initialize_logging()?;
 
         while !self.exit {
-            terminal.draw(|frame| self.draw(frame))?;
+            terminal.draw(|frame| {
+                self.node_list.update(frame.area());
+                self.draw(frame)
+            })?;
             self.handle_messages()?;
         }
 
@@ -103,6 +108,8 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(None),
+            KeyCode::Char('j') => self.node_list.down(),
+            KeyCode::Char('k') => self.node_list.up(),
             _ => (),
         }
     }
@@ -110,15 +117,116 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        self.node_list.render(area, buf);
+    }
+}
+
+struct NodeList {
+    top: usize,
+    selected: Option<ObjectId>,
+    filter: Box<dyn Fn(&state::Node) -> bool>,
+}
+
+impl NodeList {
+    fn new(filter: Box<dyn Fn(&state::Node) -> bool>) -> Self {
+        Self {
+            top: 0,
+            selected: None,
+            filter,
+        }
+    }
+
+    fn move_selected(&mut self, movement: impl Fn(usize) -> usize) {
+        STATE.with_borrow(|state| -> Option<()> {
+            let nodes: Vec<&state::Node> = state
+                .nodes
+                .values()
+                .filter(|node| (self.filter)(node))
+                .collect();
+
+            let new_selected_index = match self.selected {
+                None => 0,
+                Some(selected) => {
+                    movement(nodes.iter().position(|node| node.id == selected)?)
+                }
+            };
+
+            if let Some(new_node) = nodes.get(new_selected_index) {
+                self.selected = Some(new_node.id);
+            }
+
+            Some(())
+        });
+    }
+
+    fn up(&mut self) {
+        self.move_selected(|selected| selected.saturating_sub(1));
+    }
+
+    fn down(&mut self) {
+        self.move_selected(|selected| selected.saturating_add(1));
+    }
+
+    fn update(&mut self, area: Rect) {
+        let nodes_visible = (area.height / 5) as usize;
+        STATE.with_borrow(|state| -> Option<()> {
+            let nodes: Vec<&state::Node> = state
+                .nodes
+                .values()
+                .filter(|node| (self.filter)(node))
+                .collect();
+
+            if self.top >= nodes.len() {
+                self.top = nodes.len().saturating_sub(nodes_visible);
+            }
+
+            if let Some(selected) = self.selected {
+                match nodes.iter().position(|node| node.id == selected) {
+                    Some(selected_index) => {
+                        if selected_index >= self.top + nodes_visible {
+                            // Selected is above viewpoint, scroll up to it
+                            self.top = selected_index.saturating_add(
+                                selected_index - nodes_visible + 1,
+                            );
+                        } else if selected_index < self.top {
+                            // Selected is below viewpoint, scroll down to it
+                            self.top = selected_index;
+                        }
+                    }
+                    None => self.selected = None, // The selected node is gone!
+                }
+            }
+
+            Some(())
+        });
+    }
+}
+
+impl Widget for &NodeList {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let nodes_visible = (area.height / 5) as usize;
         STATE.with_borrow(|state| {
+            let nodes = state
+                .nodes
+                .values()
+                .filter(|node| (self.filter)(node))
+                .skip(self.top)
+                .take(nodes_visible);
+
             let layout = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints(state.nodes.iter().map(|_| Constraint::Length(5)))
+                .constraints(vec![Constraint::Length(5); nodes_visible])
                 .split(area);
-            for (node, area) in state.nodes.values().zip(layout.iter()) {
-                node.render(*area, buf);
+            for (node, area) in nodes.zip(layout.iter()) {
+                let selected =
+                    self.selected.map(|id| id == node.id).unwrap_or_default();
+                NodeWidget {
+                    node: &node,
+                    selected: selected,
+                }
+                .render(*area, buf);
             }
-        })
+        });
     }
 }
 
@@ -204,8 +312,19 @@ fn node_header_right(node: &state::Node) -> String {
     }
 }
 
-impl Widget for &state::Node {
+struct NodeWidget<'a> {
+    node: &'a state::Node,
+    selected: bool,
+}
+
+impl<'a> Widget for NodeWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        let style = if self.selected {
+            Style::default().bold()
+        } else {
+            Style::default()
+        };
+
         let border_block = Block::default().borders(Borders::NONE);
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
@@ -225,8 +344,8 @@ impl Widget for &state::Node {
         );
         border_block.render(area, buf);
 
-        let left = node_header_left(self);
-        let right = node_header_right(self);
+        let left = node_header_left(self.node);
+        let right = node_header_right(self.node);
 
         let mut header_left = Default::default();
         let mut header_right = Default::default();
@@ -250,10 +369,11 @@ impl Widget for &state::Node {
         );
 
         Line::from(right)
+            .style(style)
             .alignment(Alignment::Right)
             .render(header_right, buf);
         let left = truncate(&left, header_left.width as usize);
-        Line::from(left).render(header_left, buf);
+        Line::from(left).style(style).render(header_left, buf);
 
         let mut volume_area = Default::default();
         let mut meter_area = Default::default();
@@ -289,13 +409,14 @@ impl Widget for &state::Node {
             }
         );
 
-        if let Some(volumes) = &self.volumes {
+        if let Some(volumes) = &self.node.volumes {
             if !volumes.is_empty() {
                 let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 let volume = mean.cbrt();
                 let percent = (volume * 100.0) as u32;
 
                 Line::from(format!("{}%", percent))
+                    .style(style)
                     .alignment(Alignment::Right)
                     .render(volume_label, buf);
 
@@ -311,19 +432,19 @@ impl Widget for &state::Node {
             }
         }
 
-        if let Some(positions) = &self.positions {
+        if let Some(positions) = &self.node.positions {
             match positions.len() {
                 2 => meter::render_stereo(
                     meter_area,
                     buf,
-                    self.peaks.as_ref().and_then(|peaks| {
+                    self.node.peaks.as_ref().and_then(|peaks| {
                         (peaks.len() == 2).then_some((peaks[0], peaks[1]))
                     }),
                 ),
                 _ => meter::render_mono(
                     meter_area,
                     buf,
-                    self.peaks.as_ref().and_then(|peaks| {
+                    self.node.peaks.as_ref().and_then(|peaks| {
                         (!peaks.is_empty()).then_some(
                             peaks.iter().sum::<f32>() / peaks.len() as f32,
                         )
