@@ -115,3 +115,82 @@ impl Widget for &NodeList {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::message::MonitorMessage;
+
+    fn init() {
+        STATE.with_borrow_mut(|state| {
+            for i in 0..10 {
+                let obj_id = ObjectId::from_raw_id(i);
+                state.update(MonitorMessage::NodeDescription(
+                    obj_id,
+                    "Test node".to_string(),
+                ));
+            }
+        });
+    }
+
+    #[test]
+    fn node_list_up_overflow() {
+        init();
+
+        let rect = Rect::new(0, 0, 80, 18);
+        let mut node_list = NodeList::new(Box::new(|_node| true));
+
+        node_list.up();
+        node_list.update(rect);
+        assert_eq!(node_list.top, 0);
+        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(0)));
+    }
+
+    #[test]
+    fn node_list_down_overflow() {
+        init();
+
+        let rect = Rect::new(0, 0, 80, 18);
+        let mut node_list = NodeList::new(Box::new(|_node| true));
+
+        let nodes_len = STATE.with_borrow(|state| -> usize { state.nodes.len() });
+
+        for _ in 0..(nodes_len * 2) {
+            node_list.down();
+        }
+
+        node_list.update(rect);
+        assert_eq!(node_list.top, 7);
+        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(9)));
+    }
+
+    #[test]
+    fn node_list_remove_last_nodes() {
+        init();
+
+        let rect = Rect::new(0, 0, 80, 18);
+        let mut node_list = NodeList::new(Box::new(|_node| true));
+
+        let nodes_len = STATE.with_borrow(|state| -> usize { state.nodes.len() });
+
+        // Move to end of list
+        for _ in 0..(nodes_len * 2) {
+            node_list.down();
+        }
+        node_list.update(rect);
+        assert_eq!(node_list.top, 7);
+        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(9)));
+
+        // Remove the visible nodes
+        STATE.with_borrow_mut(|state| {
+            state.nodes.remove(&ObjectId::from_raw_id(7));
+            state.nodes.remove(&ObjectId::from_raw_id(8));
+            state.nodes.remove(&ObjectId::from_raw_id(9));
+        });
+        // Viewport is now below end of list
+
+        node_list.update(rect);
+        assert_eq!(node_list.top, 4);
+        assert_eq!(node_list.selected, None);
+    }
+}
