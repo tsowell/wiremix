@@ -89,9 +89,8 @@ impl NodeList {
                 match nodes.iter().position(|node| node.id == selected) {
                     Some(selected_index) => {
                         if selected_index >= self.top + nodes_visible {
-                            self.top = selected_index.saturating_sub(
-                                nodes_visible - 1,
-                            );
+                            self.top = selected_index
+                                .saturating_sub(nodes_visible - 1);
                         } else if selected_index < self.top {
                             self.top = selected_index;
                         }
@@ -170,7 +169,8 @@ mod tests {
         let rect = Rect::new(0, 0, 80, 18);
         let mut node_list = NodeList::new(Box::new(|_node| true));
 
-        let nodes_len = STATE.with_borrow(|state| -> usize { state.nodes.len() });
+        let nodes_len =
+            STATE.with_borrow(|state| -> usize { state.nodes.len() });
 
         for _ in 0..(nodes_len * 2) {
             node_list.down();
@@ -188,7 +188,8 @@ mod tests {
         let rect = Rect::new(0, 0, 80, 18);
         let mut node_list = NodeList::new(Box::new(|_node| true));
 
-        let nodes_len = STATE.with_borrow(|state| -> usize { state.nodes.len() });
+        let nodes_len =
+            STATE.with_borrow(|state| -> usize { state.nodes.len() });
 
         // Move to end of list
         for _ in 0..(nodes_len * 2) {
