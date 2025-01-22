@@ -9,22 +9,7 @@ use crate::app::STATE;
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
 use crate::state;
-
-fn truncate(text: &str, len: usize) -> String {
-    if text.len() <= len {
-        return text.to_string();
-    }
-
-    let left = len.saturating_sub(3);
-
-    let truncated = text
-        .char_indices()
-        .take_while(|(i, _)| *i < left)
-        .map(|(_, c)| c)
-        .collect::<String>();
-
-    truncated + &".".repeat(std::cmp::min(len, 3))
-}
+use crate::truncate;
 
 fn is_default_for(node: &state::Node, which: &str) -> bool {
     STATE
@@ -162,7 +147,7 @@ impl<'a> Widget for NodeWidget<'a> {
             .style(style)
             .alignment(Alignment::Right)
             .render(header_right, buf);
-        let left = truncate(&left, header_left.width as usize);
+        let left = truncate::with_ellipses(&left, header_left.width as usize);
         Line::from(left).style(style).render(header_left, buf);
 
         let mut volume_area = Default::default();
@@ -242,40 +227,5 @@ impl<'a> Widget for NodeWidget<'a> {
                 ),
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn truncate_test_equal() {
-        assert_eq!(truncate("hello", 5), "hello");
-    }
-
-    #[test]
-    fn truncate_test_larger() {
-        assert_eq!(truncate("hello", 6), "hello");
-    }
-
-    #[test]
-    fn truncate_test_shorter() {
-        assert_eq!(truncate("hello", 4), "h...");
-    }
-
-    #[test]
-    fn truncate_test_too_short() {
-        assert_eq!(truncate("hello", 3), "...");
-    }
-
-    #[test]
-    fn truncate_test_much_too_short() {
-        assert_eq!(truncate("hello", 2), "..");
-    }
-
-    #[test]
-    fn truncate_test_empty() {
-        assert_eq!(truncate("hello", 0), "");
     }
 }
