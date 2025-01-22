@@ -1,4 +1,5 @@
 use ratatui::{
+    layout::Flex,
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
@@ -87,8 +88,14 @@ impl<'a> NodeWidget<'a> {
         Self { node, selected }
     }
 
+    /// Height of a full node display.
     pub fn height() -> u16 {
         5
+    }
+
+    /// Height of the important parts (excluding blank margin lines at bottom).
+    pub fn important_height() -> u16 {
+        3
     }
 }
 
@@ -103,17 +110,19 @@ impl<'a> Widget for NodeWidget<'a> {
         let border_block = Block::default().borders(Borders::NONE);
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
-        with_named_constraints!(
+        let _layout = with_named_constraints!(
             [
-                (Constraint::Length(1), None),
                 (Constraint::Length(1), Some(&mut header_area)),
                 (Constraint::Length(1), None),
                 (Constraint::Length(1), Some(&mut bar_area)),
+                (Constraint::Length(1), None),
+                (Constraint::Length(1), None),
             ],
             |constraints| {
                 Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(constraints)
+                    .flex(Flex::Legacy)
                     .split(border_block.inner(area))
             }
         );

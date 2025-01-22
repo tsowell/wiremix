@@ -1,12 +1,15 @@
 use itertools::Itertools;
 
 use ratatui::{
-    prelude::{Buffer, Constraint, Direction, Layout, Rect},
+    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::{Line, Span},
     widgets::Widget,
 };
 
 use crate::app::STATE;
 use crate::message::ObjectId;
+use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::state;
 
@@ -106,24 +109,78 @@ impl NodeList {
 
 impl Widget for &NodeList {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let nodes_visible = (area.height / NodeWidget::height()) as usize;
         STATE.with_borrow(|state| {
+            let mut header_area = Default::default();
+            let mut list_area = Default::default();
+            let mut footer_area = Default::default();
+            with_named_constraints!(
+                [
+                    (Constraint::Length(1), Some(&mut header_area)),
+                    (Constraint::Min(0), Some(&mut list_area)),
+                    (Constraint::Length(1), Some(&mut footer_area)),
+                ],
+                |constraints| {
+                    Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(constraints)
+                        .split(area)
+                }
+            );
+
+            let node_height = NodeWidget::height();
+            let nodes_visible = (list_area.height / node_height) as usize;
+
             let nodes = state
                 .nodes
                 .values()
                 .filter(|node| (self.filter)(node))
                 .sorted_by_key(|node| node.id)
                 .skip(self.top)
-                .take(nodes_visible);
+                // Take one extra so we can render a partial node at the bottom
+                // of the area.
+                .take(nodes_visible + 1);
 
-            let layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(vec![
-                    Constraint::Length(NodeWidget::height());
-                    nodes_visible
-                ])
-                .split(area);
-            for (node, area) in nodes.zip(layout.iter()) {
+            // Indicate we can scroll up if there are nodes above the viewport.
+            if self.top > 0 {
+                Line::from(Span::styled(
+                    "•••",
+                    Style::default().fg(Color::DarkGray),
+                ))
+                .alignment(Alignment::Center)
+                .render(header_area, buf);
+            }
+
+            // Indicate we can scroll down if there are nodes below the
+            // viewport, with an exception for when the last row is partially
+            // rendered but still has all the important parts rendered,
+            // excluding margins, etc.
+            let is_bottom_last =
+                self.top + nodes_visible == state.nodes.len() - 1;
+            let is_bottom_enough = (list_area.height % node_height)
+                >= NodeWidget::important_height();
+            if self.top + nodes_visible < state.nodes.len()
+                && !(is_bottom_last && is_bottom_enough)
+            {
+                Line::from(Span::styled(
+                    "•••",
+                    Style::default().fg(Color::DarkGray),
+                ))
+                .alignment(Alignment::Center)
+                .render(footer_area, buf);
+            }
+
+            let nodes_layout = {
+                let mut constraints =
+                    vec![Constraint::Length(node_height); nodes_visible];
+                // A variable-length constraint for a partial last node
+                constraints.push(Constraint::Max(node_height));
+
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(list_area)
+            };
+            for (node, area) in nodes.zip(nodes_layout.iter()) {
                 let selected =
                     self.selected.map(|id| id == node.id).unwrap_or_default();
                 NodeWidget::new(&node, selected).render(*area, buf);
