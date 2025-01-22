@@ -102,7 +102,7 @@ impl<'a> NodeWidget<'a> {
 impl<'a> Widget for NodeWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let style = if self.selected {
-            Style::default().bold()
+            Style::default().fg(Color::Yellow)
         } else {
             Style::default()
         };
