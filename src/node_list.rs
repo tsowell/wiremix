@@ -183,7 +183,7 @@ impl Widget for &NodeList {
             for (node, area) in nodes.zip(nodes_layout.iter()) {
                 let selected =
                     self.selected.map(|id| id == node.id).unwrap_or_default();
-                NodeWidget::new(&node, selected).render(*area, buf);
+                NodeWidget::new(node, selected).render(*area, buf);
             }
         });
     }
