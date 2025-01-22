@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use ratatui::{
     prelude::{Buffer, Constraint, Direction, Layout, Rect},
     widgets::Widget,
@@ -29,6 +31,7 @@ impl NodeList {
                 .nodes
                 .values()
                 .filter(|node| (self.filter)(node))
+                .sorted_by_key(|node| node.id)
                 .collect();
 
             let new_selected_index = match self.selected {
@@ -61,6 +64,7 @@ impl NodeList {
                 .nodes
                 .values()
                 .filter(|node| (self.filter)(node))
+                .sorted_by_key(|node| node.id)
                 .collect();
 
             if self.top >= nodes.len() {
@@ -97,6 +101,7 @@ impl Widget for &NodeList {
                 .nodes
                 .values()
                 .filter(|node| (self.filter)(node))
+                .sorted_by_key(|node| node.id)
                 .skip(self.top)
                 .take(nodes_visible);
 

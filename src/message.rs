@@ -2,7 +2,7 @@ use libspa::utils::dict::DictRef;
 use pipewire::{link::LinkInfoRef, registry::GlobalObject};
 
 #[allow(dead_code)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ObjectId(u32);
 
 impl From<&GlobalObject<&DictRef>> for ObjectId {

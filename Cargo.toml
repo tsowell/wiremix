@@ -9,6 +9,7 @@ clap = { version = "4.5.26", features = ["derive"] }
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
 futures-timer = "3.0.3"
+itertools = "0.14.0"
 libspa = "0.8.0"
 libspa-sys = "0.8.0"
 log = "0.4.24"
