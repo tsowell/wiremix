@@ -75,9 +75,8 @@ impl NodeList {
                 match nodes.iter().position(|node| node.id == selected) {
                     Some(selected_index) => {
                         if selected_index >= self.top + nodes_visible {
-                            // Selected is above viewpoint, scroll up to it
-                            self.top = selected_index.saturating_add(
-                                selected_index - nodes_visible + 1,
+                            self.top = selected_index.saturating_sub(
+                                nodes_visible - 1,
                             );
                         } else if selected_index < self.top {
                             // Selected is below viewpoint, scroll down to it
