@@ -163,7 +163,7 @@ impl<'a> Widget for NodeWidget<'a> {
         let mut meter_area = Default::default();
         with_named_constraints!(
             [
-                (Constraint::Length(1), None),
+                (Constraint::Length(2), None),
                 (Constraint::Fill(4), Some(&mut volume_area)),
                 (Constraint::Fill(1), None),
                 (Constraint::Fill(4), Some(&mut meter_area)),
