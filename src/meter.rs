@@ -14,8 +14,8 @@ fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
     let hilit_width =
         ((peak - 0.70).clamp(0.0, 1.0) * area.width as f32) as usize;
 
-    let unlit_width = total_width - lit_width;
-    let lit_width = lit_width - hilit_width;
+    let unlit_width = total_width.saturating_sub(lit_width);
+    let lit_width = lit_width.saturating_sub(hilit_width);
 
     let ch = "▮";
 
