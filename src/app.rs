@@ -4,14 +4,16 @@ use std::sync::mpsc;
 use anyhow::{anyhow, Result};
 
 use ratatui::{
-    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    prelude::{Buffer, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::Widget,
+    widgets::{StatefulWidget, Widget},
     DefaultTerminal, Frame,
 };
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{
+    Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind,
+};
 
 use crate::message::{InputMessage, Message};
 use crate::named_constraints::with_named_constraints;
@@ -25,13 +27,19 @@ thread_local! {
     pub static STATE: RefCell<state::State> = RefCell::new(Default::default());
 }
 
+#[derive(Clone)]
+pub enum Action {
+    SelectTab(usize),
+}
+
 pub struct App {
     exit: bool,
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
     error_message: Option<String>,
-    tabs: Vec<(String, Alignment, NodeList)>,
+    tabs: Vec<(String, NodeList)>,
     selected_tab_index: usize,
+    click_areas: Vec<(Rect, Action)>,
 }
 
 impl App {
@@ -39,35 +47,30 @@ impl App {
         let mut tabs = Vec::new();
         tabs.push((
             String::from("Playback"),
-            Alignment::Left,
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Stream/Output/Audio"))
             })),
         ));
         tabs.push((
             String::from("Recording"),
-            Alignment::Left,
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Stream/Input/Audio"))
             })),
         ));
         tabs.push((
             String::from("Output Devices"),
-            Alignment::Center,
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Audio/Sink"))
             })),
         ));
         tabs.push((
             String::from("Input Devices"),
-            Alignment::Right,
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Audio/Source"))
             })),
         ));
         tabs.push((
             String::from("Configuration"),
-            Alignment::Right,
             /* TODO - for now just show all nodes */
             NodeList::new(Box::new(|_node| true)),
         ));
@@ -78,6 +81,7 @@ impl App {
             error_message: Default::default(),
             tabs,
             selected_tab_index: Default::default(),
+            click_areas: Default::default(),
         }
     }
 
@@ -86,9 +90,10 @@ impl App {
         trace::initialize_logging()?;
 
         while !self.exit {
+            self.click_areas.clear();
             terminal.draw(|frame| {
-                self.tabs[self.selected_tab_index].2.update(frame.area());
-                self.draw(frame)
+                self.tabs[self.selected_tab_index].1.update(frame.area());
+                self.draw(frame);
             })?;
             self.handle_messages()?;
         }
@@ -96,8 +101,15 @@ impl App {
         self.error_message.map_or(Ok(()), |s| Err(anyhow!(s)))
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+    fn draw(&mut self, frame: &mut Frame) {
+        let widget = AppWidget {
+            tabs: &self.tabs,
+            selected_tab_index: self.selected_tab_index,
+        };
+        let mut widget_state = AppWidgetState {
+            click_areas: &mut self.click_areas,
+        };
+        frame.render_stateful_widget(widget, frame.area(), &mut widget_state);
     }
 
     fn exit(&mut self, error_message: Option<String>) {
@@ -136,6 +148,12 @@ impl App {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
             }
+            Event::Mouse(
+                mouse_event @ MouseEvent {
+                    kind: MouseEventKind::Down(_),
+                    ..
+                },
+            ) => self.handle_mouse_event(mouse_event),
             _ => (),
         };
 
@@ -145,8 +163,8 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(None),
-            KeyCode::Char('j') => self.tabs[self.selected_tab_index].2.down(),
-            KeyCode::Char('k') => self.tabs[self.selected_tab_index].2.up(),
+            KeyCode::Char('j') => self.tabs[self.selected_tab_index].1.down(),
+            KeyCode::Char('k') => self.tabs[self.selected_tab_index].1.up(),
             KeyCode::Char('H') => {
                 self.selected_tab_index =
                     self.selected_tab_index.checked_sub(1).unwrap_or(4)
@@ -157,10 +175,45 @@ impl App {
             _ => (),
         }
     }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
+        let action = self
+            .click_areas
+            .iter()
+            .rev()
+            .find(|(rect, _)| {
+                rect.contains(Position {
+                    x: mouse_event.column,
+                    y: mouse_event.row,
+                })
+            })
+            .map(|(_, action)| action);
+
+        if let Some(action) = action {
+            self.handle_action(action.clone());
+        }
+    }
+
+    fn handle_action(&mut self, action: Action) {
+        match action {
+            Action::SelectTab(index) => self.selected_tab_index = index,
+        }
+    }
 }
 
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+pub struct AppWidget<'a> {
+    tabs: &'a Vec<(String, NodeList)>,
+    selected_tab_index: usize,
+}
+
+pub struct AppWidgetState<'a> {
+    click_areas: &'a mut Vec<(Rect, Action)>,
+}
+
+impl<'a> StatefulWidget for AppWidget<'a> {
+    type State = AppWidgetState<'a>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let mut list_area = Default::default();
         let mut menu_area = Default::default();
         with_named_constraints!(
@@ -176,28 +229,30 @@ impl Widget for &App {
             }
         );
 
+        let mut constraints: Vec<Constraint> = Default::default();
+        for (title, _) in self.tabs.iter() {
+            constraints.push(Constraint::Length(title.len() as u16));
+        }
+
         let menu_areas = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints(vec![
-                Constraint::Min(0),
-                Constraint::Min(0),
-                Constraint::Min(0),
-                Constraint::Min(0),
-                Constraint::Min(0),
-            ])
+            .constraints(constraints)
+            .spacing(2)
             .split(menu_area);
 
-        for (i, (title, alignment, _)) in self.tabs.iter().enumerate() {
+        for (i, (title, _)) in self.tabs.iter().enumerate() {
             let style = if i == self.selected_tab_index {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default()
             };
-            Line::from(Span::styled(title, style))
-                .alignment(*alignment)
-                .render(menu_areas[i], buf);
+            Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
+
+            state
+                .click_areas
+                .push((menu_areas[i], Action::SelectTab(i)));
         }
 
-        self.tabs[self.selected_tab_index].2.render(list_area, buf);
+        self.tabs[self.selected_tab_index].1.render(list_area, buf);
     }
 }
