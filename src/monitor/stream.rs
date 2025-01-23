@@ -151,8 +151,7 @@ pub fn capture_node(
             libspa::utils::Direction::Input,
             None,
             pipewire::stream::StreamFlags::AUTOCONNECT
-                | pipewire::stream::StreamFlags::MAP_BUFFERS
-                | pipewire::stream::StreamFlags::RT_PROCESS,
+                | pipewire::stream::StreamFlags::MAP_BUFFERS,
             &mut params,
         )
         .ok()?;
