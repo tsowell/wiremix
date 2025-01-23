@@ -39,6 +39,7 @@ pub fn capture_node(
         "Audio/Sink" => (),
         "Audio/Source" => (),
         "Stream/Output/Audio" => (),
+        "Stream/Input/Audio" => (),
         _ => return None,
     }
 
@@ -46,6 +47,7 @@ pub fn capture_node(
     let props = properties! {
         *pipewire::keys::TARGET_OBJECT => serial.to_string(),
         *pipewire::keys::STREAM_CAPTURE_SINK => "true",
+        *pipewire::keys::NODE_NAME => "pwmixer-capture",
     };
 
     let data = StreamData {

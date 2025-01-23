@@ -54,7 +54,7 @@ fn node_header_right(node: &state::Node) -> String {
                 Some(route.description.clone())
             })
             .unwrap_or_default(),
-        "Stream/Output/Audio" => STATE
+        "Stream/Output/Audio" | "Stream/Input/Audio" => STATE
             .with_borrow(|state| -> Option<String> {
                 let outputs = state.links.get(&node.id)?;
                 for output in outputs {
