@@ -1,10 +1,16 @@
 // Copyright The pipewire-rs Contributors.
 // SPDX-License-Identifier: MIT
 
+use std::io::stdout;
 use std::sync::{mpsc, Arc};
 
 use anyhow::Result;
 use clap::Parser;
+
+use crossterm::{
+    event::{DisableMouseCapture, EnableMouseCapture},
+    ExecutableCommand,
+};
 
 use pwmixer::app;
 use pwmixer::input;
@@ -33,9 +39,11 @@ fn main() -> Result<()> {
     let _input_handle = input::spawn(Arc::clone(&tx));
 
     if opt.dump_events {
+        stdout().execute(EnableMouseCapture)?;
         crossterm::terminal::enable_raw_mode()?;
         let _guard = scopeguard::guard((), |_| {
             let _ = crossterm::terminal::disable_raw_mode();
+            let _ = stdout().execute(DisableMouseCapture);
         });
         for received in rx {
             use crossterm::event::{Event, KeyCode, KeyEvent};
@@ -54,9 +62,11 @@ fn main() -> Result<()> {
 
         Ok(())
     } else {
+        stdout().execute(EnableMouseCapture)?;
         let mut terminal = ratatui::init();
         let app_result = app::App::new(rx).run(&mut terminal);
         ratatui::restore();
+        stdout().execute(DisableMouseCapture)?;
 
         app_result
     }
