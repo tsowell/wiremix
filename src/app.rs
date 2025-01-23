@@ -32,12 +32,23 @@ pub enum Action {
     SelectTab(usize),
 }
 
+struct Tab {
+    title: String,
+    list: NodeList,
+}
+
+impl Tab {
+    fn new(title: String, list: NodeList) -> Self {
+        Self { title, list }
+    }
+}
+
 pub struct App {
     exit: bool,
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
     error_message: Option<String>,
-    tabs: Vec<(String, NodeList)>,
+    tabs: Vec<Tab>,
     selected_tab_index: usize,
     click_areas: Vec<(Rect, Action)>,
 }
@@ -45,31 +56,31 @@ pub struct App {
 impl App {
     pub fn new(rx: mpsc::Receiver<Message>) -> Self {
         let mut tabs = Vec::new();
-        tabs.push((
+        tabs.push(Tab::new(
             String::from("Playback"),
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Stream/Output/Audio"))
             })),
         ));
-        tabs.push((
+        tabs.push(Tab::new(
             String::from("Recording"),
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Stream/Input/Audio"))
             })),
         ));
-        tabs.push((
+        tabs.push(Tab::new(
             String::from("Output Devices"),
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Audio/Sink"))
             })),
         ));
-        tabs.push((
+        tabs.push(Tab::new(
             String::from("Input Devices"),
             NodeList::new(Box::new(|node| {
                 node.media_class == Some(String::from("Audio/Source"))
             })),
         ));
-        tabs.push((
+        tabs.push(Tab::new(
             String::from("Configuration"),
             /* TODO - for now just show all nodes */
             NodeList::new(Box::new(|_node| true)),
@@ -92,7 +103,7 @@ impl App {
         while !self.exit {
             self.click_areas.clear();
             terminal.draw(|frame| {
-                self.tabs[self.selected_tab_index].1.update(frame.area());
+                self.tabs[self.selected_tab_index].list.update(frame.area());
                 self.draw(frame);
             })?;
             self.handle_messages()?;
@@ -163,8 +174,10 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(None),
-            KeyCode::Char('j') => self.tabs[self.selected_tab_index].1.down(),
-            KeyCode::Char('k') => self.tabs[self.selected_tab_index].1.up(),
+            KeyCode::Char('j') => {
+                self.tabs[self.selected_tab_index].list.down()
+            }
+            KeyCode::Char('k') => self.tabs[self.selected_tab_index].list.up(),
             KeyCode::Char('H') => {
                 self.selected_tab_index =
                     self.selected_tab_index.checked_sub(1).unwrap_or(4)
@@ -202,7 +215,7 @@ impl App {
 }
 
 pub struct AppWidget<'a> {
-    tabs: &'a Vec<(String, NodeList)>,
+    tabs: &'a Vec<Tab>,
     selected_tab_index: usize,
 }
 
@@ -230,8 +243,8 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         );
 
         let mut constraints: Vec<Constraint> = Default::default();
-        for (title, _) in self.tabs.iter() {
-            constraints.push(Constraint::Length(title.len() as u16));
+        for tab in self.tabs.iter() {
+            constraints.push(Constraint::Length(tab.title.len() as u16));
         }
 
         let menu_areas = Layout::default()
@@ -240,19 +253,22 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             .spacing(2)
             .split(menu_area);
 
-        for (i, (title, _)) in self.tabs.iter().enumerate() {
+        for (i, tab) in self.tabs.iter().enumerate() {
             let style = if i == self.selected_tab_index {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default()
             };
-            Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
+            Line::from(Span::styled(tab.title.clone(), style))
+                .render(menu_areas[i], buf);
 
             state
                 .click_areas
                 .push((menu_areas[i], Action::SelectTab(i)));
         }
 
-        self.tabs[self.selected_tab_index].1.render(list_area, buf);
+        self.tabs[self.selected_tab_index]
+            .list
+            .render(list_area, buf);
     }
 }
