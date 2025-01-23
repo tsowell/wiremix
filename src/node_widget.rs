@@ -236,25 +236,25 @@ impl<'a> Widget for NodeWidget<'a> {
             }
         }
 
-        if let Some(positions) = &self.node.positions {
-            match positions.len() {
-                2 => meter::render_stereo(
-                    meter_area,
-                    buf,
-                    self.node.peaks.as_ref().and_then(|peaks| {
-                        (peaks.len() == 2).then_some((peaks[0], peaks[1]))
-                    }),
-                ),
-                _ => meter::render_mono(
-                    meter_area,
-                    buf,
-                    self.node.peaks.as_ref().and_then(|peaks| {
-                        (!peaks.is_empty()).then_some(
-                            peaks.iter().sum::<f32>() / peaks.len() as f32,
-                        )
-                    }),
-                ),
+        match self.node.peaks.as_deref() {
+            Some([left, right]) => {
+                meter::render_stereo(meter_area, buf, Some((*left, *right)))
             }
+            Some(peaks @ [..]) => meter::render_mono(
+                meter_area,
+                buf,
+                (!peaks.is_empty())
+                    .then_some(peaks.iter().sum::<f32>() / peaks.len() as f32),
+            ),
+            _ => match self
+                .node
+                .positions
+                .as_ref()
+                .map(|positions| positions.len())
+            {
+                Some(2) => meter::render_stereo(meter_area, buf, None),
+                _ => meter::render_mono(meter_area, buf, None),
+            },
         }
     }
 }
