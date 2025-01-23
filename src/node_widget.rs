@@ -54,9 +54,9 @@ fn node_header_right(node: &state::Node) -> String {
                 Some(route.description.clone())
             })
             .unwrap_or_default(),
-        "Stream/Output/Audio" | "Stream/Input/Audio" => STATE
+        "Stream/Output/Audio" => STATE
             .with_borrow(|state| -> Option<String> {
-                let outputs = state.links.get(&node.id)?;
+                let outputs = state.links_output.get(&node.id)?;
                 for output in outputs {
                     let Some(output_node) = state.nodes.get(output) else {
                         continue;
@@ -68,6 +68,26 @@ fn node_header_right(node: &state::Node) -> String {
                         continue;
                     };
                     let description = output_node.description.as_ref()?;
+                    return Some(description.to_owned());
+                }
+
+                None
+            })
+            .unwrap_or_default(),
+        "Stream/Input/Audio" => STATE
+            .with_borrow(|state| -> Option<String> {
+                let inputs = state.links_input.get(&node.id)?;
+                for input in inputs {
+                    let Some(input_node) = state.nodes.get(input) else {
+                        continue;
+                    };
+                    let Some(ref media_class) = input_node.media_class else {
+                        continue;
+                    };
+                    if media_class != "Audio/Source" {
+                        continue;
+                    };
+                    let description = input_node.description.as_ref()?;
                     return Some(description.to_owned());
                 }
 

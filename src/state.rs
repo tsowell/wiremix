@@ -59,7 +59,8 @@ pub struct Metadata {
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
-    pub links: HashMap<ObjectId, HashSet<ObjectId>>,
+    pub links_output: HashMap<ObjectId, HashSet<ObjectId>>,
+    pub links_input: HashMap<ObjectId, HashSet<ObjectId>>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
 }
@@ -127,7 +128,8 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorMessage::Link(output, input) => {
-                self.links.entry(output).or_default().insert(input);
+                self.links_output.entry(output).or_default().insert(input);
+                self.links_input.entry(input).or_default().insert(output);
             }
             MonitorMessage::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
@@ -145,7 +147,8 @@ impl State {
             MonitorMessage::Removed(id) => {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
-                self.links.remove(&id);
+                self.links_output.remove(&id);
+                self.links_input.remove(&id);
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
                         self.metadatas_by_name.remove(&metadata_name);
