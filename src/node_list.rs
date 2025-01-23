@@ -155,7 +155,7 @@ impl Widget for &NodeList {
             // rendered but still has all the important parts rendered,
             // excluding margins, etc.
             let is_bottom_last =
-                self.top + nodes_visible == state.nodes.len() - 1;
+                self.top + nodes_visible == state.nodes.len().saturating_sub(1);
             let is_bottom_enough = (list_area.height % node_height)
                 >= NodeWidget::important_height();
             if self.top + nodes_visible < state.nodes.len()

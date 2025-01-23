@@ -4,7 +4,9 @@ use std::sync::mpsc;
 use anyhow::{anyhow, Result};
 
 use ratatui::{
-    prelude::{Buffer, Rect},
+    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    text::{Line, Span},
     widgets::Widget,
     DefaultTerminal, Frame,
 };
@@ -12,6 +14,7 @@ use ratatui::{
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 
 use crate::message::{InputMessage, Message};
+use crate::named_constraints::with_named_constraints;
 use crate::node_list::NodeList;
 use crate::state;
 
@@ -27,17 +30,54 @@ pub struct App {
     rx: mpsc::Receiver<Message>,
     log: Vec<String>,
     error_message: Option<String>,
-    node_list: NodeList,
+    tabs: Vec<(String, Alignment, NodeList)>,
+    selected_tab_index: usize,
 }
 
 impl App {
     pub fn new(rx: mpsc::Receiver<Message>) -> Self {
+        let mut tabs = Vec::new();
+        tabs.push((
+            String::from("Playback"),
+            Alignment::Left,
+            NodeList::new(Box::new(|node| {
+                node.media_class == Some(String::from("Stream/Output/Audio"))
+            })),
+        ));
+        tabs.push((
+            String::from("Recording"),
+            Alignment::Left,
+            NodeList::new(Box::new(|node| {
+                node.media_class == Some(String::from("Stream/Input/Audio"))
+            })),
+        ));
+        tabs.push((
+            String::from("Output Devices"),
+            Alignment::Center,
+            NodeList::new(Box::new(|node| {
+                node.media_class == Some(String::from("Audio/Sink"))
+            })),
+        ));
+        tabs.push((
+            String::from("Input Devices"),
+            Alignment::Right,
+            NodeList::new(Box::new(|node| {
+                node.media_class == Some(String::from("Audio/Source"))
+            })),
+        ));
+        tabs.push((
+            String::from("Configuration"),
+            Alignment::Right,
+            /* TODO - for now just show all nodes */
+            NodeList::new(Box::new(|_node| true)),
+        ));
         App {
             exit: Default::default(),
             rx,
             log: Default::default(),
             error_message: Default::default(),
-            node_list: NodeList::new(Box::new(|_node| true)),
+            tabs,
+            selected_tab_index: Default::default(),
         }
     }
 
@@ -47,7 +87,7 @@ impl App {
 
         while !self.exit {
             terminal.draw(|frame| {
-                self.node_list.update(frame.area());
+                self.tabs[self.selected_tab_index].2.update(frame.area());
                 self.draw(frame)
             })?;
             self.handle_messages()?;
@@ -105,8 +145,15 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(None),
-            KeyCode::Char('j') => self.node_list.down(),
-            KeyCode::Char('k') => self.node_list.up(),
+            KeyCode::Char('j') => self.tabs[self.selected_tab_index].2.down(),
+            KeyCode::Char('k') => self.tabs[self.selected_tab_index].2.up(),
+            KeyCode::Char('H') => {
+                self.selected_tab_index =
+                    self.selected_tab_index.checked_sub(1).unwrap_or(4)
+            }
+            KeyCode::Char('L') => {
+                self.selected_tab_index = (self.selected_tab_index + 1) % 5
+            }
             _ => (),
         }
     }
@@ -114,6 +161,43 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        self.node_list.render(area, buf);
+        let mut list_area = Default::default();
+        let mut menu_area = Default::default();
+        with_named_constraints!(
+            [
+                (Constraint::Min(0), Some(&mut list_area)),
+                (Constraint::Length(1), Some(&mut menu_area)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(area)
+            }
+        );
+
+        let menu_areas = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![
+                Constraint::Min(0),
+                Constraint::Min(0),
+                Constraint::Min(0),
+                Constraint::Min(0),
+                Constraint::Min(0),
+            ])
+            .split(menu_area);
+
+        for (i, (title, alignment, _)) in self.tabs.iter().enumerate() {
+            let style = if i == self.selected_tab_index {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default()
+            };
+            Line::from(Span::styled(title, style))
+                .alignment(*alignment)
+                .render(menu_areas[i], buf);
+        }
+
+        self.tabs[self.selected_tab_index].2.render(list_area, buf);
     }
 }
