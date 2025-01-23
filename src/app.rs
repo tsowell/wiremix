@@ -143,7 +143,10 @@ impl App {
         if let Message::Input(InputMessage::Event(event)) = message {
             self.handle_event(event)
         } else if let Message::Error(error) = message {
-            self.exit(Some(error));
+            match error {
+                error if error.starts_with("no global ") => {}
+                _ => self.exit(Some(error)),
+            }
             Ok(())
         } else if let Message::Monitor(message) = message {
             self.log.push(format!("{:?}", message));
