@@ -13,16 +13,16 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::message::{MonitorMessage, ObjectId};
+use crate::event::{MonitorEvent, ObjectId};
 use crate::monitor::{
-    deserialize::deserialize, device_status::DeviceStatusTracker,
-    MessageSender, ProxyInfo,
+    deserialize::deserialize, device_status::DeviceStatusTracker, EventSender,
+    ProxyInfo,
 };
 
 pub fn monitor_device(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
-    sender: &Rc<MessageSender>,
+    sender: &Rc<EventSender>,
     statuses: &Rc<RefCell<DeviceStatusTracker>>,
 ) -> Option<ProxyInfo> {
     let obj_id = ObjectId::from(obj);
@@ -34,7 +34,7 @@ pub fn monitor_device(
         _ => return None,
     }
 
-    sender.send(MonitorMessage::DeviceMediaClass(
+    sender.send(MonitorEvent::DeviceMediaClass(
         obj_id,
         media_class.to_string(),
     ));
@@ -63,7 +63,7 @@ pub fn monitor_device(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    if let Some(message) = match id {
+                    if let Some(event) = match id {
                         ParamType::Route => {
                             statuses.borrow_mut().set(proxy_id, id);
                             device_route(obj_id, param)
@@ -82,7 +82,7 @@ pub fn monitor_device(
                         }
                         _ => None,
                     } {
-                        sender.send(message);
+                        sender.send(event);
                     }
                 }
             }
@@ -125,11 +125,11 @@ pub fn monitor_device(
     Some((Box::new(device), Box::new(listener)))
 }
 
-fn device_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
+fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                return Some(MonitorMessage::DeviceRouteIndex(id, value));
+                return Some(MonitorEvent::DeviceRouteIndex(id, value));
             }
         }
     }
@@ -137,7 +137,7 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     None
 }
 
-fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
+fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut description = None;
 
@@ -157,18 +157,18 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorMessage> {
         }
     }
 
-    Some(MonitorMessage::DeviceRouteDescription(
+    Some(MonitorEvent::DeviceRouteDescription(
         id,
         index?,
         description?,
     ))
 }
 
-fn device_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
+fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                return Some(MonitorMessage::DeviceProfileIndex(id, value));
+                return Some(MonitorEvent::DeviceProfileIndex(id, value));
             }
         }
     }
@@ -176,7 +176,7 @@ fn device_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
     None
 }
 
-fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
+fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut description = None;
 
@@ -196,7 +196,7 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
         }
     }
 
-    Some(MonitorMessage::DeviceProfileDescription(
+    Some(MonitorEvent::DeviceProfileDescription(
         id,
         index?,
         description?,
@@ -204,7 +204,7 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorMessage> {
 }
 
 fn device_info_props(
-    sender: &Rc<MessageSender>,
+    sender: &Rc<EventSender>,
     id: ObjectId,
     device_info: &DeviceInfoRef,
 ) {
@@ -213,15 +213,15 @@ fn device_info_props(
     };
 
     if let Some(device_name) = props.get("device.name") {
-        sender.send(MonitorMessage::DeviceName(id, device_name.to_string()));
+        sender.send(MonitorEvent::DeviceName(id, device_name.to_string()));
     }
 
     if let Some(device_nick) = props.get("device.nick") {
-        sender.send(MonitorMessage::DeviceNick(id, device_nick.to_string()));
+        sender.send(MonitorEvent::DeviceNick(id, device_nick.to_string()));
     }
 
     if let Some(device_description) = props.get("device.description") {
-        sender.send(MonitorMessage::DeviceDescription(
+        sender.send(MonitorEvent::DeviceDescription(
             id,
             device_description.to_string(),
         ));

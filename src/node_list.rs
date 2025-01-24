@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::app::STATE;
-use crate::message::ObjectId;
+use crate::event::ObjectId;
 use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::state;
@@ -192,13 +192,13 @@ impl Widget for &NodeList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::MonitorMessage;
+    use crate::event::MonitorEvent;
 
     fn init() {
         STATE.with_borrow_mut(|state| {
             for i in 0..10 {
                 let obj_id = ObjectId::from_raw_id(i);
-                state.update(MonitorMessage::NodeDescription(
+                state.update(MonitorEvent::NodeDescription(
                     obj_id,
                     "Test node".to_string(),
                 ));

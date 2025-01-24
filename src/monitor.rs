@@ -1,8 +1,8 @@
 mod deserialize;
 mod device;
 mod device_status;
+mod event_sender;
 mod link;
-mod message_sender;
 mod metadata;
 mod node;
 mod proxy_registry;
@@ -25,9 +25,9 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::message::{Message, MonitorMessage, ObjectId};
+use crate::event::{Event, MonitorEvent, ObjectId};
 use crate::monitor::{
-    device_status::DeviceStatusTracker, message_sender::MessageSender,
+    device_status::DeviceStatusTracker, event_sender::EventSender,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
 };
 
@@ -35,7 +35,7 @@ type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
 pub fn spawn(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<Message>>,
+    tx: Arc<mpsc::Sender<Event>>,
     is_capture_enabled: bool,
 ) -> Result<MonitorHandle> {
     let shutdown_fd =
@@ -56,7 +56,7 @@ pub fn spawn(
 
 fn run(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<Message>>,
+    tx: Arc<mpsc::Sender<Event>>,
     shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
@@ -67,7 +67,7 @@ fn run(
     });
 
     let main_loop = MainLoop::new(None)?;
-    let sender = Rc::new(MessageSender::new(tx, main_loop.downgrade()));
+    let sender = Rc::new(EventSender::new(tx, main_loop.downgrade()));
 
     let err_sender = Rc::clone(&sender);
     monitor_pipewire(
@@ -103,7 +103,7 @@ impl Drop for MonitorHandle {
 fn monitor_pipewire(
     remote: Option<String>,
     main_loop: MainLoop,
-    sender: Rc<MessageSender>,
+    sender: Rc<EventSender>,
     shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
@@ -212,7 +212,7 @@ fn monitor_pipewire(
 
                     proxies.borrow_mut().remove(proxy_id);
 
-                    sender.send(MonitorMessage::Removed(obj_id));
+                    sender.send(MonitorEvent::Removed(obj_id));
 
                     let Some((ref streams_weak, ref stream_spe_weak)) =
                         stream_info

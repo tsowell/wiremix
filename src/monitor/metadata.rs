@@ -8,13 +8,13 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::message::MonitorMessage;
-use crate::monitor::{MessageSender, ObjectId, ProxyInfo};
+use crate::event::MonitorEvent;
+use crate::monitor::{EventSender, ObjectId, ProxyInfo};
 
 pub fn monitor_metadata(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
-    sender: &Rc<MessageSender>,
+    sender: &Rc<EventSender>,
 ) -> Option<ProxyInfo> {
     let obj_id = ObjectId::from(obj);
 
@@ -24,7 +24,7 @@ pub fn monitor_metadata(
         return None;
     }
 
-    sender.send(MonitorMessage::MetadataMetadataName(
+    sender.send(MonitorEvent::MetadataMetadataName(
         obj_id,
         metadata_name.to_string(),
     ));
@@ -43,14 +43,14 @@ pub fn monitor_metadata(
                 match key {
                     Some("default.audio.sink") => {}
                     Some("default.audio.source") => {}
-                    None => sender.send(MonitorMessage::Removed(obj_id)),
+                    None => sender.send(MonitorEvent::Removed(obj_id)),
                     _ => return 0,
                 }
                 let Some(key) = key else {
                     return 0;
                 };
 
-                sender.send(MonitorMessage::MetadataProperty(
+                sender.send(MonitorEvent::MetadataProperty(
                     obj_id,
                     key.to_string(),
                     value.map(str::to_string),

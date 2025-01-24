@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use crate::message::{MonitorMessage, ObjectId};
+use crate::event::{MonitorEvent, ObjectId};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -66,77 +66,73 @@ pub struct State {
 }
 
 impl State {
-    pub fn update(&mut self, message: MonitorMessage) {
-        match message {
-            MonitorMessage::DeviceDescription(id, description) => {
+    pub fn update(&mut self, event: MonitorEvent) {
+        match event {
+            MonitorEvent::DeviceDescription(id, description) => {
                 self.device_entry(id).description = Some(description);
             }
-            MonitorMessage::DeviceMediaClass(id, media_class) => {
+            MonitorEvent::DeviceMediaClass(id, media_class) => {
                 self.device_entry(id).media_class = Some(media_class);
             }
-            MonitorMessage::DeviceName(id, name) => {
+            MonitorEvent::DeviceName(id, name) => {
                 self.device_entry(id).name = Some(name);
             }
-            MonitorMessage::DeviceNick(id, nick) => {
+            MonitorEvent::DeviceNick(id, nick) => {
                 self.device_entry(id).nick = Some(nick);
             }
-            MonitorMessage::DeviceProfileDescription(
-                id,
-                index,
-                description,
-            ) => {
+            MonitorEvent::DeviceProfileDescription(id, index, description) => {
                 self.device_entry(id)
                     .profiles
                     .insert(index, Profile { index, description });
             }
-            MonitorMessage::DeviceProfileIndex(id, index) => {
+            MonitorEvent::DeviceProfileIndex(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
             }
-            MonitorMessage::DeviceRouteDescription(id, index, description) => {
+            MonitorEvent::DeviceRouteDescription(id, index, description) => {
                 self.device_entry(id)
                     .routes
                     .insert(index, Route { index, description });
             }
-            MonitorMessage::DeviceRouteIndex(id, index) => {
+            MonitorEvent::DeviceRouteIndex(id, index) => {
                 self.device_entry(id).route_index = Some(index);
             }
-            MonitorMessage::NodeDescription(id, description) => {
+            MonitorEvent::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);
             }
-            MonitorMessage::NodeDeviceId(id, device_id) => {
+            MonitorEvent::NodeDeviceId(id, device_id) => {
                 self.node_entry(id).device_id = Some(device_id);
             }
-            MonitorMessage::NodeMediaClass(id, media_class) => {
+            MonitorEvent::NodeMediaClass(id, media_class) => {
                 self.node_entry(id).media_class = Some(media_class);
             }
-            MonitorMessage::NodeMediaName(id, media_name) => {
+            MonitorEvent::NodeMediaName(id, media_name) => {
                 self.node_entry(id).media_name = Some(media_name);
             }
-            MonitorMessage::NodeName(id, name) => {
+            MonitorEvent::NodeName(id, name) => {
                 self.node_entry(id).name = Some(name);
             }
-            MonitorMessage::NodeNick(id, nick) => {
+            MonitorEvent::NodeNick(id, nick) => {
                 self.node_entry(id).nick = Some(nick);
             }
-            MonitorMessage::NodePeaks(id, peaks) => {
+            MonitorEvent::NodePeaks(id, peaks) => {
                 self.node_entry(id).peaks = Some(peaks);
             }
-            MonitorMessage::NodePositions(id, positions) => {
+            MonitorEvent::NodePositions(id, positions) => {
                 self.node_entry(id).positions = Some(positions);
             }
-            MonitorMessage::NodeVolumes(id, volumes) => {
+            MonitorEvent::NodeVolumes(id, volumes) => {
                 self.node_entry(id).volumes = Some(volumes);
             }
-            MonitorMessage::Link(output, input) => {
+            MonitorEvent::Link(output, input) => {
                 self.links_output.entry(output).or_default().insert(input);
                 self.links_input.entry(input).or_default().insert(output);
             }
-            MonitorMessage::MetadataMetadataName(id, metadata_name) => {
+            MonitorEvent::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
                     Some(metadata_name.clone());
                 self.metadatas_by_name.insert(metadata_name, id);
             }
-            MonitorMessage::MetadataProperty(id, key, value) => {
+            MonitorEvent::MetadataProperty(id, key, value) => {
                 match value {
                     Some(value) => {
                         self.metadata_entry(id).properties.insert(key, value)
@@ -144,7 +140,7 @@ impl State {
                     None => self.metadata_entry(id).properties.remove(&key),
                 };
             }
-            MonitorMessage::Removed(id) => {
+            MonitorEvent::Removed(id) => {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
                 self.links_output.remove(&id);
@@ -197,7 +193,7 @@ mod tests {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = "metadata0".to_string();
-        state.update(MonitorMessage::MetadataMetadataName(
+        state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
         ));
@@ -214,12 +210,12 @@ mod tests {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = "metadata0".to_string();
-        state.update(MonitorMessage::MetadataMetadataName(
+        state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
         ));
 
-        state.update(MonitorMessage::Removed(obj_id));
+        state.update(MonitorEvent::Removed(obj_id));
 
         assert!(state.metadatas.get(&obj_id).is_none());
         assert!(state.metadatas_by_name.get(&metadata_name).is_none());
@@ -231,7 +227,7 @@ mod tests {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = "metadata0".to_string();
-        state.update(MonitorMessage::MetadataMetadataName(
+        state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
         ));
@@ -239,7 +235,7 @@ mod tests {
         let key = "key".to_string();
         let value = "value".to_string();
 
-        state.update(MonitorMessage::MetadataProperty(
+        state.update(MonitorEvent::MetadataProperty(
             obj_id,
             key.clone(),
             Some(value.clone()),
@@ -249,11 +245,7 @@ mod tests {
             Some(&value)
         );
 
-        state.update(MonitorMessage::MetadataProperty(
-            obj_id,
-            key.clone(),
-            None,
-        ));
+        state.update(MonitorEvent::MetadataProperty(obj_id, key.clone(), None));
         assert_eq!(
             state.metadatas.get(&obj_id).unwrap().properties.get(&key),
             None

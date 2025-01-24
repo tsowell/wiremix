@@ -46,16 +46,18 @@ fn main() -> Result<()> {
             let _ = stdout().execute(DisableMouseCapture);
         });
         for received in rx {
-            use crossterm::event::{Event, KeyCode, KeyEvent};
-            use pwmixer::message::{InputMessage, Message};
+            use crossterm::event::{
+                Event as CrosstermEvent, KeyCode, KeyEvent,
+            };
+            use pwmixer::event::Event;
             match received {
-                Message::Monitor(message) => print!("{:?}\r\n", message),
-                Message::Input(InputMessage::Event(Event::Key(KeyEvent {
+                Event::Monitor(event) => print!("{:?}\r\n", event),
+                Event::Input(CrosstermEvent::Key(KeyEvent {
                     code: KeyCode::Char('q'),
                     ..
-                }))) => break,
-                message => {
-                    print!("{:?}\r\n", message);
+                })) => break,
+                event => {
+                    print!("{:?}\r\n", event);
                 }
             }
         }

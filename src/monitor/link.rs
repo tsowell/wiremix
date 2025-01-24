@@ -7,13 +7,13 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::message::MonitorMessage;
-use crate::monitor::{MessageSender, ProxyInfo};
+use crate::event::MonitorEvent;
+use crate::monitor::{EventSender, ProxyInfo};
 
 pub fn monitor_link(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
-    sender: &Rc<MessageSender>,
+    sender: &Rc<EventSender>,
 ) -> Option<ProxyInfo> {
     let link: Link = registry.bind(obj).ok()?;
     let link = Rc::new(link);
@@ -38,7 +38,7 @@ pub fn monitor_link(
     Some((Box::new(link), Box::new(listener)))
 }
 
-fn link_info_props(sender: &Rc<MessageSender>, link_info: &LinkInfoRef) {
+fn link_info_props(sender: &Rc<EventSender>, link_info: &LinkInfoRef) {
     // Ignore props and get the nodes directly from the link info.
-    sender.send(MonitorMessage::from(link_info));
+    sender.send(MonitorEvent::from(link_info));
 }

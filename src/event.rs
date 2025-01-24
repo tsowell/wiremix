@@ -17,14 +17,9 @@ impl ObjectId {
     }
 }
 
-#[derive(Debug)]
-pub enum InputMessage {
-    Event(crossterm::event::Event),
-}
-
 #[allow(dead_code)]
 #[derive(Debug)]
-pub enum MonitorMessage {
+pub enum MonitorEvent {
     DeviceDescription(ObjectId, String),
     DeviceMediaClass(ObjectId, String),
     DeviceName(ObjectId, String),
@@ -52,9 +47,9 @@ pub enum MonitorMessage {
     Removed(ObjectId),
 }
 
-impl From<&LinkInfoRef> for MonitorMessage {
+impl From<&LinkInfoRef> for MonitorEvent {
     fn from(link_info: &LinkInfoRef) -> Self {
-        MonitorMessage::Link(
+        MonitorEvent::Link(
             ObjectId(link_info.output_node_id()),
             ObjectId(link_info.input_node_id()),
         )
@@ -62,14 +57,14 @@ impl From<&LinkInfoRef> for MonitorMessage {
 }
 
 #[derive(Debug)]
-pub enum Message {
-    Input(InputMessage),
-    Monitor(MonitorMessage),
+pub enum Event {
+    Input(crossterm::event::Event),
+    Monitor(MonitorEvent),
     Error(String),
 }
 
-impl From<crossterm::event::Event> for Message {
+impl From<crossterm::event::Event> for Event {
     fn from(event: crossterm::event::Event) -> Self {
-        Message::Input(InputMessage::Event(event))
+        Event::Input(event)
     }
 }

@@ -1,6 +1,6 @@
 pub mod app;
+pub mod event;
 pub mod input;
-pub mod message;
 pub mod meter;
 pub mod monitor;
 pub mod named_constraints;

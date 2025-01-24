@@ -12,10 +12,11 @@ use ratatui::{
 };
 
 use crossterm::event::{
-    Event, KeyCode, KeyEvent, KeyEventKind, MouseEvent, MouseEventKind,
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseEvent,
+    MouseEventKind,
 };
 
-use crate::message::{InputMessage, Message};
+use crate::event::Event;
 use crate::named_constraints::with_named_constraints;
 use crate::node_list::NodeList;
 use crate::state;
@@ -45,7 +46,7 @@ impl Tab {
 
 pub struct App {
     exit: bool,
-    rx: mpsc::Receiver<Message>,
+    rx: mpsc::Receiver<Event>,
     log: Vec<String>,
     error_message: Option<String>,
     tabs: Vec<Tab>,
@@ -54,7 +55,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(rx: mpsc::Receiver<Message>) -> Self {
+    pub fn new(rx: mpsc::Receiver<Event>) -> Self {
         let mut tabs = Vec::new();
         tabs.push(Tab::new(
             String::from("Playback"),
@@ -106,7 +107,7 @@ impl App {
                 self.tabs[self.selected_tab_index].list.update(frame.area());
                 self.draw(frame);
             })?;
-            self.handle_messages()?;
+            self.handle_events()?;
         }
 
         self.error_message.map_or(Ok(()), |s| Err(anyhow!(s)))
@@ -128,41 +129,43 @@ impl App {
         self.error_message = error_message;
     }
 
-    fn handle_messages(&mut self) -> Result<()> {
-        // Block on getting the next message.
-        self.handle_message(self.rx.recv()?)?;
+    fn handle_events(&mut self) -> Result<()> {
+        // Block on getting the next event.
+        self.handle_event(self.rx.recv()?)?;
         // Then handle the rest that are available.
-        while let Ok(message) = self.rx.try_recv() {
-            self.handle_message(message)?;
+        while let Ok(event) = self.rx.try_recv() {
+            self.handle_event(event)?;
         }
 
         Ok(())
     }
 
-    fn handle_message(&mut self, message: Message) -> Result<()> {
-        if let Message::Input(InputMessage::Event(event)) = message {
-            self.handle_event(event)
-        } else if let Message::Error(error) = message {
+    fn handle_event(&mut self, event: Event) -> Result<()> {
+        if let Event::Input(event) = event {
+            self.handle_input_event(event)
+        } else if let Event::Error(error) = event {
             match error {
                 error if error.starts_with("no global ") => {}
                 _ => self.exit(Some(error)),
             }
             Ok(())
-        } else if let Message::Monitor(message) = message {
-            self.log.push(format!("{:?}", message));
-            STATE.with_borrow_mut(|s| s.update(message));
+        } else if let Event::Monitor(event) = event {
+            self.log.push(format!("{:?}", event));
+            STATE.with_borrow_mut(|s| s.update(event));
             Ok(())
         } else {
             Ok(())
         }
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_input_event(&mut self, event: CrosstermEvent) -> Result<()> {
         match event {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+            CrosstermEvent::Key(key_event)
+                if key_event.kind == KeyEventKind::Press =>
+            {
                 self.handle_key_event(key_event)
             }
-            Event::Mouse(
+            CrosstermEvent::Mouse(
                 mouse_event @ MouseEvent {
                     kind: MouseEventKind::Down(_),
                     ..

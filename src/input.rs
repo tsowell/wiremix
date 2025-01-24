@@ -6,9 +6,9 @@ use crossterm::event::EventStream;
 use futures::{channel::oneshot, FutureExt, StreamExt};
 use futures_timer::Delay;
 
-use crate::message::Message;
+use crate::event::Event;
 
-pub fn spawn(tx: Arc<mpsc::Sender<Message>>) -> InputHandle {
+pub fn spawn(tx: Arc<mpsc::Sender<Event>>) -> InputHandle {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
     let handle = thread::spawn(move || {
@@ -41,7 +41,7 @@ impl Drop for InputHandle {
 
 async fn input_loop(
     shutdown_rx: oneshot::Receiver<()>,
-    tx: Arc<mpsc::Sender<Message>>,
+    tx: Arc<mpsc::Sender<Event>>,
 ) {
     let mut reader = EventStream::new();
     let mut shutdown = shutdown_rx.fuse();
@@ -56,7 +56,7 @@ async fn input_loop(
             maybe_event = event => {
                 match maybe_event {
                     Some(Ok(event)) => {
-                        let _ = tx.send(Message::from(event));
+                        let _ = tx.send(Event::from(event));
                     }
                     None => break,
                     _ => {},

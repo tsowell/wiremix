@@ -16,8 +16,8 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::message::{MonitorMessage, ObjectId};
-use crate::monitor::MessageSender;
+use crate::event::{MonitorEvent, ObjectId};
+use crate::monitor::EventSender;
 
 type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
 
@@ -30,7 +30,7 @@ pub struct StreamData {
 pub fn capture_node(
     core: &Core,
     obj: &GlobalObject<&DictRef>,
-    sender: &Rc<MessageSender>,
+    sender: &Rc<EventSender>,
     obj_id: ObjectId,
 ) -> Option<StreamInfo> {
     let props = obj.props?;
@@ -120,7 +120,7 @@ pub fn capture_node(
 
                         peaks.push(max);
                     }
-                    sender.send(MonitorMessage::NodePeaks(obj_id, peaks));
+                    sender.send(MonitorEvent::NodePeaks(obj_id, peaks));
                     user_data.cursor_move = true;
                 }
             }
