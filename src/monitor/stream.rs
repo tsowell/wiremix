@@ -46,7 +46,7 @@ pub fn capture_node(
     let serial = props.get("object.serial")?;
     let props = properties! {
         *pipewire::keys::TARGET_OBJECT => serial.to_string(),
-        *pipewire::keys::STREAM_CAPTURE_SINK => "true",
+        *pipewire::keys::STREAM_MONITOR => "true",
         *pipewire::keys::NODE_NAME => "pwmixer-capture",
     };
 
