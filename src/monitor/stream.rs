@@ -44,11 +44,15 @@ pub fn capture_node(
     }
 
     let serial = props.get("object.serial")?;
-    let props = properties! {
+    let mut props = properties! {
         *pipewire::keys::TARGET_OBJECT => serial.to_string(),
         *pipewire::keys::STREAM_MONITOR => "true",
         *pipewire::keys::NODE_NAME => "pwmixer-capture",
     };
+
+    if media_class == "Audio/Sink" {
+        props.insert(*pipewire::keys::STREAM_CAPTURE_SINK, "true");
+    }
 
     let data = StreamData {
         format: Default::default(),
