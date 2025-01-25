@@ -191,7 +191,6 @@ fn monitor_pipewire(
             };
 
             let proxy = proxy_spe.upcast_ref();
-            let proxy_id = proxy.id();
             // Use a weak ref to prevent references cycle between Proxy and proxies:
             // - ref on proxies in the closure, bound to the Proxy lifetime
             // - proxies owning a ref on Proxy as well
@@ -211,7 +210,7 @@ fn monitor_pipewire(
                         return;
                     };
 
-                    proxies.borrow_mut().remove(proxy_id);
+                    proxies.borrow_mut().remove(obj_id);
 
                     sender.send(MonitorEvent::Removed(obj_id));
 
@@ -228,17 +227,17 @@ fn monitor_pipewire(
                     };
 
                     let _ = stream_spe.disconnect();
-                    streams.borrow_mut().remove(proxy_id);
+                    streams.borrow_mut().remove(obj_id);
                 })
                 .register();
 
             let mut proxies = proxies.borrow_mut();
-            proxies.add_proxy_t(proxy_spe, listener_spe);
-            proxies.add_proxy_listener(proxy_id, listener);
+            proxies.add_proxy_t(obj_id, proxy_spe, listener_spe);
+            proxies.add_proxy_listener(obj_id, listener);
 
             if let Some((stream_spe, listener_spe)) = s {
                 let mut streams = streams.borrow_mut();
-                streams.add_stream(proxy_id, stream_spe, listener_spe);
+                streams.add_stream(obj_id, stream_spe, listener_spe);
             }
         })
         .register();

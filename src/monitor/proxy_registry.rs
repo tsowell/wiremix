@@ -3,9 +3,11 @@ use std::rc::Rc;
 
 use pipewire::proxy::{Listener, ProxyListener, ProxyT};
 
+use crate::object::ObjectId;
+
 pub struct ProxyRegistry {
-    proxies_t: HashMap<u32, Box<Rc<dyn ProxyT>>>,
-    listeners: HashMap<u32, Vec<Box<dyn Listener>>>,
+    proxies_t: HashMap<ObjectId, Box<Rc<dyn ProxyT>>>,
+    listeners: HashMap<ObjectId, Vec<Box<dyn Listener>>>,
 }
 
 impl ProxyRegistry {
@@ -18,31 +20,27 @@ impl ProxyRegistry {
 
     pub fn add_proxy_t(
         &mut self,
+        obj_id: ObjectId,
         proxy_t: Box<Rc<dyn ProxyT>>,
         listener: Box<dyn Listener>,
     ) {
-        let proxy_id = {
-            let proxy = proxy_t.upcast_ref();
-            proxy.id()
-        };
+        self.proxies_t.insert(obj_id, proxy_t);
 
-        self.proxies_t.insert(proxy_id, proxy_t);
-
-        let v = self.listeners.entry(proxy_id).or_default();
+        let v = self.listeners.entry(obj_id).or_default();
         v.push(listener);
     }
 
     pub fn add_proxy_listener(
         &mut self,
-        proxy_id: u32,
+        obj_id: ObjectId,
         listener: ProxyListener,
     ) {
-        let v = self.listeners.entry(proxy_id).or_default();
+        let v = self.listeners.entry(obj_id).or_default();
         v.push(Box::new(listener));
     }
 
-    pub fn remove(&mut self, proxy_id: u32) {
-        self.proxies_t.remove(&proxy_id);
-        self.listeners.remove(&proxy_id);
+    pub fn remove(&mut self, obj_id: ObjectId) {
+        self.proxies_t.remove(&obj_id);
+        self.listeners.remove(&obj_id);
     }
 }

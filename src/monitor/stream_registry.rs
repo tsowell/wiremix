@@ -3,9 +3,11 @@ use std::rc::Rc;
 
 use pipewire::stream::{Stream, StreamListener};
 
+use crate::object::ObjectId;
+
 pub struct StreamRegistry<D> {
-    streams: HashMap<u32, Rc<Stream>>,
-    listeners: HashMap<u32, Vec<StreamListener<D>>>,
+    streams: HashMap<ObjectId, Rc<Stream>>,
+    listeners: HashMap<ObjectId, Vec<StreamListener<D>>>,
 }
 
 impl<D> StreamRegistry<D> {
@@ -18,7 +20,7 @@ impl<D> StreamRegistry<D> {
 
     pub fn add_stream(
         &mut self,
-        stream_id: u32,
+        stream_id: ObjectId,
         stream: Rc<Stream>,
         listener: StreamListener<D>,
     ) {
@@ -28,7 +30,7 @@ impl<D> StreamRegistry<D> {
         v.push(listener);
     }
 
-    pub fn remove(&mut self, stream_id: u32) {
+    pub fn remove(&mut self, stream_id: ObjectId) {
         self.streams.remove(&stream_id);
         self.listeners.remove(&stream_id);
     }
