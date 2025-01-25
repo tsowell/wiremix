@@ -31,7 +31,9 @@ impl<D> StreamRegistry<D> {
     }
 
     pub fn remove(&mut self, stream_id: ObjectId) {
-        self.streams.remove(&stream_id);
+        if let Some(stream) = self.streams.remove(&stream_id) {
+            let _ = stream.disconnect();
+        }
         self.listeners.remove(&stream_id);
     }
 }

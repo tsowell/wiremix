@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use pipewire::{
     device::{Device, DeviceChangeMask, DeviceInfoRef},
-    proxy::ProxyT,
+    proxy::{Listener, ProxyT},
     registry::{GlobalObject, Registry},
 };
 
@@ -16,7 +16,6 @@ use libspa::{
 use crate::event::MonitorEvent;
 use crate::monitor::{
     deserialize::deserialize, device_status::DeviceStatusTracker, EventSender,
-    ProxyInfo,
 };
 use crate::object::ObjectId;
 
@@ -25,7 +24,7 @@ pub fn monitor_device(
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
     statuses: &Rc<RefCell<DeviceStatusTracker>>,
-) -> Option<ProxyInfo> {
+) -> Option<(Rc<Device>, Box<dyn Listener>)> {
     let obj_id = ObjectId::from(obj);
 
     let props = obj.props?;
@@ -123,7 +122,7 @@ pub fn monitor_device(
 
     device.subscribe_params(&params);
 
-    Some((Box::new(device), Box::new(listener)))
+    Some((device, Box::new(listener)))
 }
 
 fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {

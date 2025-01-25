@@ -2,19 +2,20 @@ use std::rc::Rc;
 
 use pipewire::{
     link::{Link, LinkChangeMask, LinkInfoRef},
+    proxy::Listener,
     registry::{GlobalObject, Registry},
 };
 
 use libspa::utils::dict::DictRef;
 
 use crate::event::MonitorEvent;
-use crate::monitor::{EventSender, ProxyInfo};
+use crate::monitor::EventSender;
 
 pub fn monitor_link(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
-) -> Option<ProxyInfo> {
+) -> Option<(Rc<Link>, Box<dyn Listener>)> {
     let link: Link = registry.bind(obj).ok()?;
     let link = Rc::new(link);
 
@@ -35,7 +36,7 @@ pub fn monitor_link(
         })
         .register();
 
-    Some((Box::new(link), Box::new(listener)))
+    Some((link, Box::new(listener)))
 }
 
 fn link_info_props(sender: &Rc<EventSender>, link_info: &LinkInfoRef) {

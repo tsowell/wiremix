@@ -1,21 +1,21 @@
 use std::rc::Rc;
 
 use pipewire::{
-    //link::{Link, LinkChangeMask, LinkInfoRef},
     metadata::Metadata,
+    proxy::Listener,
     registry::{GlobalObject, Registry},
 };
 
 use libspa::utils::dict::DictRef;
 
 use crate::event::MonitorEvent;
-use crate::monitor::{EventSender, ObjectId, ProxyInfo};
+use crate::monitor::{EventSender, ObjectId};
 
 pub fn monitor_metadata(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
-) -> Option<ProxyInfo> {
+) -> Option<(Rc<Metadata>, Box<dyn Listener>)> {
     let obj_id = ObjectId::from(obj);
 
     let props = obj.props?;
@@ -61,5 +61,5 @@ pub fn monitor_metadata(
         })
         .register();
 
-    Some((Box::new(metadata), Box::new(listener)))
+    Some((metadata, Box::new(listener)))
 }

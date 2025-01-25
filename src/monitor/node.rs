@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use pipewire::{
     node::{Node, NodeChangeMask, NodeInfoRef},
+    proxy::Listener,
     registry::{GlobalObject, Registry},
 };
 
@@ -12,14 +13,14 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
-use crate::monitor::{deserialize::deserialize, EventSender, ProxyInfo};
+use crate::monitor::{deserialize::deserialize, EventSender};
 use crate::object::ObjectId;
 
 pub fn monitor_node(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
-) -> Option<ProxyInfo> {
+) -> Option<(Rc<Node>, Box<dyn Listener>)> {
     let obj_id = ObjectId::from(obj);
 
     let props = obj.props?;
@@ -86,7 +87,7 @@ pub fn monitor_node(
         .register();
     node.subscribe_params(&[ParamType::Props, ParamType::PortConfig]);
 
-    Some((Box::new(node), Box::new(listener)))
+    Some((node, Box::new(listener)))
 }
 
 fn node_info_props(

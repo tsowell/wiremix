@@ -21,18 +21,17 @@ use std::os::fd::AsRawFd;
 use pipewire::{
     main_loop::MainLoop,
     properties::properties,
-    proxy::{Listener, ProxyT},
+    proxy::ProxyT,
     types::ObjectType,
 };
 
 use crate::event::{Event, MonitorEvent};
 use crate::monitor::{
     device_status::DeviceStatusTracker, event_sender::EventSender,
-    proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
+    proxy_registry::ProxyRegistry,
+    stream_registry::StreamRegistry,
 };
 use crate::object::ObjectId;
-
-type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 
 pub fn spawn(
     remote: Option<String>,
@@ -156,88 +155,118 @@ fn monitor_pipewire(
 
     let _registry_listener = registry
         .add_listener_local()
-        .global(move |obj| {
-            let obj_id = ObjectId::from(obj);
+        .global({
+            let proxies = Rc::clone(&proxies);
+            move |obj| {
+                let obj_id = ObjectId::from(obj);
+                let Some(registry) = registry_weak.upgrade() else {
+                    return;
+                };
 
-            let Some(registry) = registry_weak.upgrade() else {
-                return;
-            };
-            let (p, s) = match obj.type_ {
-                ObjectType::Node => {
-                    let p = node::monitor_node(&registry, obj, &sender);
-                    let s = if is_capture_enabled {
-                        stream::capture_node(&core, obj, &sender, obj_id)
-                    } else {
-                        None
-                    };
+                let proxy_spe = match obj.type_ {
+                    ObjectType::Node => {
+                        let result =
+                            node::monitor_node(&registry, obj, &sender);
+                        if let Some((node, listener)) = result {
+                            proxies.borrow_mut().add_node(
+                                obj_id,
+                                Rc::clone(&node),
+                                listener,
+                            );
+                            Some(node as Rc<dyn ProxyT>)
+                        } else {
+                            None
+                        }
+                    }
+                    ObjectType::Device => {
+                        let result = device::monitor_device(
+                            &registry, obj, &sender, &statuses,
+                        );
+                        match result {
+                            Some((device, listener)) => {
+                                proxies.borrow_mut().add_device(
+                                    obj_id,
+                                    Rc::clone(&device),
+                                    listener,
+                                );
+                                Some(device as Rc<dyn ProxyT>)
+                            }
+                            None => None,
+                        }
+                    }
+                    ObjectType::Link => {
+                        let result =
+                            link::monitor_link(&registry, obj, &sender);
+                        match result {
+                            Some((link, listener)) => {
+                                proxies.borrow_mut().add_link(
+                                    obj_id,
+                                    Rc::clone(&link),
+                                    listener,
+                                );
+                                Some(link as Rc<dyn ProxyT>)
+                            }
+                            None => None,
+                        }
+                    }
+                    ObjectType::Metadata => {
+                        let result =
+                            metadata::monitor_metadata(&registry, obj, &sender);
+                        match result {
+                            Some((metadata, listener)) => {
+                                proxies.borrow_mut().add_metadata(
+                                    obj_id,
+                                    Rc::clone(&metadata),
+                                    listener,
+                                );
+                                Some(metadata as Rc<dyn ProxyT>)
+                            }
+                            None => None,
+                        }
+                    }
+                    _ => None,
+                };
+                let Some(proxy_spe) = proxy_spe else {
+                    return;
+                };
 
-                    (p, s)
+                if is_capture_enabled && obj.type_ == ObjectType::Node {
+                    let result =
+                        stream::capture_node(&core, obj, &sender, obj_id);
+                    if let Some((stream, listener)) = result {
+                        streams
+                            .borrow_mut()
+                            .add_stream(obj_id, stream, listener);
+                    }
                 }
-                ObjectType::Device => (
-                    device::monitor_device(&registry, obj, &sender, &statuses),
-                    None,
-                ),
-                ObjectType::Link => {
-                    (link::monitor_link(&registry, obj, &sender), None)
-                }
-                ObjectType::Metadata => {
-                    (metadata::monitor_metadata(&registry, obj, &sender), None)
-                }
-                _ => (None, None),
-            };
 
-            let Some((proxy_spe, listener_spe)) = p else {
-                return;
-            };
+                let proxy = proxy_spe.upcast_ref();
 
-            let proxy = proxy_spe.upcast_ref();
-            // Use a weak ref to prevent references cycle between Proxy and proxies:
-            // - ref on proxies in the closure, bound to the Proxy lifetime
-            // - proxies owning a ref on Proxy as well
-            let proxies_weak = Rc::downgrade(&proxies);
+                // Use a weak ref to prevent references cycle between Proxy and proxies:
+                // - ref on proxies in the closure, bound to the Proxy lifetime
+                // - proxies owning a ref on Proxy as well
+                let proxies_weak = Rc::downgrade(&proxies);
+                let streams_weak = Rc::downgrade(&streams);
+                let sender_weak = Rc::downgrade(&sender);
+                let listener = proxy
+                    .add_listener_local()
+                    .removed(move || {
+                        let Some(sender) = sender_weak.upgrade() else {
+                            return;
+                        };
+                        let Some(proxies) = proxies_weak.upgrade() else {
+                            return;
+                        };
+                        proxies.borrow_mut().remove(obj_id);
+                        sender.send(MonitorEvent::Removed(obj_id));
+                        let Some(streams) = streams_weak.upgrade() else {
+                            return;
+                        };
+                        streams.borrow_mut().remove(obj_id);
+                    })
+                    .register();
 
-            let stream_info = s.as_ref().map(|(stream_spe, _)| {
-                (Rc::downgrade(&streams), Rc::downgrade(stream_spe))
-            });
-            let sender_weak = Rc::downgrade(&sender);
-            let listener = proxy
-                .add_listener_local()
-                .removed(move || {
-                    let Some(sender) = sender_weak.upgrade() else {
-                        return;
-                    };
-                    let Some(proxies) = proxies_weak.upgrade() else {
-                        return;
-                    };
-
-                    proxies.borrow_mut().remove(obj_id);
-
-                    sender.send(MonitorEvent::Removed(obj_id));
-
-                    let Some((ref streams_weak, ref stream_spe_weak)) =
-                        stream_info
-                    else {
-                        return;
-                    };
-                    let Some(streams) = streams_weak.upgrade() else {
-                        return;
-                    };
-                    let Some(stream_spe) = stream_spe_weak.upgrade() else {
-                        return;
-                    };
-
-                    let _ = stream_spe.disconnect();
-                    streams.borrow_mut().remove(obj_id);
-                })
-                .register();
-
-            let mut proxies = proxies.borrow_mut();
-            proxies.add_proxy_t(obj_id, proxy_spe, listener_spe);
-            proxies.add_proxy_listener(obj_id, listener);
-
-            if let Some((stream_spe, listener_spe)) = s {
-                let mut streams = streams.borrow_mut();
-                streams.add_stream(obj_id, stream_spe, listener_spe);
+                proxies.borrow_mut().add_proxy_listener(obj_id, listener);
             }
         })
         .register();

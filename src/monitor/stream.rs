@@ -20,8 +20,6 @@ use crate::event::MonitorEvent;
 use crate::monitor::EventSender;
 use crate::object::ObjectId;
 
-type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
-
 #[derive(Default)]
 pub struct StreamData {
     format: AudioInfoRaw,
@@ -33,7 +31,7 @@ pub fn capture_node(
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
     obj_id: ObjectId,
-) -> Option<StreamInfo> {
+) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
     let props = obj.props?;
     let media_class = props.get("media.class")?;
     match media_class {
