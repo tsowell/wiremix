@@ -251,18 +251,15 @@ fn monitor_pipewire(
                 let listener = proxy
                     .add_listener_local()
                     .removed(move || {
-                        let Some(sender) = sender_weak.upgrade() else {
-                            return;
+                        if let Some(sender) = sender_weak.upgrade() {
+                            sender.send(MonitorEvent::Removed(obj_id));
                         };
-                        let Some(proxies) = proxies_weak.upgrade() else {
-                            return;
+                        if let Some(proxies) = proxies_weak.upgrade() {
+                            proxies.borrow_mut().remove(obj_id);
                         };
-                        proxies.borrow_mut().remove(obj_id);
-                        sender.send(MonitorEvent::Removed(obj_id));
-                        let Some(streams) = streams_weak.upgrade() else {
-                            return;
+                        if let Some(streams) = streams_weak.upgrade() {
+                            streams.borrow_mut().remove(obj_id);
                         };
-                        streams.borrow_mut().remove(obj_id);
                     })
                     .register();
 
