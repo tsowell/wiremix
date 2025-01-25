@@ -8,9 +8,9 @@ use ratatui::{
 };
 
 use crate::app::STATE;
-use crate::object::ObjectId;
 use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
+use crate::object::ObjectId;
 use crate::state;
 
 /// NodeList stores information for filtering and displaying a subset of Nodes
