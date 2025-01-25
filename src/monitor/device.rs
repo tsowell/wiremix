@@ -13,11 +13,12 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::event::{MonitorEvent, ObjectId};
+use crate::event::MonitorEvent;
 use crate::monitor::{
     deserialize::deserialize, device_status::DeviceStatusTracker, EventSender,
     ProxyInfo,
 };
+use crate::object::ObjectId;
 
 pub fn monitor_device(
     registry: &Registry,

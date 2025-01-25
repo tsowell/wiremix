@@ -25,11 +25,12 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::event::{Event, MonitorEvent, ObjectId};
+use crate::event::{Event, MonitorEvent};
 use crate::monitor::{
     device_status::DeviceStatusTracker, event_sender::EventSender,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
 };
+use crate::object::ObjectId;
 
 type ProxyInfo = (Box<Rc<dyn ProxyT>>, Box<dyn Listener>);
 

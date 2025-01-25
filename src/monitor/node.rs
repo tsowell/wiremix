@@ -11,8 +11,9 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::event::{MonitorEvent, ObjectId};
+use crate::event::MonitorEvent;
 use crate::monitor::{deserialize::deserialize, EventSender, ProxyInfo};
+use crate::object::ObjectId;
 
 pub fn monitor_node(
     registry: &Registry,

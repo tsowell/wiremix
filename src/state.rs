@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use crate::event::{MonitorEvent, ObjectId};
+use crate::event::MonitorEvent;
+use crate::object::ObjectId;
 
 #[allow(dead_code)]
 #[derive(Debug)]

@@ -16,8 +16,9 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::event::{MonitorEvent, ObjectId};
+use crate::event::MonitorEvent;
 use crate::monitor::EventSender;
+use crate::object::ObjectId;
 
 type StreamInfo = (Rc<Stream>, StreamListener<StreamData>);
 

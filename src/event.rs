@@ -1,21 +1,6 @@
-use libspa::utils::dict::DictRef;
-use pipewire::{link::LinkInfoRef, registry::GlobalObject};
+use pipewire::link::LinkInfoRef;
 
-#[allow(dead_code)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct ObjectId(u32);
-
-impl From<&GlobalObject<&DictRef>> for ObjectId {
-    fn from(obj: &GlobalObject<&DictRef>) -> Self {
-        ObjectId(obj.id)
-    }
-}
-
-impl ObjectId {
-    pub fn from_raw_id(id: u32) -> Self {
-        ObjectId(id)
-    }
-}
+use crate::object::ObjectId;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -50,8 +35,8 @@ pub enum MonitorEvent {
 impl From<&LinkInfoRef> for MonitorEvent {
     fn from(link_info: &LinkInfoRef) -> Self {
         MonitorEvent::Link(
-            ObjectId(link_info.output_node_id()),
-            ObjectId(link_info.input_node_id()),
+            ObjectId::from_raw_id(link_info.output_node_id()),
+            ObjectId::from_raw_id(link_info.input_node_id()),
         )
     }
 }
