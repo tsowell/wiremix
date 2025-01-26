@@ -10,9 +10,9 @@ pub enum MonitorEvent {
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
     DeviceProfileDescription(ObjectId, i32, String),
-    DeviceProfileIndex(ObjectId, i32),
+    DeviceProfile(ObjectId, i32),
     DeviceRouteDescription(ObjectId, i32, String),
-    DeviceRouteIndex(ObjectId, i32),
+    DeviceRoute(ObjectId, i32, i32),
 
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, String, Option<String>),

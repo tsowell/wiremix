@@ -126,15 +126,26 @@ pub fn monitor_device(
 }
 
 fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+    let mut index = None;
+    let mut device = None;
+
     for prop in param.properties {
-        if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
-            if let Value::Int(value) = prop.value {
-                return Some(MonitorEvent::DeviceRouteIndex(id, value));
+        match prop.key {
+            libspa_sys::SPA_PARAM_ROUTE_index => {
+                if let Value::Int(value) = prop.value {
+                    index = Some(value);
+                }
             }
+            libspa_sys::SPA_PARAM_ROUTE_device => {
+                if let Value::Int(value) = prop.value {
+                    device = Some(value);
+                }
+            }
+            _ => {}
         }
     }
 
-    None
+    Some(MonitorEvent::DeviceRoute(id, index?, device?))
 }
 
 fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
@@ -168,7 +179,7 @@ fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                return Some(MonitorEvent::DeviceProfileIndex(id, value));
+                return Some(MonitorEvent::DeviceProfile(id, value));
             }
         }
     }

@@ -29,6 +29,7 @@ pub struct Device {
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
     pub route_index: Option<i32>,
+    pub route_device: Option<i32>,
     pub routes: HashMap<i32, Route>,
 }
 
@@ -86,7 +87,7 @@ impl State {
                     .profiles
                     .insert(index, Profile { index, description });
             }
-            MonitorEvent::DeviceProfileIndex(id, index) => {
+            MonitorEvent::DeviceProfile(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
             }
             MonitorEvent::DeviceRouteDescription(id, index, description) => {
@@ -94,8 +95,9 @@ impl State {
                     .routes
                     .insert(index, Route { index, description });
             }
-            MonitorEvent::DeviceRouteIndex(id, index) => {
+            MonitorEvent::DeviceRoute(id, index, device) => {
                 self.device_entry(id).route_index = Some(index);
+                self.device_entry(id).route_device = Some(device);
             }
             MonitorEvent::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);
