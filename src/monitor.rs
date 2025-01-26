@@ -2,6 +2,7 @@ mod deserialize;
 mod device;
 mod device_status;
 mod event_sender;
+mod execute;
 mod link;
 mod metadata;
 mod node;
@@ -19,23 +20,22 @@ use nix::sys::eventfd::{EfdFlags, EventFd};
 use std::os::fd::AsRawFd;
 
 use pipewire::{
-    main_loop::MainLoop,
-    properties::properties,
-    proxy::ProxyT,
+    main_loop::MainLoop, properties::properties, proxy::ProxyT,
     types::ObjectType,
 };
 
+use crate::command::Command;
 use crate::event::{Event, MonitorEvent};
 use crate::monitor::{
     device_status::DeviceStatusTracker, event_sender::EventSender,
-    proxy_registry::ProxyRegistry,
-    stream_registry::StreamRegistry,
+    proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
 };
 use crate::object::ObjectId;
 
 pub fn spawn(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Event>>,
+    rx: pipewire::channel::Receiver<Command>,
     is_capture_enabled: bool,
 ) -> Result<MonitorHandle> {
     let shutdown_fd =
@@ -44,7 +44,7 @@ pub fn spawn(
     let handle = thread::spawn({
         let shutdown_fd = Arc::clone(&shutdown_fd);
         move || {
-            let _ = run(remote, tx, shutdown_fd, is_capture_enabled);
+            let _ = run(remote, tx, rx, shutdown_fd, is_capture_enabled);
         }
     });
 
@@ -57,6 +57,7 @@ pub fn spawn(
 fn run(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Event>>,
+    rx: pipewire::channel::Receiver<Command>,
     shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
@@ -74,6 +75,7 @@ fn run(
         remote,
         main_loop,
         sender,
+        rx,
         shutdown_fd,
         is_capture_enabled,
     )
@@ -104,6 +106,7 @@ fn monitor_pipewire(
     remote: Option<String>,
     main_loop: MainLoop,
     sender: Rc<EventSender>,
+    rx: pipewire::channel::Receiver<Command>,
     shutdown_fd: Arc<EventFd>,
     is_capture_enabled: bool,
 ) -> Result<()> {
@@ -267,6 +270,11 @@ fn monitor_pipewire(
             }
         })
         .register();
+
+    let proxies = Rc::clone(&proxies);
+    let _receiver = rx.attach(main_loop.loop_(), move |command| {
+        execute::execute_command(&Rc::clone(&proxies).borrow(), command);
+    });
 
     main_loop.run();
 

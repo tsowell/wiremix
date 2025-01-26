@@ -94,4 +94,20 @@ impl ProxyRegistry {
         self.metadatas.remove(&obj_id);
         self.listeners.remove(&obj_id);
     }
+
+    pub fn get_device(&self, obj_id: ObjectId) -> Option<&Rc<Device>> {
+        self.devices.get(&obj_id)
+    }
+
+    pub fn get_node(&self, obj_id: ObjectId) -> Option<&Rc<Node>> {
+        self.nodes.get(&obj_id)
+    }
+
+    pub fn get_link(&self, obj_id: ObjectId) -> Option<&Rc<Link>> {
+        self.links.get(&obj_id)
+    }
+
+    pub fn get_metadata(&self, obj_id: ObjectId) -> Option<&Rc<Metadata>> {
+        self.metadatas.get(&obj_id)
+    }
 }

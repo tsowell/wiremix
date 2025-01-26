@@ -13,6 +13,7 @@ use crossterm::{
 };
 
 use pwmixer::app;
+use pwmixer::command::Command;
 use pwmixer::input;
 use pwmixer::monitor;
 
@@ -30,13 +31,19 @@ struct Opt {
 }
 
 fn main() -> Result<()> {
-    let (tx, rx) = mpsc::channel();
-    let tx = Arc::new(tx);
+    let (event_tx, event_rx) = mpsc::channel();
+    let event_tx = Arc::new(event_tx);
+
+    let (command_tx, command_rx) = pipewire::channel::channel::<Command>();
 
     let opt = Opt::parse();
-    let _monitor_handle =
-        monitor::spawn(opt.remote, Arc::clone(&tx), !opt.no_capture)?;
-    let _input_handle = input::spawn(Arc::clone(&tx));
+    let _monitor_handle = monitor::spawn(
+        opt.remote,
+        Arc::clone(&event_tx),
+        command_rx,
+        !opt.no_capture,
+    )?;
+    let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     if opt.dump_events {
         stdout().execute(EnableMouseCapture)?;
@@ -45,7 +52,7 @@ fn main() -> Result<()> {
             let _ = crossterm::terminal::disable_raw_mode();
             let _ = stdout().execute(DisableMouseCapture);
         });
-        for received in rx {
+        for received in event_rx {
             use crossterm::event::{
                 Event as CrosstermEvent, KeyCode, KeyEvent,
             };
@@ -66,7 +73,7 @@ fn main() -> Result<()> {
     } else {
         stdout().execute(EnableMouseCapture)?;
         let mut terminal = ratatui::init();
-        let app_result = app::App::new(rx).run(&mut terminal);
+        let app_result = app::App::new(event_rx).run(&mut terminal);
         ratatui::restore();
         stdout().execute(DisableMouseCapture)?;
 

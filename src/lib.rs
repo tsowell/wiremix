@@ -1,4 +1,5 @@
 pub mod app;
+pub mod command;
 pub mod event;
 pub mod input;
 pub mod meter;
