@@ -28,7 +28,7 @@ pub enum MonitorEvent {
     NodePositions(ObjectId, Vec<u32>),
     NodeVolumes(ObjectId, Vec<f32>),
 
-    Link(ObjectId, ObjectId),
+    Link(ObjectId, ObjectId, ObjectId),
 
     Removed(ObjectId),
 }
@@ -36,6 +36,7 @@ pub enum MonitorEvent {
 impl From<&LinkInfoRef> for MonitorEvent {
     fn from(link_info: &LinkInfoRef) -> Self {
         MonitorEvent::Link(
+            ObjectId::from_raw_id(link_info.id()),
             ObjectId::from_raw_id(link_info.output_node_id()),
             ObjectId::from_raw_id(link_info.input_node_id()),
         )

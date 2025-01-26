@@ -56,9 +56,9 @@ fn node_header_right(node: &state::Node) -> String {
             .unwrap_or_default(),
         "Stream/Output/Audio" => STATE
             .with_borrow(|state| -> Option<String> {
-                let outputs = state.links_output.get(&node.id)?;
+                let outputs = state.outputs(node.id);
                 for output in outputs {
-                    let Some(output_node) = state.nodes.get(output) else {
+                    let Some(output_node) = state.nodes.get(&output) else {
                         continue;
                     };
                     let Some(ref media_class) = output_node.media_class else {
@@ -76,9 +76,9 @@ fn node_header_right(node: &state::Node) -> String {
             .unwrap_or_default(),
         "Stream/Input/Audio" => STATE
             .with_borrow(|state| -> Option<String> {
-                let inputs = state.links_input.get(&node.id)?;
+                let inputs = state.inputs(node.id);
                 for input in inputs {
-                    let Some(input_node) = state.nodes.get(input) else {
+                    let Some(input_node) = state.nodes.get(&input) else {
                         continue;
                     };
                     let Some(ref media_class) = input_node.media_class else {

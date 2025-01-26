@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 use crate::event::MonitorEvent;
 use crate::object::ObjectId;
@@ -50,6 +49,13 @@ pub struct Node {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
+pub struct Link {
+    pub output: ObjectId,
+    pub input: ObjectId,
+}
+
+#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct Metadata {
     pub id: ObjectId,
@@ -62,8 +68,7 @@ pub struct Metadata {
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
-    pub links_output: HashMap<ObjectId, HashSet<ObjectId>>,
-    pub links_input: HashMap<ObjectId, HashSet<ObjectId>>,
+    pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
 }
@@ -130,9 +135,8 @@ impl State {
             MonitorEvent::NodeVolumes(id, volumes) => {
                 self.node_entry(id).volumes = Some(volumes);
             }
-            MonitorEvent::Link(output, input) => {
-                self.links_output.entry(output).or_default().insert(input);
-                self.links_input.entry(input).or_default().insert(output);
+            MonitorEvent::Link(id, output, input) => {
+                self.links.insert(id, Link { output, input });
             }
             MonitorEvent::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
@@ -150,8 +154,7 @@ impl State {
             MonitorEvent::Removed(id) => {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
-                self.links_output.remove(&id);
-                self.links_input.remove(&id);
+                self.links.remove(&id);
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
                         self.metadatas_by_name.remove(&metadata_name);
@@ -188,6 +191,22 @@ impl State {
             id,
             ..Default::default()
         })
+    }
+
+    pub fn outputs(&self, id: ObjectId) -> Vec<ObjectId> {
+        self.links
+            .iter()
+            .filter(|(_key, l)| l.output == id)
+            .map(|(_key, l)| l.input)
+            .collect()
+    }
+
+    pub fn inputs(&self, id: ObjectId) -> Vec<ObjectId> {
+        self.links
+            .iter()
+            .filter(|(_key, l)| l.input == id)
+            .map(|(_key, l)| l.output)
+            .collect()
     }
 }
 
