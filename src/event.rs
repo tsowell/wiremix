@@ -23,6 +23,7 @@ pub enum MonitorEvent {
     NodeMediaName(ObjectId, String),
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),
+    NodeObjectSerial(ObjectId, i32),
     NodePeaks(ObjectId, Vec<f32>),
     NodePositions(ObjectId, Vec<u32>),
     NodeVolumes(ObjectId, Vec<f32>),

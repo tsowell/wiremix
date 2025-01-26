@@ -126,6 +126,12 @@ fn node_info_props(
             ));
         }
     }
+
+    if let Some(object_serial) = props.get("object.serial") {
+        if let Ok(object_serial) = object_serial.parse() {
+            sender.send(MonitorEvent::NodeObjectSerial(id, object_serial));
+        }
+    }
 }
 
 fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorEvent> {

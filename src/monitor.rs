@@ -234,8 +234,7 @@ fn monitor_pipewire(
                 };
 
                 if is_capture_enabled && obj.type_ == ObjectType::Node {
-                    let result =
-                        stream::capture_node(&core, obj, &sender, obj_id);
+                    let result = stream::capture_object(&core, &sender, obj);
                     if let Some((stream, listener)) = result {
                         streams
                             .borrow_mut()

@@ -42,6 +42,7 @@ pub struct Node {
     pub description: Option<String>,
     pub media_class: Option<String>,
     pub media_name: Option<String>,
+    pub object_serial: Option<i32>,
     pub volumes: Option<Vec<f32>>,
     pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
@@ -116,6 +117,9 @@ impl State {
             }
             MonitorEvent::NodeNick(id, nick) => {
                 self.node_entry(id).nick = Some(nick);
+            }
+            MonitorEvent::NodeObjectSerial(id, object_serial) => {
+                self.node_entry(id).object_serial = Some(object_serial);
             }
             MonitorEvent::NodePeaks(id, peaks) => {
                 self.node_entry(id).peaks = Some(peaks);

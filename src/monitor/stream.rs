@@ -26,12 +26,13 @@ pub struct StreamData {
     cursor_move: bool,
 }
 
-pub fn capture_node(
+pub fn capture_object(
     core: &Core,
-    obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
-    obj_id: ObjectId,
+    obj: &GlobalObject<&DictRef>,
 ) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
+    let obj_id = ObjectId::from(obj);
+
     let props = obj.props?;
     let media_class = props.get("media.class")?;
     match media_class {
@@ -43,13 +44,23 @@ pub fn capture_node(
     }
 
     let serial = props.get("object.serial")?;
+
+    capture_node(core, sender, obj_id, serial, media_class == "Audio/Sink")
+}
+
+pub fn capture_node(
+    core: &Core,
+    sender: &Rc<EventSender>,
+    obj_id: ObjectId,
+    serial: &str,
+    capture_sink: bool,
+) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
     let mut props = properties! {
         *pipewire::keys::TARGET_OBJECT => serial.to_string(),
         *pipewire::keys::STREAM_MONITOR => "true",
         *pipewire::keys::NODE_NAME => "pwmixer-capture",
     };
-
-    if media_class == "Audio/Sink" {
+    if capture_sink {
         props.insert(*pipewire::keys::STREAM_CAPTURE_SINK, "true");
     }
 
