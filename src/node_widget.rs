@@ -84,11 +84,13 @@ fn node_header_right(node: &state::Node) -> String {
                     let Some(ref media_class) = input_node.media_class else {
                         continue;
                     };
-                    if media_class != "Audio/Source" {
-                        continue;
+                    if media_class == "Audio/Source" {
+                        let description = input_node.description.as_ref()?;
+                        return Some(description.to_owned());
+                    } else if media_class == "Audio/Sink" {
+                        let description = input_node.description.as_ref()?;
+                        return Some(format!("Monitor of {}", description));
                     };
-                    let description = input_node.description.as_ref()?;
-                    return Some(description.to_owned());
                 }
 
                 None
