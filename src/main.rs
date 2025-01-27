@@ -46,11 +46,11 @@ fn main() -> Result<()> {
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     if opt.dump_events {
-        stdout().execute(EnableMouseCapture)?;
+        //stdout().execute(EnableMouseCapture)?;
         crossterm::terminal::enable_raw_mode()?;
         let _guard = scopeguard::guard((), |_| {
             let _ = crossterm::terminal::disable_raw_mode();
-            let _ = stdout().execute(DisableMouseCapture);
+            //let _ = stdout().execute(DisableMouseCapture);
         });
         for received in event_rx {
             use crossterm::event::{
@@ -63,6 +63,17 @@ fn main() -> Result<()> {
                     code: KeyCode::Char('q'),
                     ..
                 })) => break,
+                Event::Input(CrosstermEvent::Key(KeyEvent {
+                    code: KeyCode::Char('t'),
+                    ..
+                })) => {
+                    let _ = command_tx.send(Command::DeviceVolumes(
+                        pwmixer::object::ObjectId::from_raw_id(45),
+                        3,
+                        14,
+                        vec![0.0, 0.0],
+                    ));
+                }
                 event => {
                     print!("{:?}\r\n", event);
                 }
@@ -73,7 +84,7 @@ fn main() -> Result<()> {
     } else {
         stdout().execute(EnableMouseCapture)?;
         let mut terminal = ratatui::init();
-        let app_result = app::App::new(event_rx).run(&mut terminal);
+        let app_result = app::App::new(command_tx, event_rx).run(&mut terminal);
         ratatui::restore();
         stdout().execute(DisableMouseCapture)?;
 

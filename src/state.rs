@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::command::Command;
 use crate::event::MonitorEvent;
 use crate::object::ObjectId;
 
@@ -74,7 +75,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn update(&mut self, event: MonitorEvent) {
+    pub fn update(&mut self, event: MonitorEvent) -> Option<Command> {
         match event {
             MonitorEvent::DeviceDescription(id, description) => {
                 self.device_entry(id).description = Some(description);
@@ -136,7 +137,10 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorEvent::Link(id, output, input) => {
+                // Do we need to restart capture?
+                let command = self.restart_capture_command(output, input);
                 self.links.insert(id, Link { output, input });
+                return command;
             }
             MonitorEvent::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
@@ -162,6 +166,8 @@ impl State {
                 }
             }
         }
+
+        None
     }
 
     pub fn get_metadata_by_name(
@@ -207,6 +213,29 @@ impl State {
             .filter(|(_key, l)| l.input == id)
             .map(|(_key, l)| l.output)
             .collect()
+    }
+
+    fn restart_capture_command(
+        &self,
+        output: ObjectId,
+        input: ObjectId,
+    ) -> Option<Command> {
+        let node = self.nodes.get(&input)?;
+        if node
+            .media_class
+            .as_ref()
+            .is_some_and(|c| c != "Stream/Input/Audio")
+        {
+            return None;
+        }
+        let object_serial = &node.object_serial?;
+
+        // Is this a change of inputs?
+        if self.inputs(input).contains(&output) {
+            return None;
+        }
+
+        Some(Command::NodeCapture(node.id, *object_serial, false))
     }
 }
 

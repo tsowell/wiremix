@@ -1,7 +1,9 @@
-use crate::command::Command;
-use crate::monitor::ProxyRegistry;
+use std::rc::Rc;
 
-use pipewire::{device::Device, node::Node};
+use crate::command::Command;
+use crate::monitor::{stream, EventSender, ProxyRegistry, StreamRegistry};
+
+use pipewire::{core::Core, device::Device, node::Node};
 
 use libspa::param::ParamType;
 use libspa::pod::{
@@ -9,7 +11,13 @@ use libspa::pod::{
     ValueArray,
 };
 
-pub fn execute_command(proxies: &ProxyRegistry, command: Command) {
+pub fn execute_command(
+    core: &Core,
+    sender: Rc<EventSender>,
+    streams: &mut StreamRegistry<stream::StreamData>,
+    proxies: &ProxyRegistry,
+    command: Command,
+) {
     match command {
         Command::NodeVolumes(obj_id, volumes) => {
             if let Some(node) = proxies.get_node(obj_id) {
@@ -19,6 +27,18 @@ pub fn execute_command(proxies: &ProxyRegistry, command: Command) {
         Command::DeviceVolumes(obj_id, route_index, route_device, volumes) => {
             if let Some(device) = proxies.get_device(obj_id) {
                 device_set_volumes(device, route_index, route_device, volumes);
+            }
+        }
+        Command::NodeCapture(obj_id, object_serial, capture_sink) => {
+            let result = stream::capture_node(
+                core,
+                &sender,
+                obj_id,
+                &object_serial.to_string(),
+                capture_sink,
+            );
+            if let Some((stream, listener)) = result {
+                streams.add_stream(obj_id, stream, listener);
             }
         }
     }

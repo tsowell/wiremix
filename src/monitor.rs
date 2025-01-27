@@ -116,7 +116,7 @@ fn monitor_pipewire(
             *pipewire::keys::REMOTE_NAME => remote
         }
     });
-    let core = context.connect(props)?;
+    let core = Rc::new(context.connect(props)?);
 
     let fd = shutdown_fd.as_raw_fd();
     let _shutdown_watch =
@@ -160,9 +160,24 @@ fn monitor_pipewire(
         .add_listener_local()
         .global({
             let proxies = Rc::clone(&proxies);
+            let core_weak = Rc::downgrade(&core);
+            let sender_weak = Rc::downgrade(&sender);
+            let streams_weak = Rc::downgrade(&streams);
             move |obj| {
                 let obj_id = ObjectId::from(obj);
                 let Some(registry) = registry_weak.upgrade() else {
+                    return;
+                };
+
+                let Some(core) = core_weak.upgrade() else {
+                    return;
+                };
+
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+
+                let Some(streams) = streams_weak.upgrade() else {
                     return;
                 };
 
@@ -271,8 +286,28 @@ fn monitor_pipewire(
         .register();
 
     let proxies = Rc::clone(&proxies);
-    let _receiver = rx.attach(main_loop.loop_(), move |command| {
-        execute::execute_command(&Rc::clone(&proxies).borrow(), command);
+    let _receiver = rx.attach(main_loop.loop_(), {
+        let core_weak = Rc::downgrade(&core);
+        let sender_weak = Rc::downgrade(&sender);
+        let streams_weak = Rc::downgrade(&streams);
+        move |command| {
+            let Some(core) = core_weak.upgrade() else {
+                return;
+            };
+            let Some(sender) = sender_weak.upgrade() else {
+                return;
+            };
+            let Some(streams) = streams_weak.upgrade() else {
+                return;
+            };
+            execute::execute_command(
+                &core,
+                sender,
+                &mut streams.borrow_mut(),
+                &Rc::clone(&proxies).borrow(),
+                command,
+            );
+        }
     });
 
     main_loop.run();

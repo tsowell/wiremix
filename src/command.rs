@@ -5,4 +5,5 @@ use crate::object::ObjectId;
 pub enum Command {
     NodeVolumes(ObjectId, Vec<f32>),
     DeviceVolumes(ObjectId, i32, i32, Vec<f32>),
+    NodeCapture(ObjectId, i32, bool),
 }
