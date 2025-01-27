@@ -49,7 +49,6 @@ pub struct App {
     exit: bool,
     tx: pipewire::channel::Sender<Command>,
     rx: mpsc::Receiver<Event>,
-    log: Vec<String>,
     error_message: Option<String>,
     tabs: Vec<Tab>,
     selected_tab_index: usize,
@@ -95,7 +94,6 @@ impl App {
             exit: Default::default(),
             tx,
             rx,
-            log: Default::default(),
             error_message: Default::default(),
             tabs,
             selected_tab_index: Default::default(),
@@ -156,7 +154,6 @@ impl App {
             }
             Ok(())
         } else if let Event::Monitor(event) = event {
-            self.log.push(format!("{:?}", event));
             // Do we need to restart capture?
             if let MonitorEvent::Link(_, output, input) = event {
                 if let Some(command) = STATE
