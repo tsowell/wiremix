@@ -17,7 +17,7 @@ use crossterm::event::{
 };
 
 use crate::command::Command;
-use crate::event::Event;
+use crate::event::{Event, MonitorEvent};
 use crate::named_constraints::with_named_constraints;
 use crate::node_list::NodeList;
 use crate::state;
@@ -137,20 +137,16 @@ impl App {
 
     fn handle_events(&mut self) -> Result<()> {
         // Block on getting the next event.
-        if let Some(command) = self.handle_event(self.rx.recv()?)? {
-            let _ = self.tx.send(command);
-        }
+        self.handle_event(self.rx.recv()?)?;
         // Then handle the rest that are available.
         while let Ok(event) = self.rx.try_recv() {
-            if let Some(command) = self.handle_event(event)? {
-                let _ = self.tx.send(command);
-            }
+            self.handle_event(event)?;
         }
 
         Ok(())
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<Option<Command>> {
+    fn handle_event(&mut self, event: Event) -> Result<()> {
         if let Event::Input(event) = event {
             self.handle_input_event(event)
         } else if let Event::Error(error) = event {
@@ -158,19 +154,27 @@ impl App {
                 error if error.starts_with("no global ") => {}
                 _ => self.exit(Some(error)),
             }
-            Ok(None)
+            Ok(())
         } else if let Event::Monitor(event) = event {
             self.log.push(format!("{:?}", event));
-            Ok(STATE.with_borrow_mut(|s| s.update(event)))
+            // Do we need to restart capture?
+            if let MonitorEvent::Link(_, output, input) = event {
+                if let Some(command) = STATE
+                    .with_borrow(|s| s.restart_capture_command(output, input))
+                {
+                    let _ = self.tx.send(command);
+                }
+            }
+
+            STATE.with_borrow_mut(|s| s.update(event));
+
+            Ok(())
         } else {
-            Ok(None)
+            Ok(())
         }
     }
 
-    fn handle_input_event(
-        &mut self,
-        event: CrosstermEvent,
-    ) -> Result<Option<Command>> {
+    fn handle_input_event(&mut self, event: CrosstermEvent) -> Result<()> {
         match event {
             CrosstermEvent::Key(key_event)
                 if key_event.kind == KeyEventKind::Press =>
@@ -186,7 +190,7 @@ impl App {
             _ => (),
         };
 
-        Ok(None)
+        Ok(())
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {

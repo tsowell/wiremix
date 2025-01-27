@@ -137,10 +137,7 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorEvent::Link(id, output, input) => {
-                // Do we need to restart capture?
-                let command = self.restart_capture_command(output, input);
                 self.links.insert(id, Link { output, input });
-                return command;
             }
             MonitorEvent::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
@@ -215,7 +212,7 @@ impl State {
             .collect()
     }
 
-    fn restart_capture_command(
+    pub fn restart_capture_command(
         &self,
         output: ObjectId,
         input: ObjectId,
