@@ -134,12 +134,8 @@ fn monitor_pipewire(
     let _core_listener = core
         .add_listener_local()
         .error({
-            let main_loop_weak = main_loop.downgrade();
             let sender_weak = Rc::downgrade(&sender);
             move |_id, _seq, _res, message| {
-                if let Some(main_loop) = main_loop_weak.upgrade() {
-                    main_loop.quit();
-                }
                 if let Some(sender) = sender_weak.upgrade() {
                     sender.send_error(message.to_string());
                 };
