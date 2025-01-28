@@ -147,8 +147,29 @@ fn monitor_pipewire(
     let registry_weak = Rc::downgrade(&registry);
 
     // Proxies and their listeners need to stay alive so store them here
-    let proxies = Rc::new(RefCell::new(ProxyRegistry::new()));
-    let streams = Rc::new(RefCell::new(StreamRegistry::new()));
+    let proxies = Rc::new(RefCell::new(ProxyRegistry::try_new()?));
+    let _proxy_gc_watch = main_loop.loop_().add_io(
+        proxies.borrow().gc_fd().as_raw_fd(),
+        libspa::support::system::IoFlags::IN,
+        {
+            let proxies = Rc::clone(&proxies);
+            move |_status| {
+                proxies.borrow_mut().collect_garbage();
+            }
+        },
+    );
+
+    let streams = Rc::new(RefCell::new(StreamRegistry::try_new()?));
+    let _streams_gc_watch = main_loop.loop_().add_io(
+        streams.borrow().gc_fd().as_raw_fd(),
+        libspa::support::system::IoFlags::IN,
+        {
+            let streams = Rc::clone(&streams);
+            move |_status| {
+                streams.borrow_mut().collect_garbage();
+            }
+        },
+    );
 
     let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
 

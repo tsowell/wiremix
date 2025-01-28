@@ -149,7 +149,10 @@ impl App {
             self.handle_input_event(event)
         } else if let Event::Error(error) = event {
             match error {
+                // These happen when objects are removed while the monitor is
+                // still in the process of setting up listeners.
                 error if error.starts_with("no global ") => {}
+                error if error.starts_with("unknown resource ") => {}
                 _ => self.exit(Some(error)),
             }
             Ok(())
