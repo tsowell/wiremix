@@ -33,14 +33,21 @@ impl NodeList {
         }
     }
 
+    fn filtered_nodes<'a>(
+        &self,
+        state: &'a state::State,
+    ) -> Vec<&'a state::Node> {
+        state
+            .nodes
+            .values()
+            .filter(|node| (self.filter)(node))
+            .sorted_by_key(|node| node.id)
+            .collect()
+    }
+
     fn move_selected(&mut self, movement: impl Fn(usize) -> usize) {
         STATE.with_borrow(|state| -> Option<()> {
-            let nodes: Vec<&state::Node> = state
-                .nodes
-                .values()
-                .filter(|node| (self.filter)(node))
-                .sorted_by_key(|node| node.id)
-                .collect();
+            let nodes = self.filtered_nodes(state);
 
             // TODO cache the selected index
             let new_selected_index = match self.selected {
@@ -72,12 +79,7 @@ impl NodeList {
     pub fn update(&mut self, area: Rect) {
         let nodes_visible = (area.height / NodeWidget::height()) as usize;
         STATE.with_borrow(|state| -> Option<()> {
-            let nodes: Vec<&state::Node> = state
-                .nodes
-                .values()
-                .filter(|node| (self.filter)(node))
-                .sorted_by_key(|node| node.id)
-                .collect();
+            let nodes = self.filtered_nodes(state);
 
             // If nodes were removed and the viewport is now below the visible
             // nodes, move the viewport up so that the bottom of the node list
