@@ -139,7 +139,7 @@ impl<'a> NodeWidget<'a> {
 impl<'a> Widget for NodeWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let style = if self.selected {
-            Style::default().fg(Color::Yellow)
+            Style::default().fg(Color::Green)
         } else {
             Style::default()
         };
@@ -249,7 +249,7 @@ impl<'a> Widget for NodeWidget<'a> {
                 let blank = "╌".repeat(volume_bar.width as usize - count);
                 Line::from(vec![
                     Span::styled(filled, Style::default().fg(Color::Blue)),
-                    Span::styled(blank, Style::default().fg(Color::Blue)),
+                    Span::styled(blank, Style::default().fg(Color::DarkGray)),
                 ])
                 .render(volume_bar, buf);
             }

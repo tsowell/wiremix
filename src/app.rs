@@ -293,7 +293,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
         for (i, tab) in self.tabs.iter().enumerate() {
             let style = if i == self.selected_tab_index {
-                Style::default().fg(Color::Yellow)
+                Style::default().fg(Color::Green)
             } else {
                 Style::default()
             };
