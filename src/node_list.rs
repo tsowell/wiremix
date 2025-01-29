@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crate::app::STATE;
+use crate::command::Command;
 use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
@@ -31,6 +32,39 @@ impl NodeList {
             selected: None,
             filter,
         }
+    }
+
+    pub fn volume(
+        &self,
+        change: impl FnOnce(f32) -> f32,
+    ) -> Option<Command> {
+        let node_id = self.selected?;
+
+        STATE.with_borrow(|state| {
+            let node = state.nodes.get(&node_id)?;
+            let mut volumes = node.volumes.clone()?;
+            if volumes.is_empty() {
+                return None;
+            }
+
+            let avg = volumes.iter().sum::<f32>() / volumes.len() as f32;
+            volumes.fill(change(avg.cbrt()).max(0.0).powi(3));
+
+            if let Some(device_id) = node.device_id {
+                let device = state.devices.get(&device_id)?;
+                let route_index = device.route_index?;
+                let route_device = device.route_device?;
+
+                Some(Command::DeviceVolumes(
+                    device_id,
+                    route_index,
+                    route_device,
+                    volumes,
+                ))
+            } else {
+                Some(Command::NodeVolumes(node_id, volumes))
+            }
+        })
     }
 
     fn filtered_nodes<'a>(

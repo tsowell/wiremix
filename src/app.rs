@@ -195,6 +195,22 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
+            KeyCode::Char('l') => {
+                if let Some(command) = self.tabs[self.selected_tab_index]
+                    .list
+                    .volume(|volume| volume + 0.01)
+                {
+                    let _ = self.tx.send(command);
+                }
+            }
+            KeyCode::Char('h') => {
+                if let Some(command) = self.tabs[self.selected_tab_index]
+                    .list
+                    .volume(|volume| volume - 0.01)
+                {
+                    let _ = self.tx.send(command);
+                }
+            }
             KeyCode::Char('q') => self.exit(None),
             KeyCode::Char('j') => {
                 self.tabs[self.selected_tab_index].list.down()
