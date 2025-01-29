@@ -193,29 +193,29 @@ impl App {
         Ok(())
     }
 
+    fn selected_list(&mut self) -> &mut NodeList {
+        &mut self.tabs[self.selected_tab_index].list
+    }
+
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('l') => {
-                if let Some(command) = self.tabs[self.selected_tab_index]
-                    .list
-                    .volume(|volume| volume + 0.01)
+                if let Some(command) =
+                    self.selected_list().volume(|volume| volume + 0.01)
                 {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('h') => {
-                if let Some(command) = self.tabs[self.selected_tab_index]
-                    .list
-                    .volume(|volume| volume - 0.01)
+                if let Some(command) =
+                    self.selected_list().volume(|volume| volume - 0.01)
                 {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('q') => self.exit(None),
-            KeyCode::Char('j') => {
-                self.tabs[self.selected_tab_index].list.down()
-            }
-            KeyCode::Char('k') => self.tabs[self.selected_tab_index].list.up(),
+            KeyCode::Char('j') => self.selected_list().down(),
+            KeyCode::Char('k') => self.selected_list().up(),
             KeyCode::Char('H') => {
                 self.selected_tab_index =
                     self.selected_tab_index.checked_sub(1).unwrap_or(4)
