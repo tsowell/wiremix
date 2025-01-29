@@ -215,7 +215,7 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
 }
 
 fn device_info_props(
-    sender: &Rc<EventSender>,
+    sender: &EventSender,
     id: ObjectId,
     device_info: &DeviceInfoRef,
 ) {

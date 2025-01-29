@@ -91,7 +91,7 @@ pub fn monitor_node(
 }
 
 fn node_info_props(
-    sender: &Rc<EventSender>,
+    sender: &EventSender,
     id: ObjectId,
     node_info: &NodeInfoRef,
 ) {

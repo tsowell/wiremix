@@ -39,7 +39,7 @@ pub fn monitor_link(
     Some((link, Box::new(listener)))
 }
 
-fn link_info_props(sender: &Rc<EventSender>, link_info: &LinkInfoRef) {
+fn link_info_props(sender: &EventSender, link_info: &LinkInfoRef) {
     // Ignore props and get the nodes directly from the link info.
     sender.send(MonitorEvent::from(link_info));
 }
