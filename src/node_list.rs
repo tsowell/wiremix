@@ -188,11 +188,9 @@ impl Widget for &NodeList {
             let node_height = NodeWidget::height();
             let nodes_visible = (list_area.height / node_height) as usize;
 
-            let nodes = state
-                .nodes
-                .values()
-                .filter(|node| (self.filter)(node))
-                .sorted_by_key(|node| node.id)
+            let all_nodes = self.filtered_nodes(state);
+            let nodes = all_nodes
+                .iter()
                 .skip(self.top)
                 // Take one extra so we can render a partial node at the bottom
                 // of the area.
@@ -213,10 +211,10 @@ impl Widget for &NodeList {
             // rendered but still has all the important parts rendered,
             // excluding margins, etc.
             let is_bottom_last =
-                self.top + nodes_visible == state.nodes.len().saturating_sub(1);
+                self.top + nodes_visible == all_nodes.len().saturating_sub(1);
             let is_bottom_enough = (list_area.height % node_height)
                 >= NodeWidget::important_height();
-            if self.top + nodes_visible < state.nodes.len()
+            if self.top + nodes_visible < all_nodes.len()
                 && !(is_bottom_last && is_bottom_enough)
             {
                 Line::from(Span::styled(
