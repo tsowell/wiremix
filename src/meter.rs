@@ -84,24 +84,9 @@ pub fn render_stereo(
 }
 
 pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
-    let mut meter_head = Default::default();
-    let mut meter_rest = Default::default();
-    with_named_constraints!(
-        [
-            (Constraint::Length(2), Some(&mut meter_head)),
-            (Constraint::Min(0), Some(&mut meter_rest)),
-        ],
-        |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(meter_area)
-        }
-    );
-
     let mono_peak = peak.unwrap_or_default();
 
-    let area = meter_rest;
+    let area = meter_area;
     let (lit_peak, hilit_peak, unlit_peak) = render_peak(mono_peak, area);
     Line::from(vec![
         Span::styled(lit_peak, Style::default().fg(Color::LightGreen)),
@@ -109,15 +94,4 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
     ])
     .render(area, buf);
-
-    let center_color = if peak.is_some() {
-        Color::LightGreen
-    } else {
-        Color::DarkGray
-    };
-    Line::from(Span::styled(
-        "■".to_string(),
-        Style::default().fg(center_color),
-    ))
-    .render(meter_head, buf);
 }
