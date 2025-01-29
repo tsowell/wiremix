@@ -133,7 +133,8 @@ impl NodeList {
 
     /// Reconciles changes to nodes, viewport, and selection.
     pub fn update(&mut self, area: Rect) {
-        let nodes_visible = (area.height / NodeWidget::height()) as usize;
+        let (_, list_area, _) = self.areas(&area);
+        let nodes_visible = (list_area.height / NodeWidget::height()) as usize;
         STATE.with_borrow(|state| -> Option<()> {
             let nodes = self.filtered_nodes(state);
 
@@ -163,27 +164,33 @@ impl NodeList {
             Some(())
         });
     }
+
+    fn areas(&self, area: &Rect) -> (Rect, Rect, Rect) {
+        let mut header_area = Default::default();
+        let mut list_area = Default::default();
+        let mut footer_area = Default::default();
+        with_named_constraints!(
+            [
+                (Constraint::Length(1), Some(&mut header_area)),
+                (Constraint::Min(0), Some(&mut list_area)),
+                (Constraint::Length(1), Some(&mut footer_area)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(constraints)
+                    .split(*area)
+            }
+        );
+
+        (header_area, list_area, footer_area)
+    }
 }
 
 impl Widget for &NodeList {
     fn render(self, area: Rect, buf: &mut Buffer) {
         STATE.with_borrow(|state| {
-            let mut header_area = Default::default();
-            let mut list_area = Default::default();
-            let mut footer_area = Default::default();
-            with_named_constraints!(
-                [
-                    (Constraint::Length(1), Some(&mut header_area)),
-                    (Constraint::Min(0), Some(&mut list_area)),
-                    (Constraint::Length(1), Some(&mut footer_area)),
-                ],
-                |constraints| {
-                    Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints(constraints)
-                        .split(area)
-                }
-            );
+            let (header_area, list_area, footer_area) = self.areas(&area);
 
             let node_height = NodeWidget::height();
             let nodes_visible = (list_area.height / node_height) as usize;
