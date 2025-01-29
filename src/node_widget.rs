@@ -32,9 +32,24 @@ fn is_default(node: &state::Node) -> bool {
 
 fn node_header_left(node: &state::Node) -> String {
     let default_string = if is_default(node) { "⯁ " } else { "" };
-    let title = match (&node.description, &node.name, &node.media_name) {
-        (_, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
-        (Some(description), _, _) => description.clone(),
+    let title = match (
+        &node.media_class,
+        &node.description,
+        &node.name,
+        &node.media_name,
+    ) {
+        (Some(media_class), _, _, Some(media_name))
+            if media_class == "Audio/Source" =>
+        {
+            media_name.clone()
+        }
+        (Some(media_class), _, _, Some(media_name))
+            if media_class == "Audio/Sink" =>
+        {
+            media_name.clone()
+        }
+        (_, _, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
+        (_, Some(description), _, _) => description.clone(),
         _ => String::new(),
     };
     format!("{}{}", default_string, title)
