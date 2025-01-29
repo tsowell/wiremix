@@ -241,7 +241,9 @@ impl<'a> Widget for NodeWidget<'a> {
                     .alignment(Alignment::Right)
                     .render(volume_label, buf);
 
-                let count = ((volume / 1.5) * volume_bar.width as f32) as usize;
+                let count = ((volume.clamp(0.0, 1.5) / 1.5)
+                    * volume_bar.width as f32)
+                    as usize;
 
                 let filled = "━".repeat(count);
                 let blank = "╌".repeat(volume_bar.width as usize - count);
