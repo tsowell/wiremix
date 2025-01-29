@@ -6,4 +6,5 @@ pub enum Command {
     NodeVolumes(ObjectId, Vec<f32>),
     DeviceVolumes(ObjectId, i32, i32, Vec<f32>),
     NodeCapture(ObjectId, i32, bool),
+    MetadataSetProperty(ObjectId, u32, String, Option<String>, Option<String>),
 }

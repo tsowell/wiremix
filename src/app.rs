@@ -199,6 +199,11 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
+            KeyCode::Char('d') => {
+                if let Some(command) = self.selected_list().set_default() {
+                    let _ = self.tx.send(command);
+                }
+            }
             KeyCode::Char('l') => {
                 if let Some(command) =
                     self.selected_list().volume(|volume| volume + 0.01)

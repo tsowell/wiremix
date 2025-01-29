@@ -1,5 +1,7 @@
 use itertools::Itertools;
 
+use serde_json::json;
+
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -34,10 +36,30 @@ impl NodeList {
         }
     }
 
-    pub fn volume(
-        &self,
-        change: impl FnOnce(f32) -> f32,
-    ) -> Option<Command> {
+    pub fn set_default(&self) -> Option<Command> {
+        let node_id = self.selected?;
+
+        STATE.with_borrow(|state| {
+            let node = state.nodes.get(&node_id)?;
+            let name = node.name.clone()?;
+            let key = match node.media_class.as_ref()?.as_str() {
+                "Audio/Sink" => Some("default.configured.audio.sink"),
+                "Audio/Source" => Some("default.configured.audio.source"),
+                _ => None,
+            }?;
+            let metadata_id = state.metadatas_by_name.get("default")?;
+
+            Some(Command::MetadataSetProperty(
+                *metadata_id,
+                0,
+                String::from(key),
+                Some(String::from("Spa:String:JSON")),
+                Some(json!({ "name": name }).to_string()),
+            ))
+        })
+    }
+
+    pub fn volume(&self, change: impl FnOnce(f32) -> f32) -> Option<Command> {
         let node_id = self.selected?;
 
         STATE.with_borrow(|state| {

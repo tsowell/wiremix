@@ -41,6 +41,16 @@ pub fn execute_command(
                 streams.add_stream(obj_id, stream, listener);
             }
         }
+        Command::MetadataSetProperty(obj_id, subject, key, type_, value) => {
+            if let Some(metadata) = proxies.get_metadata(obj_id) {
+                metadata.set_property(
+                    subject,
+                    &key,
+                    type_.as_deref(),
+                    value.as_deref(),
+                );
+            }
+        }
     }
 }
 
