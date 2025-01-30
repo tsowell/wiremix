@@ -26,8 +26,11 @@ fn is_default_for(node: &state::Node, which: &str) -> bool {
 }
 
 fn is_default(node: &state::Node) -> bool {
-    is_default_for(node, "default.audio.sink")
-        || is_default_for(node, "default.audio.source")
+    match node.media_class.as_ref().map(String::as_str) {
+        Some("Audio/Sink") => is_default_for(node, "default.audio.sink"),
+        Some("Audio/Source") => is_default_for(node, "default.audio.source"),
+        _ => false
+    }
 }
 
 fn node_header_left(node: &state::Node) -> String {
