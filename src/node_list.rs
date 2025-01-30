@@ -273,7 +273,8 @@ mod tests {
     fn node_list_up_overflow() {
         init();
 
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3);
+        // + 2 for header and footer
+        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
         let mut node_list = NodeList::new(Box::new(|_node| true));
 
         node_list.up();
@@ -286,7 +287,8 @@ mod tests {
     fn node_list_down_overflow() {
         init();
 
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3);
+        // + 2 for header and footer
+        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
         let mut node_list = NodeList::new(Box::new(|_node| true));
 
         let nodes_len =
@@ -305,7 +307,8 @@ mod tests {
     fn node_list_remove_last_nodes() {
         init();
 
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3);
+        // + 2 for header and footer
+        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
         let mut node_list = NodeList::new(Box::new(|_node| true));
 
         let nodes_len =
