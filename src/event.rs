@@ -15,7 +15,7 @@ pub enum MonitorEvent {
     DeviceRoute(ObjectId, i32, i32),
 
     MetadataMetadataName(ObjectId, String),
-    MetadataProperty(ObjectId, String, Option<String>),
+    MetadataProperty(ObjectId, u32, Option<String>, Option<String>),
 
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),

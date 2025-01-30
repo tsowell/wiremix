@@ -36,23 +36,15 @@ pub fn monitor_metadata(
         .add_listener_local()
         .property({
             let sender_weak = Rc::downgrade(sender);
-            move |_subject, key, _type, value| {
+            move |subject, key, _type, value| {
                 let Some(sender) = sender_weak.upgrade() else {
-                    return 0;
-                };
-                match key {
-                    Some("default.audio.sink") => {}
-                    Some("default.audio.source") => {}
-                    None => sender.send(MonitorEvent::Removed(obj_id)),
-                    _ => return 0,
-                }
-                let Some(key) = key else {
                     return 0;
                 };
 
                 sender.send(MonitorEvent::MetadataProperty(
                     obj_id,
-                    key.to_string(),
+                    subject,
+                    key.map(str::to_string),
                     value.map(str::to_string),
                 ));
 

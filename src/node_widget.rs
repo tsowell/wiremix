@@ -16,7 +16,7 @@ fn is_default_for(node: &state::Node, which: &str) -> bool {
     STATE
         .with_borrow(|state| -> Option<bool> {
             let metadata = state.get_metadata_by_name("default")?;
-            let json = metadata.properties.get(which)?;
+            let json = metadata.properties.get(&0)?.get(which)?;
             let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
             let default_name = obj["name"].as_str()?;
             let node_name = node.name.as_ref()?;

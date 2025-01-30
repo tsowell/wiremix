@@ -61,7 +61,8 @@ pub struct Link {
 pub struct Metadata {
     pub id: ObjectId,
     pub metadata_name: Option<String>,
-    pub properties: HashMap<String, String>,
+    // Properties for each subject
+    pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
 #[allow(dead_code)]
@@ -144,12 +145,20 @@ impl State {
                     Some(metadata_name.clone());
                 self.metadatas_by_name.insert(metadata_name, id);
             }
-            MonitorEvent::MetadataProperty(id, key, value) => {
-                match value {
-                    Some(value) => {
-                        self.metadata_entry(id).properties.insert(key, value)
+            MonitorEvent::MetadataProperty(id, _subject, key, value) => {
+                let properties = self
+                    .metadata_entry(id)
+                    .properties
+                    .entry(_subject)
+                    .or_default();
+                match key {
+                    Some(key) => {
+                        match value {
+                            Some(value) => properties.insert(key, value),
+                            None => properties.remove(&key),
+                        };
                     }
-                    None => self.metadata_entry(id).properties.remove(&key),
+                    None => properties.clear(),
                 };
             }
             MonitorEvent::Removed(id) => {
@@ -289,7 +298,8 @@ mod tests {
 
         state.update(MonitorEvent::MetadataProperty(
             obj_id,
-            key.clone(),
+            0,
+            Some(key.clone()),
             Some(value.clone()),
         ));
         assert_eq!(
@@ -297,10 +307,41 @@ mod tests {
             Some(&value)
         );
 
-        state.update(MonitorEvent::MetadataProperty(obj_id, key.clone(), None));
+        state.update(MonitorEvent::MetadataProperty(
+            obj_id,
+            0,
+            Some(key.clone()),
+            None,
+        ));
         assert_eq!(
             state.metadatas.get(&obj_id).unwrap().properties.get(&key),
             None
         );
+    }
+
+    #[test]
+    fn state_metadata_clear_all_properties() {
+        let mut state: State = Default::default();
+        let obj_id = ObjectId::from_raw_id(0);
+        let metadata_name = "metadata0".to_string();
+        state.update(MonitorEvent::MetadataMetadataName(
+            obj_id,
+            metadata_name.clone(),
+        ));
+
+        let key = "key".to_string();
+        let value = "value".to_string();
+
+        state.update(MonitorEvent::MetadataProperty(
+            obj_id,
+            0,
+            Some(key.clone()),
+            Some(value.clone()),
+        ));
+        assert!(!state.metadatas.get(&obj_id).unwrap().properties.is_empty());
+
+        state.update(MonitorEvent::MetadataProperty(obj_id, 0, None, None));
+
+        assert!(state.metadatas.get(&obj_id).unwrap().properties.is_empty());
     }
 }
