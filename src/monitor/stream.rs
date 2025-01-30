@@ -44,8 +44,8 @@ pub fn capture_object(
     }
 
     let serial = props.get("object.serial")?;
-
-    capture_node(core, sender, obj_id, serial, media_class == "Audio/Sink")
+    let capture_sink = matches!(media_class, "Audio/Source" | "Audio/Sink");
+    capture_node(core, sender, obj_id, serial, capture_sink)
 }
 
 pub fn capture_node(
