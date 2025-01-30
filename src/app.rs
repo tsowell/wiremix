@@ -153,6 +153,8 @@ impl App {
                 // still in the process of setting up listeners.
                 error if error.starts_with("no global ") => {}
                 error if error.starts_with("unknown resource ") => {}
+                // I see this one when disconnecting a Bluetooth sink.
+                error if error == "Received error event" => {}
                 _ => self.exit(Some(error)),
             }
             Ok(())
