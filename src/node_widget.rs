@@ -221,7 +221,7 @@ impl<'a> Widget for NodeWidget<'a> {
         let mut volume_bar = Default::default();
         with_named_constraints!(
             [
-                (Constraint::Length(4), Some(&mut volume_label)),
+                (Constraint::Length(5), Some(&mut volume_label)),
                 (Constraint::Length(1), None), // Padding
                 (Constraint::Min(0), Some(&mut volume_bar)),
             ],
@@ -256,6 +256,9 @@ impl<'a> Widget for NodeWidget<'a> {
                 ])
                 .render(volume_bar, buf);
             }
+        }
+        if let Some(true) = &self.node.mute {
+            Line::from("muted").render(volume_label, buf);
         }
 
         match self.node.peaks.as_deref() {
