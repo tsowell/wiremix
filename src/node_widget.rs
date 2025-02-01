@@ -26,10 +26,10 @@ fn is_default_for(node: &state::Node, which: &str) -> bool {
 }
 
 fn is_default(node: &state::Node) -> bool {
-    match node.media_class.as_ref().map(String::as_str) {
+    match node.media_class.as_deref() {
         Some("Audio/Sink") => is_default_for(node, "default.audio.sink"),
         Some("Audio/Source") => is_default_for(node, "default.audio.source"),
-        _ => false
+        _ => false,
     }
 }
 
