@@ -72,14 +72,14 @@ pub fn monitor_node(
                     return;
                 };
                 if let Some(param) = deserialize(param) {
-                    if let Some(event) = match id {
-                        ParamType::Props => node_param_props(obj_id, param),
-                        ParamType::PortConfig => {
-                            node_param_port_config(obj_id, param)
+                    match id {
+                        ParamType::Props => {
+                            node_param_props(&sender, obj_id, param);
                         }
-                        _ => None,
-                    } {
-                        sender.send(event);
+                        ParamType::PortConfig => {
+                            node_param_port_config(&sender, obj_id, param);
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -134,36 +134,49 @@ fn node_info_props(
     }
 }
 
-fn node_param_props(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {
     for prop in param.properties {
-        if prop.key == libspa_sys::SPA_PROP_channelVolumes {
-            if let Value::ValueArray(ValueArray::Float(value)) = prop.value {
-                return Some(MonitorEvent::NodeVolumes(id, value));
+        match prop.key {
+            libspa_sys::SPA_PROP_channelVolumes => {
+                if let Value::ValueArray(ValueArray::Float(value)) = prop.value
+                {
+                    sender.send(MonitorEvent::NodeVolumes(id, value));
+                }
             }
+            libspa_sys::SPA_PROP_mute => {
+                if let Value::Bool(value) = prop.value {
+                    sender.send(MonitorEvent::NodeMute(id, value));
+                }
+            }
+            _ => {}
         }
     }
-
-    None
 }
 
-fn node_param_port_config(id: ObjectId, param: Object) -> Option<MonitorEvent> {
-    let format_prop = param
+fn node_param_port_config(sender: &EventSender, id: ObjectId, param: Object) {
+    let Some(format_prop) = param
         .properties
         .into_iter()
-        .find(|prop| prop.key == libspa_sys::SPA_PARAM_PORT_CONFIG_format)?;
-
-    let Value::Object(Object { properties, .. }) = format_prop.value else {
-        return None;
+        .find(|prop| prop.key == libspa_sys::SPA_PARAM_PORT_CONFIG_format)
+    else {
+        return;
     };
 
-    let position_prop = properties
+    let Value::Object(Object { properties, .. }) = format_prop.value else {
+        return;
+    };
+
+    let Some(position_prop) = properties
         .into_iter()
-        .find(|prop| prop.key == libspa_sys::SPA_FORMAT_AUDIO_position)?;
+        .find(|prop| prop.key == libspa_sys::SPA_FORMAT_AUDIO_position)
+    else {
+        return;
+    };
 
     let Value::ValueArray(ValueArray::Id(value)) = position_prop.value else {
-        return None;
+        return;
     };
 
     let positions = value.into_iter().map(|x| x.0).collect();
-    Some(MonitorEvent::NodePositions(id, positions))
+    sender.send(MonitorEvent::NodePositions(id, positions));
 }

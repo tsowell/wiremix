@@ -44,6 +44,7 @@ pub struct Node {
     pub media_name: Option<String>,
     pub object_serial: Option<i32>,
     pub volumes: Option<Vec<f32>>,
+    pub mute: Option<bool>,
     pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
     pub device_id: Option<ObjectId>,
@@ -118,6 +119,9 @@ impl State {
             }
             MonitorEvent::NodeMediaName(id, media_name) => {
                 self.node_entry(id).media_name = Some(media_name);
+            }
+            MonitorEvent::NodeMute(id, mute) => {
+                self.node_entry(id).mute = Some(mute);
             }
             MonitorEvent::NodeName(id, name) => {
                 self.node_entry(id).name = Some(name);

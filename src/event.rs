@@ -27,6 +27,7 @@ pub enum MonitorEvent {
     NodePeaks(ObjectId, Vec<f32>),
     NodePositions(ObjectId, Vec<u32>),
     NodeVolumes(ObjectId, Vec<f32>),
+    NodeMute(ObjectId, bool),
 
     Link(ObjectId, ObjectId, ObjectId),
 
