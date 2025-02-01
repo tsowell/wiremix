@@ -19,6 +19,16 @@ pub fn execute_command(
     command: Command,
 ) {
     match command {
+        Command::NodeMute(obj_id, mute) => {
+            if let Some(node) = proxies.get_node(obj_id) {
+                node_set_mute(node, mute);
+            }
+        }
+        Command::DeviceMute(obj_id, route_index, route_device, mute) => {
+            if let Some(device) = proxies.get_device(obj_id) {
+                device_set_mute(device, route_index, route_device, mute);
+            }
+        }
         Command::NodeVolumes(obj_id, volumes) => {
             if let Some(node) = proxies.get_node(obj_id) {
                 node_set_volumes(node, volumes);
@@ -54,26 +64,49 @@ pub fn execute_command(
     }
 }
 
+fn node_set_mute(node: &Node, mute: bool) {
+    node_set_properties(
+        node,
+        vec![
+            Property {
+                key: libspa_sys::SPA_PROP_mute,
+                flags: PropertyFlags::empty(),
+                value: Value::Bool(mute),
+            },
+            Property {
+                key: libspa_sys::SPA_PROP_mute,
+                flags: PropertyFlags::empty(),
+                value: Value::Bool(mute),
+            },
+        ],
+    );
+}
+
 fn node_set_volumes(node: &Node, volumes: Vec<f32>) {
+    node_set_properties(
+        node,
+        vec![
+            Property {
+                key: libspa_sys::SPA_PROP_channelVolumes,
+                flags: PropertyFlags::empty(),
+                value: Value::ValueArray(ValueArray::Float(volumes.clone())),
+            },
+            Property {
+                key: libspa_sys::SPA_PROP_softVolumes,
+                flags: PropertyFlags::empty(),
+                value: Value::ValueArray(ValueArray::Float(volumes)),
+            },
+        ],
+    );
+}
+
+fn node_set_properties(node: &Node, properties: Vec<Property>) {
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
             type_: libspa_sys::SPA_TYPE_OBJECT_Props,
             id: libspa_sys::SPA_PARAM_Props,
-            properties: vec![
-                Property {
-                    key: libspa_sys::SPA_PROP_channelVolumes,
-                    flags: PropertyFlags::empty(),
-                    value: Value::ValueArray(ValueArray::Float(
-                        volumes.clone(),
-                    )),
-                },
-                Property {
-                    key: libspa_sys::SPA_PROP_softVolumes,
-                    flags: PropertyFlags::empty(),
-                    value: Value::ValueArray(ValueArray::Float(volumes)),
-                },
-            ],
+            properties,
         }),
     )
     .unwrap()
@@ -83,11 +116,61 @@ fn node_set_volumes(node: &Node, volumes: Vec<f32>) {
     node.set_param(ParamType::Props, 0, Pod::from_bytes(&values).unwrap());
 }
 
+fn device_set_mute(
+    device: &Device,
+    route_index: i32,
+    route_device: i32,
+    mute: bool,
+) {
+    device_set_properties(
+        device,
+        route_index,
+        route_device,
+        vec![
+            Property {
+                key: libspa_sys::SPA_PROP_mute,
+                flags: PropertyFlags::empty(),
+                value: Value::Bool(mute),
+            },
+            Property {
+                key: libspa_sys::SPA_PROP_mute,
+                flags: PropertyFlags::empty(),
+                value: Value::Bool(mute),
+            },
+        ],
+    );
+}
+
 fn device_set_volumes(
     device: &Device,
     route_index: i32,
     route_device: i32,
     volumes: Vec<f32>,
+) {
+    device_set_properties(
+        device,
+        route_index,
+        route_device,
+        vec![
+            Property {
+                key: libspa_sys::SPA_PROP_channelVolumes,
+                flags: PropertyFlags::empty(),
+                value: Value::ValueArray(ValueArray::Float(volumes.clone())),
+            },
+            Property {
+                key: libspa_sys::SPA_PROP_softVolumes,
+                flags: PropertyFlags::empty(),
+                value: Value::ValueArray(ValueArray::Float(volumes)),
+            },
+        ],
+    );
+}
+
+fn device_set_properties(
+    device: &Device,
+    route_index: i32,
+    route_device: i32,
+    properties: Vec<Property>,
 ) {
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
@@ -111,22 +194,7 @@ fn device_set_volumes(
                     value: Value::Object(Object {
                         type_: libspa_sys::SPA_TYPE_OBJECT_Props,
                         id: libspa_sys::SPA_PARAM_Route,
-                        properties: vec![
-                            Property {
-                                key: libspa_sys::SPA_PROP_channelVolumes,
-                                flags: PropertyFlags::empty(),
-                                value: Value::ValueArray(ValueArray::Float(
-                                    volumes.clone(),
-                                )),
-                            },
-                            Property {
-                                key: libspa_sys::SPA_PROP_softVolumes,
-                                flags: PropertyFlags::empty(),
-                                value: Value::ValueArray(ValueArray::Float(
-                                    volumes,
-                                )),
-                            },
-                        ],
+                        properties,
                     }),
                 },
                 Property {

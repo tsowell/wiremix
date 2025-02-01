@@ -59,6 +59,30 @@ impl NodeList {
         })
     }
 
+    pub fn mute(&self) -> Option<Command> {
+        let node_id = self.selected?;
+
+        STATE.with_borrow(|state| {
+            let node = state.nodes.get(&node_id)?;
+            let mute = !node.mute.unwrap_or_default();
+
+            if let Some(device_id) = node.device_id {
+                let device = state.devices.get(&device_id)?;
+                let route_index = device.route_index?;
+                let route_device = device.route_device?;
+
+                Some(Command::DeviceMute(
+                    device_id,
+                    route_index,
+                    route_device,
+                    mute,
+                ))
+            } else {
+                Some(Command::NodeMute(node_id, mute))
+            }
+        })
+    }
+
     pub fn volume(&self, change: impl FnOnce(f32) -> f32) -> Option<Command> {
         let node_id = self.selected?;
 

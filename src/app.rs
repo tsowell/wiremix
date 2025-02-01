@@ -201,6 +201,11 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
+            KeyCode::Char('m') => {
+                if let Some(command) = self.selected_list().mute() {
+                    let _ = self.tx.send(command);
+                }
+            }
             KeyCode::Char('d') => {
                 if let Some(command) = self.selected_list().set_default() {
                     let _ = self.tx.send(command);
