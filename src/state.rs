@@ -255,8 +255,11 @@ impl State {
             return None;
         }
         let object_serial = &node.object_serial?;
+        let capture_sink = node.media_class.as_ref().is_some_and(|c| {
+            matches!(c.as_str(), "Audio/Sink" | "Audio/Source")
+        });
 
-        Some(Command::NodeCapture(node.id, *object_serial, false))
+        Some(Command::NodeCapture(node.id, *object_serial, capture_sink))
     }
 }
 
