@@ -78,6 +78,21 @@ pub struct State {
 
 impl State {
     pub fn update(&mut self, event: MonitorEvent) -> Option<Command> {
+        let command = match event {
+            MonitorEvent::Link(_, output, input)
+                // Only restart if link is new.
+                if self.inputs(input).contains(&output) =>
+            {
+                self.restart_capture_command(&input)
+            }
+            MonitorEvent::Removed(id) => {
+                self.links.get(&id).and_then(|Link { input, .. }| {
+                    self.restart_capture_command(input)
+                })
+            }
+            _ => None,
+        };
+
         match event {
             MonitorEvent::DeviceDescription(id, description) => {
                 self.device_entry(id).description = Some(description);
@@ -169,6 +184,7 @@ impl State {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
                 self.links.remove(&id);
+
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
                         self.metadatas_by_name.remove(&metadata_name);
@@ -177,7 +193,7 @@ impl State {
             }
         }
 
-        None
+        command
     }
 
     pub fn get_metadata_by_name(
@@ -225,25 +241,20 @@ impl State {
             .collect()
     }
 
-    pub fn restart_capture_command(
-        &self,
-        output: ObjectId,
-        input: ObjectId,
-    ) -> Option<Command> {
-        let node = self.nodes.get(&input)?;
-        if node
-            .media_class
-            .as_ref()
-            .is_some_and(|c| c != "Stream/Input/Audio")
-        {
+    pub fn restart_capture_command(&self, input: &ObjectId) -> Option<Command> {
+        let node = self.nodes.get(input)?;
+        if node.media_class.as_ref().is_some_and(|c| {
+            !matches!(
+                c.as_str(),
+                "Audio/Sink"
+                    | "Audio/Source"
+                    | "Stream/Output/Audio"
+                    | "Stream/Input/Audio"
+            )
+        }) {
             return None;
         }
         let object_serial = &node.object_serial?;
-
-        // Is this a change of inputs?
-        if self.inputs(input).contains(&output) {
-            return None;
-        }
 
         Some(Command::NodeCapture(node.id, *object_serial, false))
     }

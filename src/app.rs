@@ -17,7 +17,7 @@ use crossterm::event::{
 };
 
 use crate::command::Command;
-use crate::event::{Event, MonitorEvent};
+use crate::event::Event;
 use crate::named_constraints::with_named_constraints;
 use crate::node_list::NodeList;
 use crate::state;
@@ -159,16 +159,9 @@ impl App {
             }
             Ok(())
         } else if let Event::Monitor(event) = event {
-            // Do we need to restart capture?
-            if let MonitorEvent::Link(_, output, input) = event {
-                if let Some(command) = STATE
-                    .with_borrow(|s| s.restart_capture_command(output, input))
-                {
-                    let _ = self.tx.send(command);
-                }
-            }
-
-            STATE.with_borrow_mut(|s| s.update(event));
+            if let Some(command) = STATE.with_borrow_mut(|s| s.update(event)) {
+                let _ = self.tx.send(command);
+            };
 
             Ok(())
         } else {
