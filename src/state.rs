@@ -81,13 +81,18 @@ impl State {
         let command = match event {
             MonitorEvent::Link(_, output, input)
                 // Only restart if link is new.
-                if self.inputs(input).contains(&output) =>
+                if !self.inputs(input).contains(&output) =>
             {
                 self.restart_capture_command(&input)
             }
             MonitorEvent::Removed(id) => {
                 self.links.get(&id).and_then(|Link { input, .. }| {
-                    self.restart_capture_command(input)
+                    if self.inputs(*input).len() == 1 {
+                        // This is the last input link.
+                        self.stop_capture_command(input)
+                    } else {
+                        None
+                    }
                 })
             }
             _ => None,
@@ -180,6 +185,10 @@ impl State {
                     None => properties.clear(),
                 };
             }
+            MonitorEvent::StreamStopped(id) => {
+                // It's likely that the node doesn't exist anymore.
+                self.nodes.entry(id).and_modify(|node| node.peaks = None);
+            }
             MonitorEvent::Removed(id) => {
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
@@ -259,7 +268,17 @@ impl State {
             matches!(c.as_str(), "Audio/Sink" | "Audio/Source")
         });
 
-        Some(Command::NodeCapture(node.id, *object_serial, capture_sink))
+        Some(Command::NodeCaptureStart(
+            node.id,
+            *object_serial,
+            capture_sink,
+        ))
+    }
+
+    pub fn stop_capture_command(&self, input: &ObjectId) -> Option<Command> {
+        let node = self.nodes.get(input)?;
+
+        Some(Command::NodeCaptureStop(node.id))
     }
 }
 

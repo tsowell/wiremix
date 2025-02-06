@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use anyhow::Result;
@@ -14,6 +14,8 @@ pub struct StreamRegistry<D> {
     listeners: HashMap<ObjectId, Vec<StreamListener<D>>>,
     garbage_streams: Vec<Rc<Stream>>,
     garbage_listeners: Vec<StreamListener<D>>,
+    // Track garbage node IDs so we can report on who was collected.
+    garbage_ids: HashSet<ObjectId>,
     gc_fd: EventFd,
 }
 
@@ -33,6 +35,7 @@ impl<D> StreamRegistry<D> {
             listeners: HashMap::new(),
             garbage_streams: Default::default(),
             garbage_listeners: Default::default(),
+            garbage_ids: Default::default(),
             gc_fd,
         })
     }
@@ -41,10 +44,11 @@ impl<D> StreamRegistry<D> {
         &self.gc_fd
     }
 
-    pub fn collect_garbage(&mut self) {
+    pub fn collect_garbage(&mut self) -> Vec<ObjectId> {
         self.garbage_listeners.clear();
         self.garbage_streams.clear();
         let _ = self.gc_fd.read();
+        self.garbage_ids.drain().collect()
     }
 
     pub fn add_stream(
@@ -69,11 +73,13 @@ impl<D> StreamRegistry<D> {
         if let Some(stream) = self.streams.remove(&stream_id) {
             let _ = stream.disconnect();
             self.garbage_streams.push(stream);
+            self.garbage_ids.insert(stream_id);
             let _ = self.gc_fd.arm();
         }
         if let Some(listeners) = self.listeners.get_mut(&stream_id) {
             if !listeners.is_empty() {
                 let _ = self.gc_fd.arm();
+                self.garbage_ids.insert(stream_id);
             }
             self.garbage_listeners.append(listeners);
         }

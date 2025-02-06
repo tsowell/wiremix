@@ -165,8 +165,14 @@ fn monitor_pipewire(
         libspa::support::system::IoFlags::IN,
         {
             let streams = Rc::clone(&streams);
+            let sender_weak = Rc::downgrade(&sender);
             move |_status| {
-                streams.borrow_mut().collect_garbage();
+                let collected = streams.borrow_mut().collect_garbage();
+                if let Some(sender) = sender_weak.upgrade() {
+                    for id in collected {
+                        sender.send(MonitorEvent::StreamStopped(id));
+                    }
+                }
             }
         },
     );

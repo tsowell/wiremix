@@ -39,7 +39,7 @@ pub fn execute_command(
                 device_set_volumes(device, route_index, route_device, volumes);
             }
         }
-        Command::NodeCapture(obj_id, object_serial, capture_sink) => {
+        Command::NodeCaptureStart(obj_id, object_serial, capture_sink) => {
             let result = stream::capture_node(
                 core,
                 &sender,
@@ -50,6 +50,9 @@ pub fn execute_command(
             if let Some((stream, listener)) = result {
                 streams.add_stream(obj_id, stream, listener);
             }
+        }
+        Command::NodeCaptureStop(obj_id) => {
+            streams.remove(obj_id);
         }
         Command::MetadataSetProperty(obj_id, subject, key, type_, value) => {
             if let Some(metadata) = proxies.get_metadata(obj_id) {

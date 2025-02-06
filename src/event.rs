@@ -31,6 +31,8 @@ pub enum MonitorEvent {
 
     Link(ObjectId, ObjectId, ObjectId),
 
+    StreamStopped(ObjectId),
+
     Removed(ObjectId),
 }
 
