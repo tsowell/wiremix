@@ -145,6 +145,9 @@ impl App {
     }
 
     fn handle_event(&mut self, event: Event) -> Result<()> {
+        #[cfg(feature = "trace")]
+        trace_dbg!(&event);
+
         if let Event::Input(event) = event {
             self.handle_input_event(event)
         } else if let Event::Error(error) = event {
