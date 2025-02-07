@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crate::app::STATE;
+use crate::device_type::DeviceType;
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
 use crate::state;
@@ -25,107 +26,133 @@ fn is_default_for(node: &state::Node, which: &str) -> bool {
         .unwrap_or_default()
 }
 
-fn is_default(node: &state::Node) -> bool {
-    match node.media_class.as_deref() {
-        Some("Audio/Sink") => is_default_for(node, "default.audio.sink"),
-        Some("Audio/Source") => is_default_for(node, "default.audio.source"),
-        _ => false,
+fn is_default(node: &state::Node, device_type: Option<DeviceType>) -> bool {
+    match device_type {
+        Some(DeviceType::Sink) => is_default_for(node, "default.audio.sink"),
+        Some(DeviceType::Source) => {
+            is_default_for(node, "default.audio.source")
+        }
+        None => false,
     }
 }
 
-fn node_header_left(node: &state::Node) -> String {
-    let default_string = if is_default(node) { "⯁ " } else { "" };
-    let title = match (
-        &node.media_class,
-        &node.description,
-        &node.name,
-        &node.media_name,
-    ) {
-        (Some(media_class), _, _, Some(media_name))
-            if media_class == "Audio/Source" =>
-        {
-            media_name.clone()
-        }
-        (Some(media_class), _, _, Some(media_name))
-            if media_class == "Audio/Sink" =>
-        {
-            media_name.clone()
-        }
-        (_, _, Some(name), Some(media_name)) => format!("{name}: {media_name}"),
-        (_, Some(description), _, _) => description.clone(),
-        _ => String::new(),
+fn node_header_left(
+    node: &state::Node,
+    device_type: Option<DeviceType>,
+) -> String {
+    let default_string = if is_default(node, device_type) {
+        "⯁ "
+    } else {
+        ""
     };
+    let title =
+        match (device_type, &node.description, &node.name, &node.media_name) {
+            (Some(DeviceType::Source), _, _, Some(media_name)) => {
+                media_name.clone()
+            }
+            (Some(DeviceType::Sink), _, _, Some(media_name)) => {
+                media_name.clone()
+            }
+            (_, _, Some(name), Some(media_name)) => {
+                format!("{name}: {media_name}")
+            }
+            (_, Some(description), _, _) => description.clone(),
+            _ => String::new(),
+        };
     format!("{}{}", default_string, title)
 }
 
 fn node_header_right(node: &state::Node) -> String {
-    let Some(ref media_class) = node.media_class else {
-        return Default::default();
-    };
-    match media_class.as_str() {
-        "Audio/Sink" | "Audio/Source" => STATE
-            .with_borrow(|state| -> Option<String> {
-                let device_id = node.device_id?;
-                let device = state.devices.get(&device_id)?;
-                let route_index = device.route_index?;
-                let route = device.routes.get(&route_index)?;
-                Some(route.description.clone())
-            })
-            .unwrap_or_default(),
-        "Stream/Output/Audio" => STATE
-            .with_borrow(|state| -> Option<String> {
-                let outputs = state.outputs(node.id);
-                for output in outputs {
-                    let Some(output_node) = state.nodes.get(&output) else {
-                        continue;
-                    };
-                    let Some(ref media_class) = output_node.media_class else {
-                        continue;
-                    };
-                    if media_class != "Audio/Sink" {
-                        continue;
-                    };
-                    let description = output_node.description.as_ref()?;
-                    return Some(description.to_owned());
-                }
+    node.media_class
+        .as_ref()
+        .map_or(Default::default(), |media_class| {
+            if media_class.is_sink() || media_class.is_source() {
+                STATE
+                    .with_borrow(|state| -> Option<String> {
+                        let device_id = node.device_id?;
+                        let device = state.devices.get(&device_id)?;
+                        let route_index = device.route_index?;
+                        let route = device.routes.get(&route_index)?;
+                        Some(route.description.clone())
+                    })
+                    .unwrap_or_default()
+            } else if media_class.is_sink_input() {
+                STATE
+                    .with_borrow(|state| -> Option<String> {
+                        let outputs = state.outputs(node.id);
+                        for output in outputs {
+                            let Some(output_node) = state.nodes.get(&output)
+                            else {
+                                continue;
+                            };
+                            let Some(ref media_class) = output_node.media_class
+                            else {
+                                continue;
+                            };
+                            if !media_class.is_sink() {
+                                continue;
+                            };
+                            let description =
+                                output_node.description.as_ref()?;
+                            return Some(description.to_owned());
+                        }
 
-                None
-            })
-            .unwrap_or_default(),
-        "Stream/Input/Audio" => STATE
-            .with_borrow(|state| -> Option<String> {
-                let inputs = state.inputs(node.id);
-                for input in inputs {
-                    let Some(input_node) = state.nodes.get(&input) else {
-                        continue;
-                    };
-                    let Some(ref media_class) = input_node.media_class else {
-                        continue;
-                    };
-                    if media_class == "Audio/Source" {
-                        let description = input_node.description.as_ref()?;
-                        return Some(description.to_owned());
-                    } else if media_class == "Audio/Sink" {
-                        let description = input_node.description.as_ref()?;
-                        return Some(format!("Monitor of {}", description));
-                    };
-                }
+                        None
+                    })
+                    .unwrap_or_default()
+            } else if media_class.is_source_output() {
+                STATE
+                    .with_borrow(|state| -> Option<String> {
+                        let inputs = state.inputs(node.id);
+                        for input in inputs {
+                            let Some(input_node) = state.nodes.get(&input)
+                            else {
+                                continue;
+                            };
+                            let Some(ref media_class) = input_node.media_class
+                            else {
+                                continue;
+                            };
+                            if media_class.is_source() {
+                                let description =
+                                    input_node.description.as_ref()?;
+                                return Some(description.to_owned());
+                            } else if media_class.is_sink() {
+                                let description =
+                                    input_node.description.as_ref()?;
+                                return Some(format!(
+                                    "Monitor of {}",
+                                    description
+                                ));
+                            };
+                        }
 
-                None
-            })
-            .unwrap_or_default(),
-        _ => Default::default(),
-    }
+                        None
+                    })
+                    .unwrap_or_default()
+            } else {
+                Default::default()
+            }
+        })
 }
 
 pub struct NodeWidget<'a> {
     node: &'a state::Node,
     selected: bool,
+    device_type: Option<DeviceType>,
 }
 
 impl<'a> NodeWidget<'a> {
-    pub fn new(node: &'a state::Node, selected: bool) -> Self {
-        Self { node, selected }
+    pub fn new(
+        node: &'a state::Node,
+        selected: bool,
+        device_type: Option<DeviceType>,
+    ) -> Self {
+        Self {
+            node,
+            selected,
+            device_type,
+        }
     }
 
     /// Height of a full node display.
@@ -168,7 +195,7 @@ impl<'a> Widget for NodeWidget<'a> {
         );
         border_block.render(area, buf);
 
-        let left = node_header_left(self.node);
+        let left = node_header_left(self.node, self.device_type);
         let right = node_header_right(self.node);
 
         let mut header_left = Default::default();

@@ -11,6 +11,7 @@ use ratatui::{
 
 use crate::app::STATE;
 use crate::command::Command;
+use crate::device_type::DeviceType;
 use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
@@ -25,14 +26,20 @@ pub struct NodeList {
     selected: Option<ObjectId>,
     /// Predicate by which to filter the global nodes
     filter: Box<dyn Fn(&state::Node) -> bool>,
+    /// Default device type to use
+    device_type: Option<DeviceType>,
 }
 
 impl NodeList {
-    pub fn new(filter: Box<dyn Fn(&state::Node) -> bool>) -> Self {
+    pub fn new(
+        filter: Box<dyn Fn(&state::Node) -> bool>,
+        device_type: Option<DeviceType>,
+    ) -> Self {
         Self {
             top: 0,
             selected: None,
             filter,
+            device_type,
         }
     }
 
@@ -42,11 +49,10 @@ impl NodeList {
         STATE.with_borrow(|state| {
             let node = state.nodes.get(&node_id)?;
             let name = node.name.clone()?;
-            let key = match node.media_class.as_ref()?.as_str() {
-                "Audio/Sink" => Some("default.configured.audio.sink"),
-                "Audio/Source" => Some("default.configured.audio.source"),
-                _ => None,
-            }?;
+            let key = match self.device_type? {
+                DeviceType::Source => "default.configured.audio.source",
+                DeviceType::Sink => "default.configured.audio.sink",
+            };
             let metadata_id = state.metadatas_by_name.get("default")?;
 
             Some(Command::MetadataSetProperty(
@@ -270,7 +276,8 @@ impl Widget for &NodeList {
             for (node, area) in nodes.zip(nodes_layout.iter()) {
                 let selected =
                     self.selected.map(|id| id == node.id).unwrap_or_default();
-                NodeWidget::new(node, selected).render(*area, buf);
+                NodeWidget::new(node, selected, self.device_type)
+                    .render(*area, buf);
             }
         });
     }

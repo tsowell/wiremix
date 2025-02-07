@@ -1,12 +1,13 @@
 use pipewire::link::LinkInfoRef;
 
+use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorEvent {
     DeviceDescription(ObjectId, String),
-    DeviceMediaClass(ObjectId, String),
+    DeviceMediaClass(ObjectId, MediaClass),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
     DeviceProfileDescription(ObjectId, i32, String),
@@ -19,7 +20,7 @@ pub enum MonitorEvent {
 
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),
-    NodeMediaClass(ObjectId, String),
+    NodeMediaClass(ObjectId, MediaClass),
     NodeMediaName(ObjectId, String),
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),

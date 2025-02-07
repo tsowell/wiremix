@@ -1,7 +1,9 @@
 pub mod app;
 pub mod command;
+pub mod device_type;
 pub mod event;
 pub mod input;
+pub mod media_class;
 pub mod meter;
 pub mod monitor;
 pub mod named_constraints;

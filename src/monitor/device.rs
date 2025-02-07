@@ -14,6 +14,7 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
+use crate::media_class::MediaClass;
 use crate::monitor::{
     deserialize::deserialize, device_status::DeviceStatusTracker, EventSender,
 };
@@ -36,7 +37,7 @@ pub fn monitor_device(
 
     sender.send(MonitorEvent::DeviceMediaClass(
         obj_id,
-        media_class.to_string(),
+        MediaClass::from(media_class),
     ));
 
     let device: Device = registry.bind(obj).ok()?;

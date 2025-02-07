@@ -17,7 +17,9 @@ use crossterm::event::{
 };
 
 use crate::command::Command;
+use crate::device_type::DeviceType;
 use crate::event::Event;
+use crate::media_class::MediaClass;
 use crate::named_constraints::with_named_constraints;
 use crate::node_list::NodeList;
 use crate::state;
@@ -63,32 +65,48 @@ impl App {
         let mut tabs = Vec::new();
         tabs.push(Tab::new(
             String::from("Playback"),
-            NodeList::new(Box::new(|node| {
-                node.media_class == Some(String::from("Stream/Output/Audio"))
-            })),
+            NodeList::new(
+                Box::new(|node| {
+                    node.media_class
+                        .as_ref()
+                        .is_some_and(MediaClass::is_sink_input)
+                }),
+                None,
+            ),
         ));
         tabs.push(Tab::new(
             String::from("Recording"),
-            NodeList::new(Box::new(|node| {
-                node.media_class == Some(String::from("Stream/Input/Audio"))
-            })),
+            NodeList::new(
+                Box::new(|node| {
+                    node.media_class
+                        .as_ref()
+                        .is_some_and(MediaClass::is_source_output)
+                }),
+                None,
+            ),
         ));
         tabs.push(Tab::new(
             String::from("Output Devices"),
-            NodeList::new(Box::new(|node| {
-                node.media_class == Some(String::from("Audio/Sink"))
-            })),
+            NodeList::new(
+                Box::new(|node| {
+                    node.media_class.as_ref().is_some_and(MediaClass::is_sink)
+                }),
+                Some(DeviceType::Sink),
+            ),
         ));
         tabs.push(Tab::new(
             String::from("Input Devices"),
-            NodeList::new(Box::new(|node| {
-                node.media_class == Some(String::from("Audio/Source"))
-            })),
+            NodeList::new(
+                Box::new(|node| {
+                    node.media_class.as_ref().is_some_and(MediaClass::is_source)
+                }),
+                Some(DeviceType::Source),
+            ),
         ));
         tabs.push(Tab::new(
             String::from("Configuration"),
             /* TODO - for now just show all nodes */
-            NodeList::new(Box::new(|_node| true)),
+            NodeList::new(Box::new(|_node| true), None),
         ));
         App {
             exit: Default::default(),

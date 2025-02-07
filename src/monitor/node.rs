@@ -13,6 +13,7 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
+use crate::media_class::MediaClass;
 use crate::monitor::{deserialize::deserialize, EventSender};
 use crate::object::ObjectId;
 
@@ -44,7 +45,7 @@ pub fn monitor_node(
 
     sender.send(MonitorEvent::NodeMediaClass(
         obj_id,
-        media_class.to_string(),
+        MediaClass::from(media_class),
     ));
 
     let node: Node = registry.bind(obj).ok()?;

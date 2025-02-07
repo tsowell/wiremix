@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use crate::command::Command;
 use crate::event::MonitorEvent;
+use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 
 #[allow(dead_code)]
@@ -26,7 +27,7 @@ pub struct Device {
     pub name: Option<String>,
     pub nick: Option<String>,
     pub description: Option<String>,
-    pub media_class: Option<String>,
+    pub media_class: Option<MediaClass>,
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
     pub route_index: Option<i32>,
@@ -41,7 +42,7 @@ pub struct Node {
     pub name: Option<String>,
     pub nick: Option<String>,
     pub description: Option<String>,
-    pub media_class: Option<String>,
+    pub media_class: Option<MediaClass>,
     pub media_name: Option<String>,
     pub object_serial: Option<i32>,
     pub volumes: Option<Vec<f32>>,
@@ -237,12 +238,9 @@ impl State {
             .get(&id)
             .and_then(|node| node.media_class.as_ref())
             .is_some_and(|media_class| {
-                matches!(
-                    media_class.as_str(),
-                    "Audio/Source"
-                        | "Stream/Output/Audio"
-                        | "Stream/Input/Audio"
-                )
+                media_class.is_source()
+                    || media_class.is_sink_input()
+                    || media_class.is_source_output()
             })
     }
 
@@ -251,13 +249,10 @@ impl State {
             .get(&id)
             .and_then(|node| node.media_class.as_ref())
             .is_some_and(|media_class| {
-                matches!(
-                    media_class.as_str(),
-                    "Audio/Sink"
-                        | "Audio/Source"
-                        | "Stream/Output/Audio"
-                        | "Stream/Input/Audio"
-                )
+                media_class.is_sink()
+                    || media_class.is_source()
+                    || media_class.is_sink_input()
+                    || media_class.is_source_output()
             })
     }
 
@@ -301,9 +296,10 @@ impl State {
     pub fn start_capture_command(&self, input: &ObjectId) -> Option<Command> {
         let node = self.nodes.get(input)?;
         let object_serial = &node.object_serial?;
-        let capture_sink = node.media_class.as_ref().is_some_and(|c| {
-            matches!(c.as_str(), "Audio/Sink" | "Audio/Source")
-        });
+        let capture_sink =
+            node.media_class.as_ref().is_some_and(|media_class| {
+                media_class.is_sink() || media_class.is_source()
+            });
 
         Some(Command::NodeCaptureStart(
             node.id,
