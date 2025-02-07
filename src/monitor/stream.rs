@@ -4,7 +4,6 @@ use std::rc::Rc;
 use pipewire::{
     core::Core,
     properties::properties,
-    registry::GlobalObject,
     stream::{Stream, StreamListener},
 };
 
@@ -13,7 +12,6 @@ use libspa::{
     param::format::{MediaSubtype, MediaType},
     param::{format_utils, ParamType},
     pod::{Object, Pod},
-    utils::dict::DictRef,
 };
 
 use crate::event::MonitorEvent;
@@ -24,25 +22,6 @@ use crate::object::ObjectId;
 pub struct StreamData {
     format: AudioInfoRaw,
     cursor_move: bool,
-}
-
-pub fn capture_object(
-    core: &Core,
-    sender: &Rc<EventSender>,
-    obj: &GlobalObject<&DictRef>,
-) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
-    let obj_id = ObjectId::from(obj);
-
-    let props = obj.props?;
-    let media_class = props.get("media.class")?;
-    match media_class {
-        "Stream/Output/Audio" => (),
-        "Stream/Input/Audio" => (),
-        _ => return None,
-    }
-
-    let serial = props.get("object.serial")?;
-    capture_node(core, sender, obj_id, serial, false)
 }
 
 pub fn capture_node(

@@ -36,7 +36,6 @@ pub fn spawn(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Event>>,
     rx: pipewire::channel::Receiver<Command>,
-    is_capture_enabled: bool,
 ) -> Result<MonitorHandle> {
     let shutdown_fd =
         Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
@@ -44,7 +43,7 @@ pub fn spawn(
     let handle = thread::spawn({
         let shutdown_fd = Arc::clone(&shutdown_fd);
         move || {
-            let _ = run(remote, tx, rx, shutdown_fd, is_capture_enabled);
+            let _ = run(remote, tx, rx, shutdown_fd);
         }
     });
 
@@ -59,7 +58,6 @@ fn run(
     tx: Arc<mpsc::Sender<Event>>,
     rx: pipewire::channel::Receiver<Command>,
     shutdown_fd: Arc<EventFd>,
-    is_capture_enabled: bool,
 ) -> Result<()> {
     pipewire::init();
 
@@ -71,17 +69,10 @@ fn run(
     let sender = Rc::new(EventSender::new(tx, main_loop.downgrade()));
 
     let err_sender = Rc::clone(&sender);
-    monitor_pipewire(
-        remote,
-        main_loop,
-        sender,
-        rx,
-        shutdown_fd,
-        is_capture_enabled,
-    )
-    .unwrap_or_else(move |e| {
-        err_sender.send_error(e.to_string());
-    });
+    monitor_pipewire(remote, main_loop, sender, rx, shutdown_fd)
+        .unwrap_or_else(move |e| {
+            err_sender.send_error(e.to_string());
+        });
 
     Ok(())
 }
@@ -108,7 +99,6 @@ fn monitor_pipewire(
     sender: Rc<EventSender>,
     rx: pipewire::channel::Receiver<Command>,
     shutdown_fd: Arc<EventFd>,
-    is_capture_enabled: bool,
 ) -> Result<()> {
     let context = pipewire::context::Context::new(&main_loop)?;
     let props = remote.map(|remote| {
@@ -183,16 +173,11 @@ fn monitor_pipewire(
         .add_listener_local()
         .global({
             let proxies = Rc::clone(&proxies);
-            let core_weak = Rc::downgrade(&core);
             let sender_weak = Rc::downgrade(&sender);
             let streams_weak = Rc::downgrade(&streams);
             move |obj| {
                 let obj_id = ObjectId::from(obj);
                 let Some(registry) = registry_weak.upgrade() else {
-                    return;
-                };
-
-                let Some(core) = core_weak.upgrade() else {
                     return;
                 };
 
@@ -270,15 +255,6 @@ fn monitor_pipewire(
                 let Some(proxy_spe) = proxy_spe else {
                     return;
                 };
-
-                if is_capture_enabled && obj.type_ == ObjectType::Node {
-                    let result = stream::capture_object(&core, &sender, obj);
-                    if let Some((stream, listener)) = result {
-                        streams
-                            .borrow_mut()
-                            .add_stream(obj_id, stream, listener);
-                    }
-                }
 
                 let proxy = proxy_spe.upcast_ref();
 

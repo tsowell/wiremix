@@ -162,9 +162,9 @@ impl App {
             }
             Ok(())
         } else if let Event::Monitor(event) = event {
-            if let Some(command) = STATE.with_borrow_mut(|s| s.update(event)) {
+            for command in STATE.with_borrow_mut(|s| s.update(event)) {
                 let _ = self.tx.send(command);
-            };
+            }
 
             Ok(())
         } else {

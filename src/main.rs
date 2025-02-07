@@ -23,6 +23,7 @@ struct Opt {
     #[clap(short, long, help = "The name of the remote to connect to")]
     remote: Option<String>,
 
+    // TODO
     #[clap(short, long, help = "Disable audio capture for level monitoring")]
     no_capture: bool,
 
@@ -37,12 +38,8 @@ fn main() -> Result<()> {
     let (command_tx, command_rx) = pipewire::channel::channel::<Command>();
 
     let opt = Opt::parse();
-    let _monitor_handle = monitor::spawn(
-        opt.remote,
-        Arc::clone(&event_tx),
-        command_rx,
-        !opt.no_capture,
-    )?;
+    let _monitor_handle =
+        monitor::spawn(opt.remote, Arc::clone(&event_tx), command_rx)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     if opt.dump_events {

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::command::Command;
 use crate::event::MonitorEvent;
@@ -74,30 +75,15 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
+    // Nodes waiting on object.serial before we can start capture
+    pub pending_capture: HashSet<ObjectId>,
 }
 
 impl State {
-    pub fn update(&mut self, event: MonitorEvent) -> Option<Command> {
-        let command = match event {
-            MonitorEvent::Link(_, output, input)
-                // Only restart if link is new.
-                if !self.inputs(input).contains(&output) =>
-            {
-                self.restart_capture_command(&input)
-            }
-            MonitorEvent::Removed(id) => {
-                self.links.get(&id).and_then(|Link { input, .. }| {
-                    if self.inputs(*input).len() == 1 {
-                        // This is the last input link.
-                        self.stop_capture_command(input)
-                    } else {
-                        None
-                    }
-                })
-            }
-            _ => None,
-        };
+    pub fn update(&mut self, event: MonitorEvent) -> Vec<Command> {
+        let mut commands = Vec::new();
 
+        // Update
         match event {
             MonitorEvent::DeviceDescription(id, description) => {
                 self.device_entry(id).description = Some(description);
@@ -135,7 +121,19 @@ impl State {
                 self.node_entry(id).device_id = Some(device_id);
             }
             MonitorEvent::NodeMediaClass(id, media_class) => {
-                self.node_entry(id).media_class = Some(media_class);
+                let object_serial = {
+                    let node = self.node_entry(id);
+                    node.media_class = Some(media_class.clone());
+                    node.object_serial
+                };
+
+                if self.is_node_auto_capturable(id) {
+                    if object_serial.is_none() {
+                        self.pending_capture.insert(id);
+                    } else {
+                        commands.extend(self.start_capture_command(&id));
+                    }
+                }
             }
             MonitorEvent::NodeMediaName(id, media_name) => {
                 self.node_entry(id).media_name = Some(media_name);
@@ -151,6 +149,11 @@ impl State {
             }
             MonitorEvent::NodeObjectSerial(id, object_serial) => {
                 self.node_entry(id).object_serial = Some(object_serial);
+                if self.pending_capture.remove(&id)
+                    && self.is_node_auto_capturable(id)
+                {
+                    commands.extend(self.start_capture_command(&id));
+                }
             }
             MonitorEvent::NodePeaks(id, peaks) => {
                 self.node_entry(id).peaks = Some(peaks);
@@ -162,6 +165,12 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorEvent::Link(id, output, input) => {
+                if !self.inputs(input).contains(&output)
+                    && self.is_node_capturable_on_link(input)
+                {
+                    commands.extend(self.start_capture_command(&input));
+                }
+
                 self.links.insert(id, Link { output, input });
             }
             MonitorEvent::MetadataMetadataName(id, metadata_name) => {
@@ -178,7 +187,9 @@ impl State {
                 match key {
                     Some(key) => {
                         match value {
-                            Some(value) => properties.insert(key, value),
+                            Some(value) => {
+                                properties.insert(key, value.clone())
+                            }
                             None => properties.remove(&key),
                         };
                     }
@@ -190,9 +201,17 @@ impl State {
                 self.nodes.entry(id).and_modify(|node| node.peaks = None);
             }
             MonitorEvent::Removed(id) => {
+                self.links.get(&id).inspect(|Link { input, .. }| {
+                    if self.inputs(*input).len() == 1 {
+                        // This is the last input link.
+                        commands.extend(self.stop_capture_command(input));
+                    }
+                });
+
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
                 self.links.remove(&id);
+                self.pending_capture.remove(&id);
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
@@ -202,7 +221,7 @@ impl State {
             }
         }
 
-        command
+        commands
     }
 
     pub fn get_metadata_by_name(
@@ -211,6 +230,35 @@ impl State {
     ) -> Option<&Metadata> {
         self.metadatas
             .get(self.metadatas_by_name.get(metadata_name)?)
+    }
+
+    fn is_node_auto_capturable(&self, id: ObjectId) -> bool {
+        self.nodes
+            .get(&id)
+            .and_then(|node| node.media_class.as_ref())
+            .is_some_and(|media_class| {
+                matches!(
+                    media_class.as_str(),
+                    "Audio/Source"
+                        | "Stream/Output/Audio"
+                        | "Stream/Input/Audio"
+                )
+            })
+    }
+
+    fn is_node_capturable_on_link(&self, id: ObjectId) -> bool {
+        self.nodes
+            .get(&id)
+            .and_then(|node| node.media_class.as_ref())
+            .is_some_and(|media_class| {
+                matches!(
+                    media_class.as_str(),
+                    "Audio/Sink"
+                        | "Audio/Source"
+                        | "Stream/Output/Audio"
+                        | "Stream/Input/Audio"
+                )
+            })
     }
 
     fn node_entry(&mut self, id: ObjectId) -> &mut Node {
@@ -250,19 +298,8 @@ impl State {
             .collect()
     }
 
-    pub fn restart_capture_command(&self, input: &ObjectId) -> Option<Command> {
+    pub fn start_capture_command(&self, input: &ObjectId) -> Option<Command> {
         let node = self.nodes.get(input)?;
-        if node.media_class.as_ref().is_some_and(|c| {
-            !matches!(
-                c.as_str(),
-                "Audio/Sink"
-                    | "Audio/Source"
-                    | "Stream/Output/Audio"
-                    | "Stream/Input/Audio"
-            )
-        }) {
-            return None;
-        }
         let object_serial = &node.object_serial?;
         let capture_sink = node.media_class.as_ref().is_some_and(|c| {
             matches!(c.as_str(), "Audio/Sink" | "Audio/Source")
