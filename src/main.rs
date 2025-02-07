@@ -63,17 +63,6 @@ fn main() -> Result<()> {
                     code: KeyCode::Char('q'),
                     ..
                 })) => break,
-                Event::Input(CrosstermEvent::Key(KeyEvent {
-                    code: KeyCode::Char('t'),
-                    ..
-                })) => {
-                    let _ = command_tx.send(Command::DeviceVolumes(
-                        pwmixer::object::ObjectId::from_raw_id(45),
-                        3,
-                        14,
-                        vec![0.0, 0.0],
-                    ));
-                }
                 event => {
                     print!("{:?}\r\n", event);
                 }
