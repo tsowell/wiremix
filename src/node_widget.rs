@@ -41,7 +41,7 @@ fn node_header_left(
     device_type: Option<DeviceType>,
 ) -> String {
     let default_string = if is_default(node, device_type) {
-        "⯁ "
+        "* "
     } else {
         ""
     };
