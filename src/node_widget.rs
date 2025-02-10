@@ -71,8 +71,8 @@ fn node_header_right(node: &state::Node) -> String {
                     .with_borrow(|state| -> Option<String> {
                         let device_id = node.device_id?;
                         let device = state.devices.get(&device_id)?;
-                        let route_index = device.route_index?;
-                        let route = device.routes.get(&route_index)?;
+                        let route_device = node.card_profile_device?;
+                        let route = device.routes.get(&route_device)?;
                         Some(route.description.clone())
                     })
                     .unwrap_or_default()

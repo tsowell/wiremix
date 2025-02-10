@@ -133,6 +133,15 @@ fn node_info_props(
             sender.send(MonitorEvent::NodeObjectSerial(id, object_serial));
         }
     }
+
+    if let Some(card_profile_device) = props.get("card.profile.device") {
+        if let Ok(card_profile_device) = card_profile_device.parse() {
+            sender.send(MonitorEvent::NodeCardProfileDevice(
+                id,
+                card_profile_device,
+            ));
+        }
+    }
 }
 
 fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {

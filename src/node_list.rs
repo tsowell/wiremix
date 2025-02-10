@@ -74,8 +74,8 @@ impl NodeList {
 
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
-                let route_index = device.route_index?;
-                let route_device = device.route_device?;
+                let route_device = node.card_profile_device?;
+                let route_index = device.routes.get(&route_device)?.index;
 
                 Some(Command::DeviceMute(
                     device_id,
@@ -104,8 +104,8 @@ impl NodeList {
 
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
-                let route_index = device.route_index?;
-                let route_device = device.route_device?;
+                let route_device = node.card_profile_device?;
+                let route_index = device.routes.get(&route_device)?.index;
 
                 Some(Command::DeviceVolumes(
                     device_id,

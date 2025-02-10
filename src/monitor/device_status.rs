@@ -4,8 +4,6 @@ use libspa::param::ParamType;
 
 #[derive(Default)]
 pub struct DeviceStatus {
-    route: bool,
-    enum_route: bool,
     profile: bool,
     enum_profile: bool,
 }
@@ -13,8 +11,6 @@ pub struct DeviceStatus {
 impl DeviceStatus {
     pub fn set(&mut self, flag: ParamType) {
         match flag {
-            ParamType::Route => self.route = true,
-            ParamType::EnumRoute => self.enum_route = true,
             ParamType::Profile => self.profile = true,
             ParamType::EnumProfile => self.enum_profile = true,
             _ => (),
@@ -23,8 +19,6 @@ impl DeviceStatus {
 
     pub fn get(&self, flag: ParamType) -> bool {
         match flag {
-            ParamType::Route => self.route,
-            ParamType::EnumRoute => self.enum_route,
             ParamType::Profile => self.profile,
             ParamType::EnumProfile => self.enum_profile,
             _ => false,

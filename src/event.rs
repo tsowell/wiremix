@@ -12,12 +12,12 @@ pub enum MonitorEvent {
     DeviceNick(ObjectId, String),
     DeviceProfileDescription(ObjectId, i32, String),
     DeviceProfile(ObjectId, i32),
-    DeviceRouteDescription(ObjectId, i32, String),
-    DeviceRoute(ObjectId, i32, i32),
+    DeviceRoute(ObjectId, i32, i32, String),
 
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, u32, Option<String>, Option<String>),
 
+    NodeCardProfileDevice(ObjectId, i32),
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),
     NodeMediaClass(ObjectId, MediaClass),

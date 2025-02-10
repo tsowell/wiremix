@@ -17,6 +17,7 @@ pub struct Profile {
 #[derive(Debug)]
 pub struct Route {
     pub index: i32,
+    pub device: i32,
     pub description: String,
 }
 
@@ -30,8 +31,6 @@ pub struct Device {
     pub media_class: Option<MediaClass>,
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
-    pub route_index: Option<i32>,
-    pub route_device: Option<i32>,
     pub routes: HashMap<i32, Route>,
 }
 
@@ -50,6 +49,7 @@ pub struct Node {
     pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
     pub device_id: Option<ObjectId>,
+    pub card_profile_device: Option<i32>,
 }
 
 #[allow(dead_code)]
@@ -106,14 +106,19 @@ impl State {
             MonitorEvent::DeviceProfile(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
             }
-            MonitorEvent::DeviceRouteDescription(id, index, description) => {
-                self.device_entry(id)
-                    .routes
-                    .insert(index, Route { index, description });
+            MonitorEvent::DeviceRoute(id, index, device, description) => {
+                self.device_entry(id).routes.insert(
+                    device,
+                    Route {
+                        index,
+                        device,
+                        description,
+                    },
+                );
             }
-            MonitorEvent::DeviceRoute(id, index, device) => {
-                self.device_entry(id).route_index = Some(index);
-                self.device_entry(id).route_device = Some(device);
+            MonitorEvent::NodeCardProfileDevice(id, card_profile_device) => {
+                self.node_entry(id).card_profile_device =
+                    Some(card_profile_device);
             }
             MonitorEvent::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);

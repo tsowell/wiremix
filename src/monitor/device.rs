@@ -44,12 +44,7 @@ pub fn monitor_device(
     let device = Rc::new(device);
     let proxy_id = device.upcast_ref().id();
 
-    let params = [
-        ParamType::Route,
-        ParamType::EnumRoute,
-        ParamType::Profile,
-        ParamType::EnumProfile,
-    ];
+    let params = [ParamType::Route, ParamType::Profile, ParamType::EnumProfile];
 
     let listener = device
         .add_listener_local()
@@ -68,10 +63,6 @@ pub fn monitor_device(
                         ParamType::Route => {
                             statuses.borrow_mut().set(proxy_id, id);
                             device_route(obj_id, param)
-                        }
-                        ParamType::EnumRoute => {
-                            statuses.borrow_mut().set(proxy_id, id);
-                            device_enum_route(obj_id, param)
                         }
                         ParamType::Profile => {
                             statuses.borrow_mut().set(proxy_id, id);
@@ -129,6 +120,7 @@ pub fn monitor_device(
 fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut device = None;
+    let mut description = None;
 
     for prop in param.properties {
         match prop.key {
@@ -142,38 +134,16 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
                     device = Some(value);
                 }
             }
-            _ => {}
-        }
-    }
-
-    Some(MonitorEvent::DeviceRoute(id, index?, device?))
-}
-
-fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
-    let mut index = None;
-    let mut description = None;
-
-    for prop in param.properties {
-        match prop.key {
-            libspa_sys::SPA_PARAM_ROUTE_index => {
-                if let Value::Int(value) = prop.value {
-                    index = Some(value);
-                }
-            }
             libspa_sys::SPA_PARAM_ROUTE_description => {
                 if let Value::String(value) = prop.value {
                     description = Some(value);
                 }
             }
-            _ => (),
+            _ => {}
         }
     }
 
-    Some(MonitorEvent::DeviceRouteDescription(
-        id,
-        index?,
-        description?,
-    ))
+    Some(MonitorEvent::DeviceRoute(id, index?, device?, description?))
 }
 
 fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
