@@ -88,18 +88,11 @@ fn node_set_mute(node: &Node, mute: bool) {
 fn node_set_volumes(node: &Node, volumes: Vec<f32>) {
     node_set_properties(
         node,
-        vec![
-            Property {
-                key: libspa_sys::SPA_PROP_channelVolumes,
-                flags: PropertyFlags::empty(),
-                value: Value::ValueArray(ValueArray::Float(volumes.clone())),
-            },
-            Property {
-                key: libspa_sys::SPA_PROP_softVolumes,
-                flags: PropertyFlags::empty(),
-                value: Value::ValueArray(ValueArray::Float(volumes)),
-            },
-        ],
+        vec![Property {
+            key: libspa_sys::SPA_PROP_channelVolumes,
+            flags: PropertyFlags::empty(),
+            value: Value::ValueArray(ValueArray::Float(volumes.clone())),
+        }],
     );
 }
 
@@ -154,18 +147,11 @@ fn device_set_volumes(
         device,
         route_index,
         route_device,
-        vec![
-            Property {
-                key: libspa_sys::SPA_PROP_channelVolumes,
-                flags: PropertyFlags::empty(),
-                value: Value::ValueArray(ValueArray::Float(volumes.clone())),
-            },
-            Property {
-                key: libspa_sys::SPA_PROP_softVolumes,
-                flags: PropertyFlags::empty(),
-                value: Value::ValueArray(ValueArray::Float(volumes)),
-            },
-        ],
+        vec![Property {
+            key: libspa_sys::SPA_PROP_channelVolumes,
+            flags: PropertyFlags::empty(),
+            value: Value::ValueArray(ValueArray::Float(volumes.clone())),
+        }],
     );
 }
 
