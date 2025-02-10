@@ -19,6 +19,8 @@ pub struct Route {
     pub index: i32,
     pub device: i32,
     pub description: String,
+    pub volumes: Vec<f32>,
+    pub mute: bool,
 }
 
 #[allow(dead_code)]
@@ -106,13 +108,22 @@ impl State {
             MonitorEvent::DeviceProfile(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
             }
-            MonitorEvent::DeviceRoute(id, index, device, description) => {
+            MonitorEvent::DeviceRoute(
+                id,
+                index,
+                device,
+                description,
+                volumes,
+                mute,
+            ) => {
                 self.device_entry(id).routes.insert(
                     device,
                     Route {
                         index,
                         device,
                         description,
+                        volumes,
+                        mute,
                     },
                 );
             }

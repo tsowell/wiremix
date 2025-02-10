@@ -12,7 +12,7 @@ pub enum MonitorEvent {
     DeviceNick(ObjectId, String),
     DeviceProfileDescription(ObjectId, i32, String),
     DeviceProfile(ObjectId, i32),
-    DeviceRoute(ObjectId, i32, i32, String),
+    DeviceRoute(ObjectId, i32, i32, String, Vec<f32>, bool),
 
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, u32, Option<String>, Option<String>),

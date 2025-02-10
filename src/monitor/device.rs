@@ -9,7 +9,7 @@ use pipewire::{
 
 use libspa::{
     param::ParamType,
-    pod::{Object, Value},
+    pod::{Object, Value, ValueArray},
     utils::dict::DictRef,
 };
 
@@ -121,6 +121,8 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut device = None;
     let mut description = None;
+    let mut channel_volumes = None;
+    let mut mute = None;
 
     for prop in param.properties {
         match prop.key {
@@ -139,11 +141,40 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
                     description = Some(value);
                 }
             }
+            libspa_sys::SPA_PARAM_ROUTE_props => {
+                if let Value::Object(value) = prop.value {
+                    for prop in value.properties {
+                        match prop.key {
+                            libspa_sys::SPA_PROP_channelVolumes => {
+                                if let Value::ValueArray(ValueArray::Float(
+                                    value,
+                                )) = prop.value
+                                {
+                                    channel_volumes = Some(value);
+                                }
+                            }
+                            libspa_sys::SPA_PROP_mute => {
+                                if let Value::Bool(value) = prop.value {
+                                    mute = Some(value);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
 
-    Some(MonitorEvent::DeviceRoute(id, index?, device?, description?))
+    Some(MonitorEvent::DeviceRoute(
+        id,
+        index?,
+        device?,
+        description?,
+        channel_volumes?,
+        mute?,
+    ))
 }
 
 fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
