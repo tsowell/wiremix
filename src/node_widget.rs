@@ -260,7 +260,14 @@ impl<'a> Widget for NodeWidget<'a> {
             }
         );
 
-        if let Some(volumes) = &self.node.volumes {
+        let (volumes, mute) = STATE.with_borrow(|state| {
+            (
+                state.node_volumes(self.node.id),
+                state.node_mute(self.node.id),
+            )
+        });
+
+        if let Some(volumes) = volumes {
             if !volumes.is_empty() {
                 let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 let volume = mean.cbrt();
@@ -284,7 +291,7 @@ impl<'a> Widget for NodeWidget<'a> {
                 .render(volume_bar, buf);
             }
         }
-        if let Some(true) = &self.node.mute {
+        if let Some(true) = mute {
             Line::from("muted").render(volume_label, buf);
         }
 

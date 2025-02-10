@@ -70,7 +70,7 @@ impl NodeList {
 
         STATE.with_borrow(|state| {
             let node = state.nodes.get(&node_id)?;
-            let mute = !node.mute.unwrap_or_default();
+            let mute = !state.node_mute(node_id).unwrap_or_default();
 
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
@@ -94,7 +94,7 @@ impl NodeList {
 
         STATE.with_borrow(|state| {
             let node = state.nodes.get(&node_id)?;
-            let mut volumes = node.volumes.clone()?;
+            let mut volumes = state.node_volumes(node_id)?;
             if volumes.is_empty() {
                 return None;
             }
