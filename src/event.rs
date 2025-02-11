@@ -52,6 +52,7 @@ pub enum Event {
     Input(crossterm::event::Event),
     Monitor(MonitorEvent),
     Error(String),
+    Ready,
 }
 
 impl From<crossterm::event::Event> for Event {

@@ -55,6 +55,8 @@ pub struct App {
     tabs: Vec<Tab>,
     selected_tab_index: usize,
     click_areas: Vec<(Rect, Action)>,
+    /// The monitor has received all initial information.
+    is_ready: bool,
 }
 
 impl App {
@@ -116,6 +118,7 @@ impl App {
             tabs,
             selected_tab_index: Default::default(),
             click_areas: Default::default(),
+            is_ready: Default::default(),
         }
     }
 
@@ -126,7 +129,9 @@ impl App {
         while !self.exit {
             self.click_areas.clear();
             terminal.draw(|frame| {
-                self.tabs[self.selected_tab_index].list.update(frame.area());
+                self.tabs[self.selected_tab_index]
+                    .list
+                    .update(frame.area(), self.is_ready);
                 self.draw(frame);
             })?;
             self.handle_events()?;
@@ -178,6 +183,9 @@ impl App {
                 error if error == "Received error event" => {}
                 _ => self.exit(Some(error)),
             }
+            Ok(())
+        } else if let Event::Ready = event {
+            self.is_ready = true;
             Ok(())
         } else if let Event::Monitor(event) = event {
             for command in STATE.with_borrow_mut(|s| s.update(event)) {

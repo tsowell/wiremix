@@ -162,7 +162,11 @@ impl NodeList {
     }
 
     /// Reconciles changes to nodes, viewport, and selection.
-    pub fn update(&mut self, area: Rect) {
+    pub fn update(&mut self, area: Rect, is_ready: bool) {
+        if is_ready && self.selected.is_none() {
+            self.move_selected(|_| 0);
+        }
+
         let (_, list_area, _) = self.areas(&area);
         let nodes_visible = (list_area.height / NodeWidget::height()) as usize;
         STATE.with_borrow(|state| -> Option<()> {

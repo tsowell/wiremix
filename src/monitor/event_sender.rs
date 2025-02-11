@@ -25,6 +25,14 @@ impl EventSender {
         }
     }
 
+    pub fn send_ready(&self) {
+        if self.tx.send(Event::Ready).is_err() {
+            if let Some(main_loop) = self.main_loop_weak.upgrade() {
+                main_loop.quit();
+            }
+        }
+    }
+
     pub fn send_error(&self, error: String) {
         if self.tx.send(Event::Error(error)).is_err() {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {

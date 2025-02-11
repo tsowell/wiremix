@@ -9,6 +9,7 @@ mod node;
 mod proxy_registry;
 mod stream;
 mod stream_registry;
+mod sync_registry;
 
 use anyhow::Result;
 use std::cell::RefCell;
@@ -29,6 +30,7 @@ use crate::event::{Event, MonitorEvent};
 use crate::monitor::{
     device_status::DeviceStatusTracker, event_sender::EventSender,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
+    sync_registry::SyncRegistry,
 };
 use crate::object::ObjectId;
 
@@ -121,8 +123,25 @@ fn monitor_pipewire(
                 }
             });
 
+    let syncs = Rc::new(RefCell::new(SyncRegistry::default()));
+
     let _core_listener = core
         .add_listener_local()
+        .done({
+            let sender_weak = Rc::downgrade(&sender);
+            let syncs_weak = Rc::downgrade(&syncs);
+            move |_id, seq| {
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                let Some(syncs) = syncs_weak.upgrade() else {
+                    return;
+                };
+                if syncs.borrow_mut().done(seq) {
+                    sender.send_ready();
+                }
+            }
+        })
         .error({
             let sender_weak = Rc::downgrade(&sender);
             move |_id, _seq, _res, message| {
@@ -172,9 +191,11 @@ fn monitor_pipewire(
     let _registry_listener = registry
         .add_listener_local()
         .global({
+            let core_weak = Rc::downgrade(&core);
             let proxies = Rc::clone(&proxies);
             let sender_weak = Rc::downgrade(&sender);
             let streams_weak = Rc::downgrade(&streams);
+            let syncs_weak = Rc::downgrade(&syncs);
             move |obj| {
                 let obj_id = ObjectId::from(obj);
                 let Some(registry) = registry_weak.upgrade() else {
@@ -186,6 +207,14 @@ fn monitor_pipewire(
                 };
 
                 let Some(streams) = streams_weak.upgrade() else {
+                    return;
+                };
+
+                let Some(core) = core_weak.upgrade() else {
+                    return;
+                };
+
+                let Some(syncs) = syncs_weak.upgrade() else {
                     return;
                 };
 
@@ -280,6 +309,8 @@ fn monitor_pipewire(
                     .register();
 
                 proxies.borrow_mut().add_proxy_listener(obj_id, listener);
+
+                syncs.borrow_mut().global(&core);
             }
         })
         .register();
