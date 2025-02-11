@@ -127,7 +127,7 @@ impl NodeList {
             .nodes
             .values()
             .filter(|node| (self.filter)(node))
-            .sorted_by_key(|node| node.id)
+            .sorted_by_key(|node| node.object_serial)
             .collect()
     }
 
