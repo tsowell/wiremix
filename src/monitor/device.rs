@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use pipewire::{
     device::{Device, DeviceChangeMask, DeviceInfoRef},
-    proxy::{Listener, ProxyT},
+    proxy::Listener,
     registry::{GlobalObject, Registry},
 };
 
@@ -35,6 +35,9 @@ pub fn monitor_device(
         _ => return None,
     }
 
+    // Remove old device status, if present.
+    statuses.borrow_mut().remove(&obj_id);
+
     sender.send(MonitorEvent::DeviceMediaClass(
         obj_id,
         MediaClass::from(media_class),
@@ -42,10 +45,11 @@ pub fn monitor_device(
 
     let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
-    let proxy_id = device.upcast_ref().id();
 
     let params = [ParamType::Route, ParamType::Profile, ParamType::EnumProfile];
 
+    // Set up listening. Use a DeviceStatusTracker to avoid repeated Profile
+    // and EnumProfile events. These seem to be emitted on every Route change.
     let listener = device
         .add_listener_local()
         .param({
@@ -61,15 +65,15 @@ pub fn monitor_device(
                 if let Some(param) = deserialize(param) {
                     if let Some(event) = match id {
                         ParamType::Route => {
-                            statuses.borrow_mut().set(proxy_id, id);
+                            statuses.borrow_mut().set(obj_id, id);
                             device_route(obj_id, param)
                         }
                         ParamType::Profile => {
-                            statuses.borrow_mut().set(proxy_id, id);
+                            statuses.borrow_mut().set(obj_id, id);
                             device_profile(obj_id, param)
                         }
                         ParamType::EnumProfile => {
-                            statuses.borrow_mut().set(proxy_id, id);
+                            statuses.borrow_mut().set(obj_id, id);
                             device_enum_profile(obj_id, param)
                         }
                         _ => None,
@@ -100,7 +104,7 @@ pub fn monitor_device(
                     return;
                 };
                 let statuses = statuses.borrow();
-                let Some(status) = statuses.get(proxy_id) else {
+                let Some(status) = statuses.get(obj_id) else {
                     return;
                 };
                 for param in params.into_iter() {

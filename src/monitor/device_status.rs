@@ -2,6 +2,11 @@ use std::collections::HashMap;
 
 use libspa::param::ParamType;
 
+use crate::object::ObjectId;
+
+/// Tracks whether or not a device's params have been received yet.
+/// Profile and EnumProfile in particular are emitted on every Route change
+/// which can get a bit spammy.
 #[derive(Default)]
 pub struct DeviceStatus {
     profile: bool,
@@ -28,7 +33,7 @@ impl DeviceStatus {
 
 #[derive(Default)]
 pub struct DeviceStatusTracker {
-    statuses: HashMap<u32, DeviceStatus>,
+    statuses: HashMap<ObjectId, DeviceStatus>,
 }
 
 impl DeviceStatusTracker {
@@ -36,11 +41,15 @@ impl DeviceStatusTracker {
         Self::default()
     }
 
-    pub fn set(&mut self, id: u32, flag: ParamType) {
+    pub fn set(&mut self, id: ObjectId, flag: ParamType) {
         self.statuses.entry(id).or_default().set(flag);
     }
 
-    pub fn get(&self, id: u32) -> Option<&DeviceStatus> {
+    pub fn get(&self, id: ObjectId) -> Option<&DeviceStatus> {
         self.statuses.get(&id)
+    }
+
+    pub fn remove(&mut self, id: &ObjectId) -> Option<DeviceStatus> {
+        self.statuses.remove(id)
     }
 }
