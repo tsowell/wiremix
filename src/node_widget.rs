@@ -1,6 +1,8 @@
 use ratatui::{
     layout::Flex,
-    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    prelude::{
+        Alignment, Buffer, Constraint, Direction, Layout, Rect, Stylize,
+    },
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Padding, Widget},
@@ -40,26 +42,17 @@ fn node_header_left(
     node: &state::Node,
     device_type: Option<DeviceType>,
 ) -> String {
-    let default_string = if is_default(node, device_type) {
-        "* "
-    } else {
-        ""
-    };
-    let title =
-        match (device_type, &node.description, &node.name, &node.media_name) {
-            (Some(DeviceType::Source), _, _, Some(media_name)) => {
-                media_name.clone()
-            }
-            (Some(DeviceType::Sink), _, _, Some(media_name)) => {
-                media_name.clone()
-            }
-            (_, _, Some(name), Some(media_name)) => {
-                format!("{name}: {media_name}")
-            }
-            (_, Some(description), _, _) => description.clone(),
-            _ => String::new(),
-        };
-    format!("{}{}", default_string, title)
+    match (device_type, &node.description, &node.name, &node.media_name) {
+        (Some(DeviceType::Source), _, _, Some(media_name)) => {
+            media_name.clone()
+        }
+        (Some(DeviceType::Sink), _, _, Some(media_name)) => media_name.clone(),
+        (_, _, Some(name), Some(media_name)) => {
+            format!("{name}: {media_name}")
+        }
+        (_, Some(description), _, _) => description.clone(),
+        _ => String::new(),
+    }
 }
 
 fn node_header_right(node: &state::Node) -> String {
@@ -224,8 +217,18 @@ impl<'a> Widget for NodeWidget<'a> {
         Line::from(right)
             .alignment(Alignment::Right)
             .render(header_right, buf);
-        let left = truncate::with_ellipses(&left, header_left.width as usize);
-        Line::from(left).render(header_left, buf);
+        let default_string = if is_default(self.node, self.device_type) {
+            "◆ "
+        } else {
+            "  "
+        };
+        let left =
+            truncate::with_ellipses(&left, (header_left.width - 2) as usize);
+        Line::from(vec![
+            Span::from(default_string).fg(Color::Blue),
+            Span::from(left),
+        ])
+        .render(header_left, buf);
 
         let mut volume_area = Default::default();
         let mut meter_area = Default::default();
