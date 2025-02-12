@@ -226,8 +226,10 @@ impl Widget for &NodeList {
         STATE.with_borrow(|state| {
             let (header_area, list_area, footer_area) = self.areas(&area);
 
-            let node_height = NodeWidget::height();
-            let nodes_visible = (list_area.height / node_height) as usize;
+            let spacing = 2;
+            let node_height_with_spacing = NodeWidget::height() + spacing;
+            let nodes_visible =
+                (list_area.height / node_height_with_spacing) as usize;
 
             let all_nodes = self.filtered_nodes(state);
             let nodes = all_nodes
@@ -253,7 +255,8 @@ impl Widget for &NodeList {
             // excluding margins, etc.
             let is_bottom_last =
                 self.top + nodes_visible == all_nodes.len().saturating_sub(1);
-            let is_bottom_enough = (list_area.height % node_height)
+            let is_bottom_enough = (list_area.height
+                % node_height_with_spacing)
                 >= NodeWidget::important_height();
             if self.top + nodes_visible < all_nodes.len()
                 && !(is_bottom_last && is_bottom_enough)
@@ -267,6 +270,7 @@ impl Widget for &NodeList {
             }
 
             let nodes_layout = {
+                let node_height = NodeWidget::height();
                 let mut constraints =
                     vec![Constraint::Length(node_height); nodes_visible];
                 // A variable-length constraint for a partial last node
@@ -275,6 +279,7 @@ impl Widget for &NodeList {
                 Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(constraints)
+                    .spacing(spacing)
                     .split(list_area)
             };
             for (node, area) in nodes.zip(nodes_layout.iter()) {

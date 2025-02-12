@@ -157,7 +157,7 @@ impl<'a> NodeWidget<'a> {
 
     /// Height of a full node display.
     pub fn height() -> u16 {
-        5
+        3
     }
 
     /// Height of the important parts (excluding blank margin lines at bottom).
@@ -182,8 +182,6 @@ impl<'a> Widget for NodeWidget<'a> {
                 (Constraint::Length(1), Some(&mut header_area)),
                 (Constraint::Length(1), None),
                 (Constraint::Length(1), Some(&mut bar_area)),
-                (Constraint::Length(1), None),
-                (Constraint::Length(1), None),
             ],
             |constraints| {
                 Layout::default()
