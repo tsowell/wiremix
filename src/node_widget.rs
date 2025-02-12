@@ -1,8 +1,6 @@
 use ratatui::{
     layout::Flex,
-    prelude::{
-        Alignment, Buffer, Constraint, Direction, Layout, Rect, Stylize,
-    },
+    prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Padding, Widget},
@@ -224,11 +222,8 @@ impl<'a> Widget for NodeWidget<'a> {
         };
         let left =
             truncate::with_ellipses(&left, (header_left.width - 2) as usize);
-        Line::from(vec![
-            Span::from(default_string).fg(Color::Blue),
-            Span::from(left),
-        ])
-        .render(header_left, buf);
+        Line::from(vec![Span::from(default_string), Span::from(left)])
+            .render(header_left, buf);
 
         let mut volume_area = Default::default();
         let mut meter_area = Default::default();
