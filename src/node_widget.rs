@@ -216,7 +216,7 @@ impl<'a> Widget for NodeWidget<'a> {
             .alignment(Alignment::Right)
             .render(header_right, buf);
         let default_string = if is_default(self.node, self.device_type) {
-            "◆ "
+            "◇ "
         } else {
             "  "
         };
