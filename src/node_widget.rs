@@ -3,7 +3,7 @@ use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Widget},
+    widgets::{Block, BorderType, Borders, Padding, Widget},
 };
 
 use crate::app::STATE;
@@ -168,13 +168,17 @@ impl<'a> NodeWidget<'a> {
 
 impl<'a> Widget for NodeWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let style = if self.selected {
-            Style::default().fg(Color::Green)
+        let (borders, padding) = if self.selected {
+            (Borders::LEFT, Padding::ZERO)
         } else {
-            Style::default()
+            (Borders::NONE, Padding::left(1))
         };
 
-        let border_block = Block::default().borders(Borders::NONE);
+        let border_block = Block::default()
+            .borders(borders)
+            .padding(padding)
+            .border_type(BorderType::Thick)
+            .border_style(Style::new().fg(Color::Yellow));
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
         let _layout = with_named_constraints!(
@@ -218,11 +222,10 @@ impl<'a> Widget for NodeWidget<'a> {
         );
 
         Line::from(right)
-            .style(style)
             .alignment(Alignment::Right)
             .render(header_right, buf);
         let left = truncate::with_ellipses(&left, header_left.width as usize);
-        Line::from(left).style(style).render(header_left, buf);
+        Line::from(left).render(header_left, buf);
 
         let mut volume_area = Default::default();
         let mut meter_area = Default::default();
@@ -272,7 +275,6 @@ impl<'a> Widget for NodeWidget<'a> {
                 let percent = (volume * 100.0) as u32;
 
                 Line::from(format!("{}%", percent))
-                    .style(style)
                     .alignment(Alignment::Right)
                     .render(volume_label, buf);
 
