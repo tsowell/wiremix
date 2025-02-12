@@ -326,13 +326,12 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             .split(menu_area);
 
         for (i, tab) in self.tabs.iter().enumerate() {
-            let style = if i == self.selected_tab_index {
-                Style::default().fg(Color::Green)
+            let (title, style) = if i == self.selected_tab_index {
+                (tab.title.to_uppercase(), Style::default().fg(Color::Green))
             } else {
-                Style::default()
+                (tab.title.clone(), Style::default())
             };
-            Line::from(Span::styled(tab.title.clone(), style))
-                .render(menu_areas[i], buf);
+            Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
 
             state
                 .click_areas
