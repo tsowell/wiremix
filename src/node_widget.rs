@@ -171,7 +171,7 @@ impl<'a> Widget for NodeWidget<'a> {
             .borders(borders)
             .padding(padding)
             .border_type(BorderType::Thick)
-            .border_style(Style::new().fg(Color::Yellow));
+            .border_style(Style::new().fg(Color::Green));
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
         let _layout = with_named_constraints!(
