@@ -6,136 +6,40 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Padding, Widget},
 };
 
-use crate::app::STATE;
 use crate::device_type::DeviceType;
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
-use crate::state;
 use crate::truncate;
+use crate::view;
 
-fn is_default_for(node: &state::Node, which: &str) -> bool {
-    STATE
-        .with_borrow(|state| -> Option<bool> {
-            let metadata = state.get_metadata_by_name("default")?;
-            let json = metadata.properties.get(&0)?.get(which)?;
-            let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
-            let default_name = obj["name"].as_str()?;
-            let node_name = node.name.as_ref()?;
-            Some(default_name == node_name)
-        })
-        .unwrap_or_default()
-}
-
-fn is_default(node: &state::Node, device_type: Option<DeviceType>) -> bool {
+fn is_default(node: &view::Node, device_type: Option<DeviceType>) -> bool {
     match device_type {
-        Some(DeviceType::Sink) => is_default_for(node, "default.audio.sink"),
-        Some(DeviceType::Source) => {
-            is_default_for(node, "default.audio.source")
-        }
+        Some(DeviceType::Sink) => node.is_default_sink,
+        Some(DeviceType::Source) => node.is_default_source,
         None => false,
     }
 }
 
-fn node_header_left(
-    node: &state::Node,
-    device_type: Option<DeviceType>,
-) -> String {
-    match (device_type, &node.description, &node.name, &node.media_name) {
-        (Some(DeviceType::Source), _, _, Some(media_name)) => {
-            media_name.clone()
-        }
-        (Some(DeviceType::Sink), _, _, Some(media_name)) => media_name.clone(),
-        (_, _, Some(name), Some(media_name)) => {
-            format!("{name}: {media_name}")
-        }
-        (_, Some(description), _, _) => description.clone(),
-        _ => String::new(),
-    }
-}
-
-fn node_header_right(node: &state::Node) -> String {
-    node.media_class
-        .as_ref()
-        .map_or(Default::default(), |media_class| {
-            if media_class.is_sink() || media_class.is_source() {
-                STATE
-                    .with_borrow(|state| -> Option<String> {
-                        let device_id = node.device_id?;
-                        let device = state.devices.get(&device_id)?;
-                        let route_device = node.card_profile_device?;
-                        let route = device.routes.get(&route_device)?;
-                        Some(route.description.clone())
-                    })
-                    .unwrap_or_default()
-            } else if media_class.is_sink_input() {
-                STATE
-                    .with_borrow(|state| -> Option<String> {
-                        let outputs = state.outputs(node.id);
-                        for output in outputs {
-                            let Some(output_node) = state.nodes.get(&output)
-                            else {
-                                continue;
-                            };
-                            let Some(ref media_class) = output_node.media_class
-                            else {
-                                continue;
-                            };
-                            if !media_class.is_sink() {
-                                continue;
-                            };
-                            let description =
-                                output_node.description.as_ref()?;
-                            return Some(description.to_owned());
-                        }
-
-                        None
-                    })
-                    .unwrap_or_default()
-            } else if media_class.is_source_output() {
-                STATE
-                    .with_borrow(|state| -> Option<String> {
-                        let inputs = state.inputs(node.id);
-                        for input in inputs {
-                            let Some(input_node) = state.nodes.get(&input)
-                            else {
-                                continue;
-                            };
-                            let Some(ref media_class) = input_node.media_class
-                            else {
-                                continue;
-                            };
-                            if media_class.is_source() {
-                                let description =
-                                    input_node.description.as_ref()?;
-                                return Some(description.to_owned());
-                            } else if media_class.is_sink() {
-                                let description =
-                                    input_node.description.as_ref()?;
-                                return Some(format!(
-                                    "Monitor of {}",
-                                    description
-                                ));
-                            };
-                        }
-
-                        None
-                    })
-                    .unwrap_or_default()
-            } else {
-                Default::default()
-            }
-        })
+fn node_title(node: &view::Node, device_type: Option<DeviceType>) -> String {
+    (match (device_type, &node.title_source_sink) {
+        (
+            Some(DeviceType::Source | DeviceType::Sink),
+            Some(title_source_sink),
+        ) => title_source_sink,
+        _ => &node.title,
+    })
+    .clone()
 }
 
 pub struct NodeWidget<'a> {
-    node: &'a state::Node,
+    node: &'a view::Node,
     selected: bool,
     device_type: Option<DeviceType>,
 }
 
 impl<'a> NodeWidget<'a> {
     pub fn new(
-        node: &'a state::Node,
+        node: &'a view::Node,
         selected: bool,
         device_type: Option<DeviceType>,
     ) -> Self {
@@ -188,8 +92,8 @@ impl<'a> Widget for NodeWidget<'a> {
         );
         border_block.render(area, buf);
 
-        let left = node_header_left(self.node, self.device_type);
-        let right = node_header_right(self.node);
+        let left = node_title(self.node, self.device_type);
+        let right = self.node.map_title.clone();
 
         let mut header_left = Default::default();
         let mut header_right = Default::default();
@@ -259,37 +163,28 @@ impl<'a> Widget for NodeWidget<'a> {
             }
         );
 
-        let (volumes, mute) = STATE.with_borrow(|state| {
-            (
-                state.node_volumes(self.node.id),
-                state.node_mute(self.node.id),
-            )
-        });
+        let volumes = &self.node.volumes;
+        if !volumes.is_empty() {
+            let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
+            let volume = mean.cbrt();
+            let percent = (volume * 100.0) as u32;
 
-        if let Some(volumes) = volumes {
-            if !volumes.is_empty() {
-                let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
-                let volume = mean.cbrt();
-                let percent = (volume * 100.0) as u32;
+            Line::from(format!("{}%", percent))
+                .alignment(Alignment::Right)
+                .render(volume_label, buf);
 
-                Line::from(format!("{}%", percent))
-                    .alignment(Alignment::Right)
-                    .render(volume_label, buf);
+            let count = ((volume.clamp(0.0, 1.5) / 1.5)
+                * volume_bar.width as f32) as usize;
 
-                let count = ((volume.clamp(0.0, 1.5) / 1.5)
-                    * volume_bar.width as f32)
-                    as usize;
-
-                let filled = "━".repeat(count);
-                let blank = "╌".repeat(volume_bar.width as usize - count);
-                Line::from(vec![
-                    Span::styled(filled, Style::default().fg(Color::Blue)),
-                    Span::styled(blank, Style::default().fg(Color::DarkGray)),
-                ])
-                .render(volume_bar, buf);
-            }
+            let filled = "━".repeat(count);
+            let blank = "╌".repeat(volume_bar.width as usize - count);
+            Line::from(vec![
+                Span::styled(filled, Style::default().fg(Color::Blue)),
+                Span::styled(blank, Style::default().fg(Color::DarkGray)),
+            ])
+            .render(volume_bar, buf);
         }
-        if let Some(true) = mute {
+        if self.node.mute {
             Line::from("muted").render(volume_label, buf);
         }
 

@@ -12,6 +12,7 @@ pub mod node_widget;
 pub mod object;
 pub mod state;
 pub mod truncate;
+pub mod view;
 
 #[cfg(feature = "trace")]
 pub mod trace;

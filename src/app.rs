@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::sync::mpsc;
 
 use anyhow::{anyhow, Result};
@@ -19,17 +18,13 @@ use crossterm::event::{
 use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::event::Event;
-use crate::media_class::MediaClass;
 use crate::named_constraints::with_named_constraints;
-use crate::node_list::NodeList;
-use crate::state;
+use crate::node_list::{NodeList, NodeListWidget};
+use crate::state::State;
+use crate::view::{self, View, VolumeAdjustment};
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
-
-thread_local! {
-    pub static STATE: RefCell<state::State> = RefCell::new(Default::default());
-}
 
 #[derive(Clone)]
 pub enum Action {
@@ -57,6 +52,8 @@ pub struct App {
     click_areas: Vec<(Rect, Action)>,
     /// The monitor has received all initial information.
     is_ready: bool,
+    state: State,
+    view: View,
 }
 
 impl App {
@@ -64,52 +61,29 @@ impl App {
         tx: pipewire::channel::Sender<Command>,
         rx: mpsc::Receiver<Event>,
     ) -> Self {
-        let mut tabs = Vec::new();
-        tabs.push(Tab::new(
-            String::from("Playback"),
-            NodeList::new(
-                Box::new(|node| {
-                    node.media_class
-                        .as_ref()
-                        .is_some_and(MediaClass::is_sink_input)
-                }),
-                None,
+        let tabs = vec![
+            Tab::new(
+                String::from("Playback"),
+                NodeList::new(view::NodeType::Playback, None),
             ),
-        ));
-        tabs.push(Tab::new(
-            String::from("Recording"),
-            NodeList::new(
-                Box::new(|node| {
-                    node.media_class
-                        .as_ref()
-                        .is_some_and(MediaClass::is_source_output)
-                }),
-                None,
+            Tab::new(
+                String::from("Recording"),
+                NodeList::new(view::NodeType::Recording, None),
             ),
-        ));
-        tabs.push(Tab::new(
-            String::from("Output Devices"),
-            NodeList::new(
-                Box::new(|node| {
-                    node.media_class.as_ref().is_some_and(MediaClass::is_sink)
-                }),
-                Some(DeviceType::Sink),
+            Tab::new(
+                String::from("Output Devices"),
+                NodeList::new(view::NodeType::Output, Some(DeviceType::Sink)),
             ),
-        ));
-        tabs.push(Tab::new(
-            String::from("Input Devices"),
-            NodeList::new(
-                Box::new(|node| {
-                    node.media_class.as_ref().is_some_and(MediaClass::is_source)
-                }),
-                Some(DeviceType::Source),
+            Tab::new(
+                String::from("Input Devices"),
+                NodeList::new(view::NodeType::Input, Some(DeviceType::Source)),
             ),
-        ));
-        tabs.push(Tab::new(
-            String::from("Configuration"),
-            /* TODO - for now just show all nodes */
-            NodeList::new(Box::new(|_node| true), None),
-        ));
+            Tab::new(
+                String::from("Configuration"),
+                /* TODO - for now just show all nodes */
+                NodeList::new(view::NodeType::All, None),
+            ),
+        ];
         App {
             exit: Default::default(),
             tx,
@@ -119,6 +93,8 @@ impl App {
             selected_tab_index: Default::default(),
             click_areas: Default::default(),
             is_ready: Default::default(),
+            state: Default::default(),
+            view: Default::default(),
         }
     }
 
@@ -128,10 +104,34 @@ impl App {
 
         while !self.exit {
             self.click_areas.clear();
+
+            self.view = View::from(&self.state);
+            #[cfg(feature = "trace")]
+            trace_dbg!(&self.view);
+
+            if self.is_ready && self.selected_list().selected.is_none() {
+                let new_selected = {
+                    let selected_list = self.selected_list();
+                    let node_type = selected_list.node_type;
+                    self.view.next_node_id(node_type, None)
+                };
+                if new_selected.is_some() {
+                    self.selected_list_mut().selected = new_selected;
+                }
+            }
+
             terminal.draw(|frame| {
-                self.tabs[self.selected_tab_index]
-                    .list
-                    .update(frame.area(), self.is_ready);
+                let node_type = self.selected_list().node_type;
+                let selected_index =
+                    self.selected_list().selected.and_then(|selected| {
+                        self.view.node_position(node_type, selected)
+                    });
+                let nodes_len = self.view.nodes_len(node_type);
+                self.selected_list_mut().update(
+                    frame.area(),
+                    selected_index,
+                    nodes_len,
+                );
                 self.draw(frame);
             })?;
             self.handle_events()?;
@@ -144,10 +144,12 @@ impl App {
         let widget = AppWidget {
             tabs: &self.tabs,
             selected_tab_index: self.selected_tab_index,
+            view: &self.view,
         };
         let mut widget_state = AppWidgetState {
             click_areas: &mut self.click_areas,
         };
+
         frame.render_stateful_widget(widget, frame.area(), &mut widget_state);
     }
 
@@ -172,6 +174,10 @@ impl App {
         trace_dbg!(&event);
 
         if let Event::Input(event) = event {
+            self.view = View::from(&self.state);
+            #[cfg(feature = "trace")]
+            trace_dbg!(&self.view);
+
             self.handle_input_event(event)
         } else if let Event::Error(error) = event {
             match error {
@@ -188,7 +194,7 @@ impl App {
             self.is_ready = true;
             Ok(())
         } else if let Event::Monitor(event) = event {
-            for command in STATE.with_borrow_mut(|s| s.update(event)) {
+            for command in self.state.update(event) {
                 let _ = self.tx.send(command);
             }
 
@@ -217,39 +223,80 @@ impl App {
         Ok(())
     }
 
-    fn selected_list(&mut self) -> &mut NodeList {
+    fn selected_list(&self) -> &NodeList {
+        &self.tabs[self.selected_tab_index].list
+    }
+
+    fn selected_list_mut(&mut self) -> &mut NodeList {
         &mut self.tabs[self.selected_tab_index].list
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('m') => {
-                if let Some(command) = self.selected_list().mute() {
+                let command = self
+                    .selected_list()
+                    .selected
+                    .and_then(|node_id| self.view.mute(node_id));
+                if let Some(command) = command {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('d') => {
-                if let Some(command) = self.selected_list().set_default() {
+                let node_id = self.selected_list().selected;
+                let device_type = self.selected_list().device_type;
+                let command = node_id.zip(device_type).and_then(
+                    |(node_id, device_type)| {
+                        self.view.set_default(node_id, device_type)
+                    },
+                );
+                if let Some(command) = command {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('l') => {
-                if let Some(command) =
-                    self.selected_list().volume(|volume| volume + 0.01)
-                {
+                let command =
+                    self.selected_list().selected.and_then(|node_id| {
+                        self.view
+                            .volume(node_id, VolumeAdjustment::Relative(0.01))
+                    });
+                if let Some(command) = command {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('h') => {
-                if let Some(command) =
-                    self.selected_list().volume(|volume| volume - 0.01)
-                {
+                let command =
+                    self.selected_list().selected.and_then(|node_id| {
+                        self.view
+                            .volume(node_id, VolumeAdjustment::Relative(-0.01))
+                    });
+                if let Some(command) = command {
                     let _ = self.tx.send(command);
                 }
             }
             KeyCode::Char('q') => self.exit(None),
-            KeyCode::Char('j') => self.selected_list().down(),
-            KeyCode::Char('k') => self.selected_list().up(),
+            KeyCode::Char('j') => {
+                let new_selected = {
+                    let selected_list = self.selected_list();
+                    let selected = selected_list.selected;
+                    let node_type = selected_list.node_type;
+                    self.view.next_node_id(node_type, selected)
+                };
+                if new_selected.is_some() {
+                    self.selected_list_mut().selected = new_selected;
+                }
+            }
+            KeyCode::Char('k') => {
+                let new_selected = {
+                    let selected_list = self.selected_list();
+                    let selected = selected_list.selected;
+                    let node_type = selected_list.node_type;
+                    self.view.prev_node_id(node_type, selected)
+                };
+                if new_selected.is_some() {
+                    self.selected_list_mut().selected = new_selected;
+                }
+            }
             KeyCode::Char('H') => {
                 self.selected_tab_index =
                     self.selected_tab_index.checked_sub(1).unwrap_or(4)
@@ -289,6 +336,7 @@ impl App {
 pub struct AppWidget<'a> {
     tabs: &'a Vec<Tab>,
     selected_tab_index: usize,
+    view: &'a View,
 }
 
 pub struct AppWidgetState<'a> {
@@ -338,8 +386,10 @@ impl<'a> StatefulWidget for AppWidget<'a> {
                 .push((menu_areas[i], Action::SelectTab(i)));
         }
 
-        self.tabs[self.selected_tab_index]
-            .list
-            .render(list_area, buf);
+        let widget = NodeListWidget {
+            node_list: &self.tabs[self.selected_tab_index].list,
+            view: self.view,
+        };
+        widget.render(list_area, buf);
     }
 }
