@@ -46,7 +46,12 @@ pub fn monitor_device(
     let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
 
-    let params = [ParamType::Route, ParamType::Profile, ParamType::EnumProfile];
+    let params = [
+        ParamType::EnumRoute,
+        ParamType::Route,
+        ParamType::Profile,
+        ParamType::EnumProfile,
+    ];
 
     // Set up listening. Use a DeviceStatusTracker to avoid repeated Profile
     // and EnumProfile events. These seem to be emitted on every Route change.
@@ -64,6 +69,10 @@ pub fn monitor_device(
                 };
                 if let Some(param) = deserialize(param) {
                     if let Some(event) = match id {
+                        ParamType::EnumRoute => {
+                            statuses.borrow_mut().set(obj_id, id);
+                            device_enum_route(obj_id, param)
+                        }
                         ParamType::Route => {
                             statuses.borrow_mut().set(obj_id, id);
                             device_route(obj_id, param)
@@ -119,6 +128,40 @@ pub fn monitor_device(
     device.subscribe_params(&params);
 
     Some((device, Box::new(listener)))
+}
+
+fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+    let mut index = None;
+    let mut description = None;
+    let mut available = None;
+
+    for prop in param.properties {
+        match prop.key {
+            libspa_sys::SPA_PARAM_ROUTE_index => {
+                if let Value::Int(value) = prop.value {
+                    index = Some(value);
+                }
+            }
+            libspa_sys::SPA_PARAM_ROUTE_description => {
+                if let Value::String(value) = prop.value {
+                    description = Some(value);
+                }
+            }
+            libspa_sys::SPA_PARAM_ROUTE_available => {
+                if let Value::Id(libspa::utils::Id(value)) = prop.value {
+                    available = Some(value == 2);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some(MonitorEvent::DeviceEnumRoute(
+        id,
+        index?,
+        description?,
+        available?,
+    ))
 }
 
 fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {

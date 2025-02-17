@@ -7,6 +7,7 @@ use crate::object::ObjectId;
 #[derive(Debug)]
 pub enum MonitorEvent {
     DeviceDescription(ObjectId, String),
+    DeviceEnumRoute(ObjectId, i32, String, bool),
     DeviceMediaClass(ObjectId, MediaClass),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),

@@ -15,6 +15,14 @@ pub struct Profile {
 
 #[allow(dead_code)]
 #[derive(Debug)]
+pub struct EnumRoute {
+    pub index: i32,
+    pub description: String,
+    pub available: bool,
+}
+
+#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Route {
     pub index: i32,
     pub device: i32,
@@ -34,6 +42,7 @@ pub struct Device {
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
     pub routes: HashMap<i32, Route>,
+    pub enum_routes: HashMap<i32, EnumRoute>,
 }
 
 #[allow(dead_code)]
@@ -124,6 +133,21 @@ impl State {
                         description,
                         volumes,
                         mute,
+                    },
+                );
+            }
+            MonitorEvent::DeviceEnumRoute(
+                id,
+                index,
+                description,
+                available,
+            ) => {
+                self.device_entry(id).enum_routes.insert(
+                    index,
+                    EnumRoute {
+                        index,
+                        description,
+                        available,
                     },
                 );
             }
