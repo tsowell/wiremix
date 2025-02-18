@@ -20,8 +20,8 @@ pub struct View {
     pub nodes_output: Vec<ObjectId>,
     pub nodes_input: Vec<ObjectId>,
 
-    pub sinks: Vec<(ObjectId, String)>,
-    pub sources: Vec<(ObjectId, String)>,
+    pub sinks: Vec<(ObjectId, String, bool)>,
+    pub sources: Vec<(ObjectId, String, bool)>,
 
     pub metadata_id: Option<ObjectId>,
 }
@@ -46,6 +46,7 @@ pub struct Node {
 
     pub map_title: String,
     pub map: Map,
+    pub is_map_default: bool,
 
     pub volumes: Vec<f32>,
     pub mute: bool,
@@ -81,8 +82,8 @@ pub enum NodeType {
 impl Node {
     pub fn from(
         state: &state::State,
-        sources: &[(ObjectId, String)],
-        sinks: &[(ObjectId, String)],
+        sources: &[(ObjectId, String, bool)],
+        sinks: &[(ObjectId, String, bool)],
         default_sink_name: &Option<String>,
         default_source_name: &Option<String>,
         node: &state::Node,
@@ -113,7 +114,7 @@ impl Node {
             };
 
         let media_class = node.media_class.as_ref()?.clone();
-        let (routes, map, map_title) = if let Some(device_id) = node.device_id {
+        let (routes, map, map_title, is_map_default) = if let Some(device_id) = node.device_id {
             let device = state.devices.get(&device_id)?;
             let route_device = node.card_profile_device?;
             let route = device.routes.get(&route_device)?;
@@ -126,22 +127,25 @@ impl Node {
             routes.sort_by(|(_, a), (_, b)| a.cmp(b));
             let routes = routes;
 
-            Some((routes, Map::Route(route.index), route.description.clone()))
+            Some((routes, Map::Route(route.index), route.description.clone(), false))
         } else if media_class.is_sink_input() {
             let outputs = state.outputs(id);
-            let (sink_id, map_title) = sinks
+            let (sink_id, map_title, _) = sinks
                 .iter()
-                .find(|(sink_id, _)| outputs.contains(sink_id))?;
-            Some((Default::default(), Map::Sink(*sink_id), map_title.clone()))
+                .find(|(sink_id, _, _)| outputs.contains(sink_id))?;
+            let is_map_default = !has_target(state, node.id);
+            Some((Default::default(), Map::Sink(*sink_id), map_title.clone(), is_map_default))
         } else if media_class.is_source_output() {
             let outputs = state.outputs(id);
-            let (source_id, map_title) = sources
+            let (source_id, map_title, _) = sources
                 .iter()
-                .find(|(source_id, _)| outputs.contains(source_id))?;
+                .find(|(source_id, _, _)| outputs.contains(source_id))?;
+            let is_map_default = !has_target(state, node.id);
             Some((
                 Default::default(),
                 Map::Source(*source_id),
                 map_title.clone(),
+                is_map_default,
             ))
         } else {
             None
@@ -157,6 +161,7 @@ impl Node {
             routes,
             map,
             map_title,
+            is_map_default,
             volumes,
             mute,
             peaks: node.peaks.clone(),
@@ -175,42 +180,64 @@ fn default_for(state: &state::State, which: &str) -> Option<String> {
     Some(obj["name"].as_str()?.to_string())
 }
 
+fn target_node(state: &state::State, node_id: ObjectId) -> Option<i64> {
+    let metadata = state.get_metadata_by_name("default")?;
+    let json = metadata.properties.get(&node_id.into())?.get("target.node")?;
+    serde_json::from_str(json).ok()
+}
+
+fn target_object(state: &state::State, node_id: ObjectId) -> Option<i64> {
+    let metadata = state.get_metadata_by_name("default")?;
+    let json = metadata.properties.get(&node_id.into())?.get("target.object")?;
+    serde_json::from_str(json).ok()
+}
+
+fn has_target(state: &state::State, node_id: ObjectId) -> bool {
+    match (target_node(state, node_id), target_object(state, node_id)) {
+        (Some(node), _) if node != -1 => true,
+        (_, Some(object)) if object != -1 => true,
+        _ => false,
+    }
+}
+
 impl View {
     pub fn from(state: &state::State) -> View {
+        let default_sink_name = default_for(state, "default.audio.sink");
+        let default_source_name = default_for(state, "default.audio.source");
+
         let mut sinks: Vec<_> = state
             .nodes
             .values()
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_sink() {
-                    Some((node.id, node.description.as_ref()?.clone()))
+                    let is_default = default_sink_name.is_some() && node.name == default_sink_name;
+                    Some((node.id, node.description.as_ref()?.clone(), is_default))
                 } else {
                     None
                 }
             })
             .collect();
-        sinks.sort_by(|(_, a), (_, b)| a.cmp(b));
+        sinks.sort_by(|(_, a, _), (_, b, _)| a.cmp(b));
         let sinks = sinks;
 
         let mut sources: Vec<_> = state
             .nodes
             .values()
             .filter_map(|node| {
+                let is_default = default_source_name.is_some() && node.name == default_source_name;
                 if node.media_class.as_ref()?.is_source() {
                     let description = node.description.as_ref()?.clone();
-                    Some((node.id, description))
+                    Some((node.id, description, is_default))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let description = node.description.as_ref()?.clone();
-                    Some((node.id, format!("Monitor of {}", description)))
+                    Some((node.id, format!("Monitor of {}", description), is_default))
                 } else {
                     None
                 }
             })
             .collect();
-        sources.sort_by(|(_, a), (_, b)| a.cmp(b));
+        sources.sort_by(|(_, a, _), (_, b, _)| a.cmp(b));
         let sources = sources;
-
-        let default_sink_name = default_for(state, "default.audio.sink");
-        let default_source_name = default_for(state, "default.audio.source");
 
         let nodes: HashMap<ObjectId, Node> = state
             .nodes

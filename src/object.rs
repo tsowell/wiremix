@@ -11,6 +11,12 @@ impl From<&GlobalObject<&DictRef>> for ObjectId {
     }
 }
 
+impl From<ObjectId> for u32 {
+    fn from(id: ObjectId) -> u32 {
+        id.0
+    }
+}
+
 impl ObjectId {
     pub fn from_raw_id(id: u32) -> Self {
         ObjectId(id)
