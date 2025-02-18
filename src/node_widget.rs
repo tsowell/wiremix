@@ -61,7 +61,7 @@ impl<'a> NodeWidget<'a> {
     }
 }
 
-impl<'a> Widget for NodeWidget<'a> {
+impl Widget for NodeWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
