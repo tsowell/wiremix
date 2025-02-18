@@ -210,8 +210,13 @@ impl View {
             .values()
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_sink() {
-                    let is_default = default_sink_name.is_some() && node.name == default_sink_name;
-                    Some((node.id, node.description.as_ref()?.clone(), is_default))
+                    let is_default = default_sink_name.is_some()
+                        && node.name == default_sink_name;
+                    Some((
+                        node.id,
+                        node.description.as_ref()?.clone(),
+                        is_default,
+                    ))
                 } else {
                     None
                 }
@@ -224,13 +229,18 @@ impl View {
             .nodes
             .values()
             .filter_map(|node| {
-                let is_default = default_source_name.is_some() && node.name == default_source_name;
+                let is_default = default_source_name.is_some()
+                    && node.name == default_source_name;
                 if node.media_class.as_ref()?.is_source() {
                     let description = node.description.as_ref()?.clone();
                     Some((node.id, description, is_default))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let description = node.description.as_ref()?.clone();
-                    Some((node.id, format!("Monitor of {}", description), is_default))
+                    Some((
+                        node.id,
+                        format!("Monitor of {}", description),
+                        is_default,
+                    ))
                 } else {
                     None
                 }
@@ -420,7 +430,9 @@ impl View {
         node_type: NodeType,
         node_id: ObjectId,
     ) -> Option<usize> {
-        self.node_ids(node_type).iter().position(|&id| id == node_id)
+        self.node_ids(node_type)
+            .iter()
+            .position(|&id| id == node_id)
     }
 
     pub fn nodes_len(&self, node_type: NodeType) -> usize {
