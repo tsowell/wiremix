@@ -338,7 +338,7 @@ impl View {
         }
     }
 
-    fn nodes(&self, node_type: NodeType) -> &Vec<ObjectId> {
+    fn node_ids(&self, node_type: NodeType) -> &[ObjectId] {
         match node_type {
             NodeType::Playback => &self.nodes_playback,
             NodeType::Recording => &self.nodes_recording,
@@ -349,7 +349,7 @@ impl View {
     }
 
     pub fn full_nodes(&self, node_type: NodeType) -> Vec<&Node> {
-        let node_ids = self.nodes(node_type);
+        let node_ids = self.node_ids(node_type);
         node_ids
             .iter()
             .filter_map(|node_id| self.nodes.get(node_id))
@@ -361,7 +361,7 @@ impl View {
         node_type: NodeType,
         node_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let nodes = self.nodes(node_type);
+        let nodes = self.node_ids(node_type);
         let next_index = match node_id {
             Some(node_id) => nodes
                 .iter()
@@ -377,7 +377,7 @@ impl View {
         node_type: NodeType,
         node_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let nodes = self.nodes(node_type);
+        let nodes = self.node_ids(node_type);
         let next_index = match node_id {
             Some(node_id) => nodes
                 .iter()
@@ -393,10 +393,10 @@ impl View {
         node_type: NodeType,
         node_id: ObjectId,
     ) -> Option<usize> {
-        self.nodes(node_type).iter().position(|&id| id == node_id)
+        self.node_ids(node_type).iter().position(|&id| id == node_id)
     }
 
     pub fn nodes_len(&self, node_type: NodeType) -> usize {
-        self.nodes(node_type).len()
+        self.node_ids(node_type).len()
     }
 }
