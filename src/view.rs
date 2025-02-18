@@ -27,7 +27,7 @@ pub struct View {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Map {
+pub enum Target {
     Sink(ObjectId),
     Source(ObjectId),
     Route(i32),
@@ -44,9 +44,9 @@ pub struct Node {
 
     pub routes: Vec<(i32, String)>,
 
-    pub map_title: String,
-    pub map: Map,
-    pub is_map_default: bool,
+    pub target_title: String,
+    pub target: Target,
+    pub is_target_default: bool,
 
     pub volumes: Vec<f32>,
     pub mute: bool,
@@ -114,42 +114,53 @@ impl Node {
             };
 
         let media_class = node.media_class.as_ref()?.clone();
-        let (routes, map, map_title, is_map_default) = if let Some(device_id) = node.device_id {
-            let device = state.devices.get(&device_id)?;
-            let route_device = node.card_profile_device?;
-            let route = device.routes.get(&route_device)?;
+        let (routes, target, target_title, is_target_default) =
+            if let Some(device_id) = node.device_id {
+                let device = state.devices.get(&device_id)?;
+                let route_device = node.card_profile_device?;
+                let route = device.routes.get(&route_device)?;
 
-            let mut routes: Vec<_> = device
-                .enum_routes
-                .values()
-                .map(|route| (route.index, route.description.clone()))
-                .collect();
-            routes.sort_by(|(_, a), (_, b)| a.cmp(b));
-            let routes = routes;
+                let mut routes: Vec<_> = device
+                    .enum_routes
+                    .values()
+                    .map(|route| (route.index, route.description.clone()))
+                    .collect();
+                routes.sort_by(|(_, a), (_, b)| a.cmp(b));
+                let routes = routes;
 
-            Some((routes, Map::Route(route.index), route.description.clone(), false))
-        } else if media_class.is_sink_input() {
-            let outputs = state.outputs(id);
-            let (sink_id, map_title, _) = sinks
-                .iter()
-                .find(|(sink_id, _, _)| outputs.contains(sink_id))?;
-            let is_map_default = !has_target(state, node.id);
-            Some((Default::default(), Map::Sink(*sink_id), map_title.clone(), is_map_default))
-        } else if media_class.is_source_output() {
-            let outputs = state.outputs(id);
-            let (source_id, map_title, _) = sources
-                .iter()
-                .find(|(source_id, _, _)| outputs.contains(source_id))?;
-            let is_map_default = !has_target(state, node.id);
-            Some((
-                Default::default(),
-                Map::Source(*source_id),
-                map_title.clone(),
-                is_map_default,
-            ))
-        } else {
-            None
-        }?;
+                Some((
+                    routes,
+                    Target::Route(route.index),
+                    route.description.clone(),
+                    false,
+                ))
+            } else if media_class.is_sink_input() {
+                let outputs = state.outputs(id);
+                let (sink_id, target_title, _) = sinks
+                    .iter()
+                    .find(|(sink_id, _, _)| outputs.contains(sink_id))?;
+                let is_target_default = !has_target(state, node.id);
+                Some((
+                    Default::default(),
+                    Target::Sink(*sink_id),
+                    target_title.clone(),
+                    is_target_default,
+                ))
+            } else if media_class.is_source_output() {
+                let outputs = state.outputs(id);
+                let (source_id, target_title, _) = sources
+                    .iter()
+                    .find(|(source_id, _, _)| outputs.contains(source_id))?;
+                let is_target_default = !has_target(state, node.id);
+                Some((
+                    Default::default(),
+                    Target::Source(*source_id),
+                    target_title.clone(),
+                    is_target_default,
+                ))
+            } else {
+                None
+            }?;
 
         Some(Self {
             id,
@@ -159,9 +170,9 @@ impl Node {
             title_source_sink: node.media_name.clone(),
             media_class,
             routes,
-            map,
-            map_title,
-            is_map_default,
+            target,
+            target_title,
+            is_target_default,
             volumes,
             mute,
             peaks: node.peaks.clone(),
@@ -182,13 +193,19 @@ fn default_for(state: &state::State, which: &str) -> Option<String> {
 
 fn target_node(state: &state::State, node_id: ObjectId) -> Option<i64> {
     let metadata = state.get_metadata_by_name("default")?;
-    let json = metadata.properties.get(&node_id.into())?.get("target.node")?;
+    let json = metadata
+        .properties
+        .get(&node_id.into())?
+        .get("target.node")?;
     serde_json::from_str(json).ok()
 }
 
 fn target_object(state: &state::State, node_id: ObjectId) -> Option<i64> {
     let metadata = state.get_metadata_by_name("default")?;
-    let json = metadata.properties.get(&node_id.into())?.get("target.object")?;
+    let json = metadata
+        .properties
+        .get(&node_id.into())?
+        .get("target.object")?;
     serde_json::from_str(json).ok()
 }
 
