@@ -93,7 +93,11 @@ impl Widget for NodeWidget<'_> {
         border_block.render(area, buf);
 
         let left = node_title(self.node, self.device_type);
-        let right = self.node.target_title.clone();
+        let right = if self.node.is_target_default {
+            format!("◇ {}", self.node.target_title)
+        } else {
+            self.node.target_title.clone()
+        };
 
         let mut header_left = Default::default();
         let mut header_right = Default::default();
