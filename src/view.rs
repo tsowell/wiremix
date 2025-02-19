@@ -20,17 +20,22 @@ pub struct View {
     pub nodes_output: Vec<ObjectId>,
     pub nodes_input: Vec<ObjectId>,
 
-    pub sinks: Vec<(ObjectId, String, bool)>,
-    pub sources: Vec<(ObjectId, String, bool)>,
+    pub sinks: Vec<(Target, String)>,
+    pub sources: Vec<(Target, String)>,
+
+    pub default_sink: Option<Target>,
+    pub default_source: Option<Target>,
 
     pub metadata_id: Option<ObjectId>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Target {
     Sink(ObjectId),
     Source(ObjectId),
     Route(i32),
+    DefaultSink,
+    DefaultSource,
 }
 
 #[derive(Debug)]
@@ -42,11 +47,10 @@ pub struct Node {
     pub title_source_sink: Option<String>,
     pub media_class: MediaClass,
 
-    pub routes: Vec<(i32, String)>,
+    pub routes: Vec<(Target, String)>,
 
     pub target_title: String,
-    pub target: Target,
-    pub is_target_default: bool,
+    pub target: Option<Target>,
 
     pub volumes: Vec<f32>,
     pub mute: bool,
@@ -70,20 +74,21 @@ pub enum VolumeAdjustment {
     Relative(f32),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum NodeType {
     Playback,
     Recording,
     Output,
     Input,
+    #[default]
     All,
 }
 
 impl Node {
     pub fn from(
         state: &state::State,
-        sources: &[(ObjectId, String, bool)],
-        sinks: &[(ObjectId, String, bool)],
+        sources: &[(Target, String)],
+        sinks: &[(Target, String)],
         default_sink_name: &Option<String>,
         default_source_name: &Option<String>,
         node: &state::Node,
@@ -114,7 +119,7 @@ impl Node {
             };
 
         let media_class = node.media_class.as_ref()?.clone();
-        let (routes, target, target_title, is_target_default) =
+        let (routes, target, target_title) =
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
                 let route_device = node.card_profile_device?;
@@ -123,41 +128,46 @@ impl Node {
                 let mut routes: Vec<_> = device
                     .enum_routes
                     .values()
-                    .map(|route| (route.index, route.description.clone()))
+                    .map(|route| {
+                        (Target::Route(route.index), route.description.clone())
+                    })
                     .collect();
                 routes.sort_by(|(_, a), (_, b)| a.cmp(b));
                 let routes = routes;
 
                 Some((
                     routes,
-                    Target::Route(route.index),
+                    Some(Target::Route(route.index)),
                     route.description.clone(),
-                    false,
                 ))
             } else if media_class.is_sink_input() {
                 let outputs = state.outputs(id);
-                let (sink_id, target_title, _) = sinks
-                    .iter()
-                    .find(|(sink_id, _, _)| outputs.contains(sink_id))?;
-                let is_target_default = !has_target(state, node.id);
-                Some((
-                    Default::default(),
-                    Target::Sink(*sink_id),
-                    target_title.clone(),
-                    is_target_default,
-                ))
+                let sink = sinks.iter().find(|(target, _)| {
+                    matches!(target, Target::Sink(sink_id)
+                    if outputs.contains(sink_id))
+                });
+                let target = if !has_target(state, node.id) {
+                    Some(Target::DefaultSink)
+                } else {
+                    sink.map(|&(target, _)| target)
+                };
+                let target_title =
+                    sink.map(|(_, title)| title.clone()).unwrap_or_default();
+                Some((Default::default(), target, target_title))
             } else if media_class.is_source_output() {
-                let outputs = state.outputs(id);
-                let (source_id, target_title, _) = sources
-                    .iter()
-                    .find(|(source_id, _, _)| outputs.contains(source_id))?;
-                let is_target_default = !has_target(state, node.id);
-                Some((
-                    Default::default(),
-                    Target::Source(*source_id),
-                    target_title.clone(),
-                    is_target_default,
-                ))
+                let inputs = state.inputs(id);
+                let source = sources.iter().find(|(target, _)| {
+                    matches!(target, Target::Sink(source_id)
+                    if inputs.contains(source_id))
+                });
+                let target = if !has_target(state, node.id) {
+                    Some(Target::DefaultSource)
+                } else {
+                    source.map(|&(target, _)| target)
+                };
+                let target_title =
+                    source.map(|(_, title)| title.clone()).unwrap_or_default();
+                Some((Default::default(), target, target_title))
             } else {
                 None
             }?;
@@ -172,7 +182,6 @@ impl Node {
             routes,
             target,
             target_title,
-            is_target_default,
             volumes,
             mute,
             peaks: node.peaks.clone(),
@@ -222,48 +231,64 @@ impl View {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
 
+        let default_sink =
+            default_sink_name.as_ref().and_then(|default_sink_name| {
+                state
+                    .nodes
+                    .values()
+                    .find(|node| node.name.as_ref() == Some(default_sink_name))
+                    .map(|node| Target::Sink(node.id))
+            });
+
+        let default_source =
+            default_source_name
+                .as_ref()
+                .and_then(|default_source_name| {
+                    state
+                        .nodes
+                        .values()
+                        .find(|node| {
+                            node.name.as_ref() == Some(default_source_name)
+                        })
+                        .map(|node| Target::Source(node.id))
+                });
+
         let mut sinks: Vec<_> = state
             .nodes
             .values()
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_sink() {
-                    let is_default = default_sink_name.is_some()
-                        && node.name == default_sink_name;
                     Some((
-                        node.id,
+                        Target::Sink(node.id),
                         node.description.as_ref()?.clone(),
-                        is_default,
                     ))
                 } else {
                     None
                 }
             })
             .collect();
-        sinks.sort_by(|(_, a, _), (_, b, _)| a.cmp(b));
+        sinks.sort_by(|(_, a), (_, b)| a.cmp(b));
         let sinks = sinks;
 
         let mut sources: Vec<_> = state
             .nodes
             .values()
             .filter_map(|node| {
-                let is_default = default_source_name.is_some()
-                    && node.name == default_source_name;
                 if node.media_class.as_ref()?.is_source() {
                     let description = node.description.as_ref()?.clone();
-                    Some((node.id, description, is_default))
+                    Some((Target::Source(node.id), description))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let description = node.description.as_ref()?.clone();
                     Some((
-                        node.id,
+                        Target::Source(node.id),
                         format!("Monitor of {}", description),
-                        is_default,
                     ))
                 } else {
                     None
                 }
             })
             .collect();
-        sources.sort_by(|(_, a, _), (_, b, _)| a.cmp(b));
+        sources.sort_by(|(_, a), (_, b)| a.cmp(b));
         let sources = sources;
 
         let nodes: HashMap<ObjectId, Node> = state
@@ -320,6 +345,8 @@ impl View {
             nodes_input,
             sinks,
             sources,
+            default_sink,
+            default_source,
             metadata_id: state.metadatas_by_name.get("default").copied(),
         }
     }
@@ -343,6 +370,58 @@ impl View {
             Some(String::from("Spa:String:JSON")),
             Some(json!({ "name": &node.name }).to_string()),
         ))
+    }
+
+    pub fn set_target(
+        &self,
+        node_id: ObjectId,
+        target: Target,
+    ) -> Vec<Command> {
+        let Some(metadata_id) = self.metadata_id else {
+            return Default::default();
+        };
+
+        match target {
+            Target::DefaultSource | Target::DefaultSink => {
+                vec![
+                    Command::MetadataSetProperty(
+                        metadata_id,
+                        node_id.into(),
+                        "target.object".to_string(),
+                        Some("Spa:Id".to_string()),
+                        Some("-1".to_string()),
+                    ),
+                    Command::MetadataSetProperty(
+                        metadata_id,
+                        node_id.into(),
+                        "target.node".to_string(),
+                        Some("Spa:Id".to_string()),
+                        Some("-1".to_string()),
+                    ),
+                ]
+            }
+            Target::Source(target_id) | Target::Sink(target_id) => {
+                vec![
+                    Command::MetadataSetProperty(
+                        metadata_id,
+                        node_id.into(),
+                        "target.object".to_string(),
+                        None,
+                        None,
+                    ),
+                    Command::MetadataSetProperty(
+                        metadata_id,
+                        node_id.into(),
+                        "target.node".to_string(),
+                        Some("Spa:Id".to_string()),
+                        Some(target_id.to_string()),
+                    ),
+                ]
+            }
+            Target::Route(_) => {
+                todo!()
+            }
+        }
     }
 
     pub fn mute(&self, node_id: ObjectId) -> Option<Command> {
@@ -454,5 +533,47 @@ impl View {
 
     pub fn nodes_len(&self, node_type: NodeType) -> usize {
         self.node_ids(node_type).len()
+    }
+
+    pub fn targets(
+        &self,
+        node_id: ObjectId,
+    ) -> Option<(Vec<(Target, String)>, usize)> {
+        let node = self.nodes.get(&node_id)?;
+
+        let node_target = node.target?;
+        let (mut targets, default) = match node_target {
+            Target::Route(_) => (node.routes.clone(), None),
+            Target::Sink(_) | Target::DefaultSink => {
+                (self.sinks.clone(), self.default_sink)
+            }
+            Target::Source(_) | Target::DefaultSource => {
+                (self.sources.clone(), self.default_source)
+            }
+        };
+        let default_name = default.and_then(|default| {
+            targets
+                .iter()
+                .find(|(target, _)| *target == default)
+                .map(|(_, name)| format!("Default: {}", name))
+        });
+        targets.sort_by(|(_, a), (_, b)| a.cmp(b));
+        match (default, default_name.as_ref()) {
+            (Some(Target::Sink(_)), Some(default_name)) => {
+                targets.insert(0, (Target::DefaultSink, default_name.clone()));
+            }
+            (Some(Target::Source(_)), Some(default_name)) => {
+                targets
+                    .insert(0, (Target::DefaultSource, default_name.clone()));
+            }
+            _ => {}
+        }
+        let targets = targets;
+
+        let selected_position = targets
+            .iter()
+            .position(|&(target, _)| target == node_target)?;
+
+        Some((targets, selected_position))
     }
 }

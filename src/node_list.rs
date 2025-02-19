@@ -2,7 +2,7 @@ use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::Widget,
+    widgets::{Block, Borders, Clear, List, ListState, StatefulWidget, Widget},
 };
 
 use crate::device_type::DeviceType;
@@ -13,6 +13,7 @@ use crate::view;
 
 /// NodeList stores information for filtering and displaying a subset of Nodes
 /// from the global STATE.
+#[derive(Default)]
 pub struct NodeList {
     /// Index of the first node in viewport
     top: usize,
@@ -22,6 +23,10 @@ pub struct NodeList {
     pub node_type: view::NodeType,
     /// Default device type to use
     pub device_type: Option<DeviceType>,
+    /// Target popup state
+    pub list_state: ListState,
+    /// Targets
+    pub targets: Vec<(view::Target, String)>,
 }
 
 impl NodeList {
@@ -34,7 +39,15 @@ impl NodeList {
             selected: None,
             node_type,
             device_type,
+            ..Default::default()
         }
+    }
+
+    pub fn selected_target(&self) -> Option<&view::Target> {
+        self.list_state
+            .selected()
+            .and_then(|index| self.targets.get(index))
+            .map(|(target, _)| target)
     }
 
     /// Reconciles changes to nodes, viewport, and selection.
@@ -94,11 +107,11 @@ impl NodeList {
 }
 
 pub struct NodeListWidget<'a> {
-    pub node_list: &'a NodeList,
+    pub node_list: &'a mut NodeList,
     pub view: &'a view::View,
 }
 
-impl Widget for &NodeListWidget<'_> {
+impl Widget for &mut NodeListWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let (header_area, list_area, footer_area) = self.node_list.areas(&area);
 
@@ -157,15 +170,60 @@ impl Widget for &NodeListWidget<'_> {
                 .spacing(spacing)
                 .split(list_area)
         };
-        for (node, area) in nodes.zip(nodes_layout.iter()) {
+
+        let nodes_and_areas: Vec<(&&view::Node, &Rect)> =
+            nodes.zip(nodes_layout.iter()).collect();
+        for (node, &node_area) in &nodes_and_areas {
             let selected = self
                 .node_list
                 .selected
                 .map(|id| id == node.id)
                 .unwrap_or_default();
             NodeWidget::new(node, selected, self.node_list.device_type)
-                .render(*area, buf);
+                .render(node_area, buf);
         }
+
+        if self.node_list.list_state.selected().is_none() {
+            return;
+        }
+        let Some((_, node_area)) = nodes_and_areas.iter().find(|(node, _)| {
+            self.node_list
+                .selected
+                .map(|id| id == node.id)
+                .unwrap_or_default()
+        }) else {
+            return;
+        };
+
+        let targets: Vec<_> = self
+            .node_list
+            .targets
+            .iter()
+            .map(|(_, title)| title.clone())
+            .collect();
+        let max_target_length =
+            targets.iter().map(|s| s.len()).max().unwrap_or(0);
+
+        let popup_area = Rect::new(
+            list_area.right() - max_target_length as u16 - 3,
+            node_area.top() - 1,
+            max_target_length as u16 + 3,
+            std::cmp::min(7, targets.len() as u16 + 2),
+        )
+        .clamp(area);
+
+        Clear.render(popup_area, buf);
+
+        let list = List::new(targets)
+            .block(Block::default().borders(Borders::ALL))
+            .highlight_symbol(">");
+
+        StatefulWidget::render(
+            &list,
+            popup_area,
+            buf,
+            &mut self.node_list.list_state,
+        );
     }
 }
 

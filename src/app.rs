@@ -142,12 +142,12 @@ impl App {
 
     fn draw(&mut self, frame: &mut Frame) {
         let widget = AppWidget {
-            tabs: &self.tabs,
             selected_tab_index: self.selected_tab_index,
             view: &self.view,
         };
         let mut widget_state = AppWidgetState {
             click_areas: &mut self.click_areas,
+            tabs: &mut self.tabs,
         };
 
         frame.render_stateful_widget(widget, frame.area(), &mut widget_state);
@@ -275,26 +275,61 @@ impl App {
                 }
             }
             KeyCode::Char('q') => self.exit(None),
+            KeyCode::Char('c') => {
+                let targets = self
+                    .selected_list()
+                    .selected
+                    .and_then(|node_id| self.view.targets(node_id));
+                if let Some((targets, index)) = targets {
+                    let selected_list = self.selected_list_mut();
+                    selected_list.targets = targets;
+                    selected_list.list_state.select(Some(index));
+                }
+            }
+            KeyCode::Esc => self.selected_list_mut().list_state.select(None),
+            KeyCode::Enter => {
+                let selected_list = self.selected_list();
+                let commands = selected_list
+                    .selected
+                    .zip(selected_list.selected_target())
+                    .map(|(node_id, &target)| {
+                        self.view.set_target(node_id, target)
+                    })
+                    .into_iter()
+                    .flatten();
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
+                self.selected_list_mut().list_state.select(None);
+            }
             KeyCode::Char('j') => {
-                let new_selected = {
-                    let selected_list = self.selected_list();
-                    let selected = selected_list.selected;
-                    let node_type = selected_list.node_type;
-                    self.view.next_node_id(node_type, selected)
-                };
-                if new_selected.is_some() {
-                    self.selected_list_mut().selected = new_selected;
+                let selected_list = self.selected_list();
+                if selected_list.list_state.selected().is_some() {
+                    self.selected_list_mut().list_state.select_next();
+                } else {
+                    let new_selected = {
+                        let selected = selected_list.selected;
+                        let node_type = selected_list.node_type;
+                        self.view.next_node_id(node_type, selected)
+                    };
+                    if new_selected.is_some() {
+                        self.selected_list_mut().selected = new_selected;
+                    }
                 }
             }
             KeyCode::Char('k') => {
-                let new_selected = {
-                    let selected_list = self.selected_list();
-                    let selected = selected_list.selected;
-                    let node_type = selected_list.node_type;
-                    self.view.prev_node_id(node_type, selected)
-                };
-                if new_selected.is_some() {
-                    self.selected_list_mut().selected = new_selected;
+                let selected_list = self.selected_list();
+                if selected_list.list_state.selected().is_some() {
+                    self.selected_list_mut().list_state.select_previous();
+                } else {
+                    let new_selected = {
+                        let selected = selected_list.selected;
+                        let node_type = selected_list.node_type;
+                        self.view.prev_node_id(node_type, selected)
+                    };
+                    if new_selected.is_some() {
+                        self.selected_list_mut().selected = new_selected;
+                    }
                 }
             }
             KeyCode::Char('H') => {
@@ -334,13 +369,13 @@ impl App {
 }
 
 pub struct AppWidget<'a> {
-    tabs: &'a Vec<Tab>,
     selected_tab_index: usize,
     view: &'a View,
 }
 
 pub struct AppWidgetState<'a> {
     click_areas: &'a mut Vec<(Rect, Action)>,
+    tabs: &'a mut Vec<Tab>,
 }
 
 impl<'a> StatefulWidget for AppWidget<'a> {
@@ -363,7 +398,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         );
 
         let mut constraints: Vec<Constraint> = Default::default();
-        for tab in self.tabs.iter() {
+        for tab in state.tabs.iter() {
             constraints.push(Constraint::Length(tab.title.len() as u16));
         }
 
@@ -373,7 +408,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             .spacing(2)
             .split(menu_area);
 
-        for (i, tab) in self.tabs.iter().enumerate() {
+        for (i, tab) in state.tabs.iter().enumerate() {
             let (title, style) = if i == self.selected_tab_index {
                 (tab.title.to_uppercase(), Style::default().fg(Color::Green))
             } else {
@@ -386,8 +421,8 @@ impl<'a> StatefulWidget for AppWidget<'a> {
                 .push((menu_areas[i], Action::SelectTab(i)));
         }
 
-        let widget = NodeListWidget {
-            node_list: &self.tabs[self.selected_tab_index].list,
+        let mut widget = NodeListWidget {
+            node_list: &mut state.tabs[self.selected_tab_index].list,
             view: self.view,
         };
         widget.render(list_area, buf);

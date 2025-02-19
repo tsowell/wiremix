@@ -17,6 +17,12 @@ impl From<ObjectId> for u32 {
     }
 }
 
+impl ToString for ObjectId {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 impl ObjectId {
     pub fn from_raw_id(id: u32) -> Self {
         ObjectId(id)
