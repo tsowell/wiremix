@@ -1,6 +1,6 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListState, StatefulWidget, Widget},
 };
@@ -223,9 +223,9 @@ impl Widget for PopupWidget<'_> {
             targets.iter().map(|s| s.len()).max().unwrap_or(0);
 
         let popup_area = Rect::new(
-            self.list_area.right() - max_target_length as u16 - 3,
+            self.list_area.right() - max_target_length as u16 - 2,
             area.top() - 1,
-            max_target_length as u16 + 3,
+            max_target_length as u16 + 2,
             std::cmp::min(7, targets.len() as u16 + 2),
         )
         .clamp(*self.parent_area);
@@ -234,7 +234,11 @@ impl Widget for PopupWidget<'_> {
 
         let list = List::new(targets)
             .block(Block::default().borders(Borders::ALL))
-            .highlight_symbol(">");
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::REVERSED),
+            );
 
         StatefulWidget::render(
             &list,
