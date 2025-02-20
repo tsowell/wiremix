@@ -183,18 +183,36 @@ impl Widget for &mut NodeListWidget<'_> {
                 .render(node_area, buf);
         }
 
-        if self.node_list.list_state.selected().is_none() {
-            return;
+        // Show the target popup?
+        if self.node_list.list_state.selected().is_some() {
+            // Get the area for the selected node
+            if let Some((_, node_area)) =
+                nodes_and_areas.iter().find(|(node, _)| {
+                    self.node_list
+                        .selected
+                        .map(|id| id == node.id)
+                        .unwrap_or_default()
+                })
+            {
+                PopupWidget {
+                    node_list: self.node_list,
+                    list_area: &list_area,
+                    parent_area: &area,
+                }
+                .render(**node_area, buf);
+            }
         }
-        let Some((_, node_area)) = nodes_and_areas.iter().find(|(node, _)| {
-            self.node_list
-                .selected
-                .map(|id| id == node.id)
-                .unwrap_or_default()
-        }) else {
-            return;
-        };
+    }
+}
 
+struct PopupWidget<'a> {
+    node_list: &'a mut NodeList,
+    list_area: &'a Rect,
+    parent_area: &'a Rect,
+}
+
+impl Widget for PopupWidget<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
         let targets: Vec<_> = self
             .node_list
             .targets
@@ -205,12 +223,12 @@ impl Widget for &mut NodeListWidget<'_> {
             targets.iter().map(|s| s.len()).max().unwrap_or(0);
 
         let popup_area = Rect::new(
-            list_area.right() - max_target_length as u16 - 3,
-            node_area.top() - 1,
+            self.list_area.right() - max_target_length as u16 - 3,
+            area.top() - 1,
             max_target_length as u16 + 3,
             std::cmp::min(7, targets.len() as u16 + 2),
         )
-        .clamp(area);
+        .clamp(*self.parent_area);
 
         Clear.render(popup_area, buf);
 
