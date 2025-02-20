@@ -94,8 +94,7 @@ impl Widget for NodeWidget<'_> {
 
         let left = node_title(self.node, self.device_type);
         let right = match self.node.target {
-            Some(view::Target::DefaultSink)
-            | Some(view::Target::DefaultSource) => {
+            Some(view::Target::Default) => {
                 format!("◇ {}", self.node.target_title)
             }
             _ => self.node.target_title.clone(),

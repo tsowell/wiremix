@@ -31,11 +31,9 @@ pub struct View {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Target {
-    Sink(ObjectId),
-    Source(ObjectId),
+    Node(ObjectId),
     Route(i32),
-    DefaultSink,
-    DefaultSource,
+    Default,
 }
 
 #[derive(Debug)]
@@ -143,11 +141,11 @@ impl Node {
             } else if media_class.is_sink_input() {
                 let outputs = state.outputs(id);
                 let sink = sinks.iter().find(|(target, _)| {
-                    matches!(target, Target::Sink(sink_id)
+                    matches!(target, Target::Node(sink_id)
                     if outputs.contains(sink_id))
                 });
                 let target = if !has_target(state, node.id) {
-                    Some(Target::DefaultSink)
+                    Some(Target::Default)
                 } else {
                     sink.map(|&(target, _)| target)
                 };
@@ -157,11 +155,11 @@ impl Node {
             } else if media_class.is_source_output() {
                 let inputs = state.inputs(id);
                 let source = sources.iter().find(|(target, _)| {
-                    matches!(target, Target::Sink(source_id)
+                    matches!(target, Target::Node(source_id)
                     if inputs.contains(source_id))
                 });
                 let target = if !has_target(state, node.id) {
-                    Some(Target::DefaultSource)
+                    Some(Target::Default)
                 } else {
                     source.map(|&(target, _)| target)
                 };
@@ -237,7 +235,7 @@ impl View {
                     .nodes
                     .values()
                     .find(|node| node.name.as_ref() == Some(default_sink_name))
-                    .map(|node| Target::Sink(node.id))
+                    .map(|node| Target::Node(node.id))
             });
 
         let default_source =
@@ -250,7 +248,7 @@ impl View {
                         .find(|node| {
                             node.name.as_ref() == Some(default_source_name)
                         })
-                        .map(|node| Target::Source(node.id))
+                        .map(|node| Target::Node(node.id))
                 });
 
         let mut sinks: Vec<_> = state
@@ -259,7 +257,7 @@ impl View {
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_sink() {
                     Some((
-                        Target::Sink(node.id),
+                        Target::Node(node.id),
                         node.description.as_ref()?.clone(),
                     ))
                 } else {
@@ -276,11 +274,11 @@ impl View {
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_source() {
                     let description = node.description.as_ref()?.clone();
-                    Some((Target::Source(node.id), description))
+                    Some((Target::Node(node.id), description))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let description = node.description.as_ref()?.clone();
                     Some((
-                        Target::Source(node.id),
+                        Target::Node(node.id),
                         format!("Monitor of {}", description),
                     ))
                 } else {
@@ -382,7 +380,7 @@ impl View {
         };
 
         match target {
-            Target::DefaultSource | Target::DefaultSink => {
+            Target::Default => {
                 vec![
                     Command::MetadataSetProperty(
                         metadata_id,
@@ -400,7 +398,7 @@ impl View {
                     ),
                 ]
             }
-            Target::Source(target_id) | Target::Sink(target_id) => {
+            Target::Node(target_id) => {
                 vec![
                     Command::MetadataSetProperty(
                         metadata_id,
@@ -541,38 +539,43 @@ impl View {
     ) -> Option<(Vec<(Target, String)>, usize)> {
         let node = self.nodes.get(&node_id)?;
 
-        let node_target = node.target?;
-        let (mut targets, default) = match node_target {
-            Target::Route(_) => (node.routes.clone(), None),
-            Target::Sink(_) | Target::DefaultSink => {
-                (self.sinks.clone(), self.default_sink)
-            }
-            Target::Source(_) | Target::DefaultSource => {
-                (self.sources.clone(), self.default_source)
-            }
+        // Get the target list appropriate to the node type
+        let (mut targets, default) = if node.device_info.is_some() {
+            (node.routes.clone(), None)
+        } else if node.media_class.is_sink_input() {
+            (self.sinks.clone(), self.default_sink)
+        } else if node.media_class.is_source_output() {
+            (self.sources.clone(), self.default_source)
+        } else {
+            (Default::default(), None)
         };
+        // Get and format the name of the default target
         let default_name = default.and_then(|default| {
             targets
                 .iter()
                 .find(|(target, _)| *target == default)
                 .map(|(_, name)| format!("Default: {}", name))
         });
+        // Sort targets by name
         targets.sort_by(|(_, a), (_, b)| a.cmp(b));
-        match (default, default_name.as_ref()) {
-            (Some(Target::Sink(_)), Some(default_name)) => {
-                targets.insert(0, (Target::DefaultSink, default_name.clone()));
-            }
-            (Some(Target::Source(_)), Some(default_name)) => {
-                targets
-                    .insert(0, (Target::DefaultSource, default_name.clone()));
-            }
-            _ => {}
-        }
+        // If the targets are nodes, add the default node to the top
+        if let (Some(Target::Node(_)), Some(default_name)) =
+            (default, default_name.as_ref())
+        {
+            targets.insert(0, (Target::Default, default_name.clone()));
+        };
         let targets = targets;
 
-        let selected_position = targets
-            .iter()
-            .position(|&(target, _)| target == node_target)?;
+        // Get, for return, the position of the current target
+        // Default to 0 if for some reason we can't find it
+        let selected_position = node
+            .target
+            .and_then(|node_target| {
+                targets
+                    .iter()
+                    .position(|&(target, _)| target == node_target)
+            })
+            .unwrap_or(0);
 
         Some((targets, selected_position))
     }
