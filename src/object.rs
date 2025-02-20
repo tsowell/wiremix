@@ -17,6 +17,7 @@ impl From<ObjectId> for u32 {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)] // This isn't for end-users
 impl ToString for ObjectId {
     fn to_string(&self) -> String {
         self.0.to_string()
