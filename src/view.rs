@@ -503,7 +503,7 @@ impl View {
         nodes.get(next_index).copied()
     }
 
-    pub fn prev_node_id(
+    pub fn previous_node_id(
         &self,
         node_type: NodeType,
         node_id: Option<ObjectId>,

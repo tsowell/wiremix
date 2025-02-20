@@ -325,7 +325,7 @@ impl App {
                     let new_selected = {
                         let selected = selected_list.selected;
                         let node_type = selected_list.node_type;
-                        self.view.prev_node_id(node_type, selected)
+                        self.view.previous_node_id(node_type, selected)
                     };
                     if new_selected.is_some() {
                         self.selected_list_mut().selected = new_selected;
