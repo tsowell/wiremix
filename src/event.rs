@@ -7,11 +7,11 @@ use crate::object::ObjectId;
 #[derive(Debug)]
 pub enum MonitorEvent {
     DeviceDescription(ObjectId, String),
-    DeviceEnumRoute(ObjectId, i32, String, bool),
+    DeviceEnumRoute(ObjectId, i32, String, bool, Vec<i32>, Vec<i32>),
     DeviceMediaClass(ObjectId, MediaClass),
     DeviceName(ObjectId, String),
     DeviceNick(ObjectId, String),
-    DeviceProfileDescription(ObjectId, i32, String),
+    DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(MediaClass, Vec<i32>)>),
     DeviceProfile(ObjectId, i32),
     DeviceRoute(ObjectId, i32, i32, String, Vec<f32>, bool),
 

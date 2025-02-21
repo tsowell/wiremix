@@ -134,6 +134,8 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
+    let mut profiles = None;
+    let mut devices = None;
 
     for prop in param.properties {
         match prop.key {
@@ -152,6 +154,16 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
                     available = Some(value == 2);
                 }
             }
+            libspa_sys::SPA_PARAM_ROUTE_profiles => {
+                if let Value::ValueArray(ValueArray::Int(value)) = prop.value {
+                    profiles = Some(value);
+                }
+            }
+            libspa_sys::SPA_PARAM_ROUTE_devices => {
+                if let Value::ValueArray(ValueArray::Int(value)) = prop.value {
+                    devices = Some(value);
+                }
+            }
             _ => {}
         }
     }
@@ -161,6 +173,8 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         index?,
         description?,
         available?,
+        profiles?,
+        devices?,
     ))
 }
 
@@ -236,9 +250,23 @@ fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     None
 }
 
+fn parse_class(value: &Value) -> Option<(MediaClass, Vec<i32>)> {
+    if let Value::Struct(class) = value {
+        if let [Value::String(name), _, _, Value::ValueArray(ValueArray::Int(devices))] =
+            class.as_slice()
+        {
+            return Some((MediaClass::from(name.as_str()), devices.clone()));
+        }
+    }
+
+    None
+}
+
 fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut description = None;
+    let mut available = None;
+    let mut classes = None;
 
     for prop in param.properties {
         match prop.key {
@@ -252,14 +280,33 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
                     description = Some(value);
                 }
             }
+            libspa_sys::SPA_PARAM_PROFILE_available => {
+                if let Value::Id(libspa::utils::Id(value)) = prop.value {
+                    available = Some(value == 2);
+                }
+            }
+            libspa_sys::SPA_PARAM_PROFILE_classes => {
+                if let Value::Struct(classes_struct) = prop.value {
+                    if let Some(Value::Int(_)) = classes_struct.first() {
+                        classes = Some(Vec::new());
+                        for class in classes_struct.iter().skip(1) {
+                            if let Some(classes) = &mut classes {
+                                classes.extend(parse_class(class));
+                            }
+                        }
+                    }
+                }
+            }
             _ => (),
         }
     }
 
-    Some(MonitorEvent::DeviceProfileDescription(
+    Some(MonitorEvent::DeviceEnumProfile(
         id,
         index?,
         description?,
+        available?,
+        classes?,
     ))
 }
 

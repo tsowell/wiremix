@@ -11,6 +11,8 @@ use crate::object::ObjectId;
 pub struct Profile {
     pub index: i32,
     pub description: String,
+    pub available: bool,
+    pub classes: Vec<(MediaClass, Vec<i32>)>,
 }
 
 #[allow(dead_code)]
@@ -19,6 +21,8 @@ pub struct EnumRoute {
     pub index: i32,
     pub description: String,
     pub available: bool,
+    pub profiles: Vec<i32>,
+    pub devices: Vec<i32>,
 }
 
 #[allow(dead_code)]
@@ -109,10 +113,22 @@ impl State {
             MonitorEvent::DeviceNick(id, nick) => {
                 self.device_entry(id).nick = Some(nick);
             }
-            MonitorEvent::DeviceProfileDescription(id, index, description) => {
-                self.device_entry(id)
-                    .profiles
-                    .insert(index, Profile { index, description });
+            MonitorEvent::DeviceEnumProfile(
+                id,
+                index,
+                description,
+                available,
+                classes,
+            ) => {
+                self.device_entry(id).profiles.insert(
+                    index,
+                    Profile {
+                        index,
+                        description,
+                        available,
+                        classes,
+                    },
+                );
             }
             MonitorEvent::DeviceProfile(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
@@ -141,6 +157,8 @@ impl State {
                 index,
                 description,
                 available,
+                profiles,
+                devices,
             ) => {
                 self.device_entry(id).enum_routes.insert(
                     index,
@@ -148,6 +166,8 @@ impl State {
                         index,
                         description,
                         available,
+                        profiles,
+                        devices,
                     },
                 );
             }
