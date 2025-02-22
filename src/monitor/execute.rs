@@ -20,27 +20,27 @@ pub fn execute_command(
 ) {
     match command {
         Command::NodeMute(obj_id, mute) => {
-            if let Some(node) = proxies.get_node(obj_id) {
+            if let Some(node) = proxies.nodes.get(&obj_id) {
                 node_set_mute(node, mute);
             }
         }
         Command::DeviceMute(obj_id, route_index, route_device, mute) => {
-            if let Some(device) = proxies.get_device(obj_id) {
+            if let Some(device) = proxies.devices.get(&obj_id) {
                 device_set_mute(device, route_index, route_device, mute);
             }
         }
         Command::NodeVolumes(obj_id, volumes) => {
-            if let Some(node) = proxies.get_node(obj_id) {
+            if let Some(node) = proxies.nodes.get(&obj_id) {
                 node_set_volumes(node, volumes);
             }
         }
         Command::DeviceVolumes(obj_id, route_index, route_device, volumes) => {
-            if let Some(device) = proxies.get_device(obj_id) {
+            if let Some(device) = proxies.devices.get(&obj_id) {
                 device_set_volumes(device, route_index, route_device, volumes);
             }
         }
         Command::DeviceSetRoute(obj_id, route_index, route_device) => {
-            if let Some(device) = proxies.get_device(obj_id) {
+            if let Some(device) = proxies.devices.get(&obj_id) {
                 device_set_route(device, route_index, route_device);
             }
         }
@@ -60,7 +60,7 @@ pub fn execute_command(
             streams.remove(obj_id);
         }
         Command::MetadataSetProperty(obj_id, subject, key, type_, value) => {
-            if let Some(metadata) = proxies.get_metadata(obj_id) {
+            if let Some(metadata) = proxies.metadatas.get(&obj_id) {
                 metadata.set_property(
                     subject,
                     &key,

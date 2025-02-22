@@ -16,10 +16,10 @@ use pipewire::{
 use crate::object::ObjectId;
 
 pub struct ProxyRegistry {
-    devices: HashMap<ObjectId, Rc<Device>>,
-    nodes: HashMap<ObjectId, Rc<Node>>,
+    pub devices: HashMap<ObjectId, Rc<Device>>,
+    pub nodes: HashMap<ObjectId, Rc<Node>>,
+    pub metadatas: HashMap<ObjectId, Rc<Metadata>>,
     links: HashMap<ObjectId, Rc<Link>>,
-    metadatas: HashMap<ObjectId, Rc<Metadata>>,
     listeners: HashMap<ObjectId, Vec<Box<dyn Listener>>>,
     garbage_proxies_t: Vec<Rc<dyn ProxyT>>,
     garbage_listeners: Vec<Box<dyn Listener>>,
@@ -163,21 +163,5 @@ impl ProxyRegistry {
             self.garbage_proxies_t.push(old);
             let _ = self.gc_fd.arm();
         }
-    }
-
-    pub fn get_device(&self, obj_id: ObjectId) -> Option<&Rc<Device>> {
-        self.devices.get(&obj_id)
-    }
-
-    pub fn get_node(&self, obj_id: ObjectId) -> Option<&Rc<Node>> {
-        self.nodes.get(&obj_id)
-    }
-
-    pub fn get_link(&self, obj_id: ObjectId) -> Option<&Rc<Link>> {
-        self.links.get(&obj_id)
-    }
-
-    pub fn get_metadata(&self, obj_id: ObjectId) -> Option<&Rc<Metadata>> {
-        self.metadatas.get(&obj_id)
     }
 }
