@@ -281,9 +281,11 @@ impl App {
                     .selected
                     .and_then(|node_id| self.view.targets(node_id));
                 if let Some((targets, index)) = targets {
-                    let selected_list = self.selected_list_mut();
-                    selected_list.targets = targets;
-                    selected_list.list_state.select(Some(index));
+                    if !targets.is_empty() {
+                        let selected_list = self.selected_list_mut();
+                        selected_list.targets = targets;
+                        selected_list.list_state.select(Some(index));
+                    }
                 }
             }
             KeyCode::Esc => self.selected_list_mut().list_state.select(None),
