@@ -152,6 +152,7 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
 fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut index = None;
     let mut device = None;
+    let mut profile = None;
     let mut description = None;
     let mut channel_volumes = None;
     let mut mute = None;
@@ -166,6 +167,11 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             libspa_sys::SPA_PARAM_ROUTE_device => {
                 if let Value::Int(value) = prop.value {
                     device = Some(value);
+                }
+            }
+            libspa_sys::SPA_PARAM_ROUTE_profile => {
+                if let Value::Int(value) = prop.value {
+                    profile = Some(value);
                 }
             }
             libspa_sys::SPA_PARAM_ROUTE_description => {
@@ -203,6 +209,7 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         id,
         index?,
         device?,
+        profile?,
         description?,
         channel_volumes?,
         mute?,

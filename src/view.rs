@@ -111,16 +111,19 @@ fn routes<'a>(
     )
 }
 
+/// Get the active route for a device and card device.
+/// This is the route on a device Node IF the route's profile matches the
+/// device's current profile. Otherwise, there is no valid route.
 fn active_route<'a>(
     device: &'a state::Device,
     card_device: i32,
-) -> Option<&'a state::EnumRoute> {
+) -> Option<&'a state::Route> {
     let profile_index = device.profile_index?;
 
-    device.enum_routes.values().find(|route| {
-        route.profiles.contains(&profile_index)
-            && route.devices.contains(&card_device)
-    })
+    device
+        .routes
+        .get(&card_device)
+        .filter(|route| route.profile == profile_index)
 }
 
 impl Node {
@@ -145,13 +148,13 @@ impl Node {
         let (volumes, mute, device_info) =
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
-                let route_device = node.card_profile_device?;
-                if let Some(route) = device.routes.get(&route_device) {
+                let card_device = node.card_profile_device?;
+                if let Some(route) = active_route(device, card_device) {
                     let route_index = route.index;
                     (
                         route.volumes.clone(),
                         route.mute,
-                        Some((device_id, route_index, route_device)),
+                        Some((device_id, route_index, card_device)),
                     )
                 } else {
                     (node.volumes.as_ref()?.clone(), node.mute?, None)

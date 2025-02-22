@@ -30,6 +30,7 @@ pub struct EnumRoute {
 pub struct Route {
     pub index: i32,
     pub device: i32,
+    pub profile: i32,
     pub description: String,
     pub volumes: Vec<f32>,
     pub mute: bool,
@@ -137,6 +138,7 @@ impl State {
                 id,
                 index,
                 device,
+                profile,
                 description,
                 volumes,
                 mute,
@@ -146,6 +148,7 @@ impl State {
                     Route {
                         index,
                         device,
+                        profile,
                         description,
                         volumes,
                         mute,
