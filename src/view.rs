@@ -45,7 +45,7 @@ pub struct Node {
     pub title_source_sink: Option<String>,
     pub media_class: MediaClass,
 
-    pub routes: Vec<(Target, String)>,
+    pub routes: Option<Vec<(Target, String)>>,
 
     pub target_title: String,
     pub target: Option<Target>,
@@ -82,6 +82,47 @@ pub enum NodeType {
     All,
 }
 
+/// Gets the potential EnumRoutes for a device and media class.
+/// These are EnumRoutes where profiles contains the active profile's index,
+/// and devices contains at least one of the profile's devices for the given
+/// media class.
+fn routes<'a>(
+    device: &'a state::Device,
+    media_class: &MediaClass,
+) -> Option<Vec<&'a state::EnumRoute>> {
+    let profile_index = device.profile_index?;
+    let profile = device.profiles.get(&profile_index)?;
+    let profile_devices = profile
+        .classes
+        .iter()
+        .find_map(|(mc, devices)| (mc == media_class).then_some(devices))?;
+    Some(
+        device
+            .enum_routes
+            .values()
+            .filter(|route| {
+                route.profiles.contains(&profile_index)
+                    && route
+                        .devices
+                        .iter()
+                        .any(|device| profile_devices.contains(device))
+            })
+            .collect(),
+    )
+}
+
+fn active_route<'a>(
+    device: &'a state::Device,
+    card_device: i32,
+) -> Option<&'a state::EnumRoute> {
+    let profile_index = device.profile_index?;
+
+    device.enum_routes.values().find(|route| {
+        route.profiles.contains(&profile_index)
+            && route.devices.contains(&card_device)
+    })
+}
+
 impl Node {
     pub fn from(
         state: &state::State,
@@ -105,13 +146,16 @@ impl Node {
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
                 let route_device = node.card_profile_device?;
-                let route = device.routes.get(&route_device)?;
-                let route_index = route.index;
-                (
-                    route.volumes.clone(),
-                    route.mute,
-                    Some((device_id, route_index, route_device)),
-                )
+                if let Some(route) = device.routes.get(&route_device) {
+                    let route_index = route.index;
+                    (
+                        route.volumes.clone(),
+                        route.mute,
+                        Some((device_id, route_index, route_device)),
+                    )
+                } else {
+                    (node.volumes.as_ref()?.clone(), node.mute?, None)
+                }
             } else {
                 (node.volumes.as_ref()?.clone(), node.mute?, None)
             };
@@ -120,12 +164,11 @@ impl Node {
         let (routes, target, target_title) =
             if let Some(device_id) = node.device_id {
                 let device = state.devices.get(&device_id)?;
-                let route_device = node.card_profile_device?;
-                let route = device.routes.get(&route_device)?;
+                let card_device = node.card_profile_device?;
 
-                let mut routes: Vec<_> = device
-                    .enum_routes
-                    .values()
+                let mut routes: Vec<_> = routes(device, &media_class)
+                    .unwrap_or_default()
+                    .iter()
                     .map(|route| {
                         (Target::Route(route.index), route.description.clone())
                     })
@@ -133,11 +176,16 @@ impl Node {
                 routes.sort_by(|(_, a), (_, b)| a.cmp(b));
                 let routes = routes;
 
-                Some((
-                    routes,
-                    Some(Target::Route(route.index)),
-                    route.description.clone(),
-                ))
+                let (target, target_title) =
+                    match active_route(device, card_device) {
+                        Some(route) => (
+                            Some(Target::Route(route.index)),
+                            route.description.clone(),
+                        ),
+                        None => (None, String::new()),
+                    };
+
+                Some((Some(routes), target, target_title))
             } else if media_class.is_sink_input() {
                 let outputs = state.outputs(id);
                 let sink = sinks.iter().find(|(target, _)| {
@@ -151,7 +199,7 @@ impl Node {
                 };
                 let target_title =
                     sink.map(|(_, title)| title.clone()).unwrap_or_default();
-                Some((Default::default(), target, target_title))
+                Some((None, target, target_title))
             } else if media_class.is_source_output() {
                 let inputs = state.inputs(id);
                 let source = sources.iter().find(|(target, _)| {
@@ -165,7 +213,7 @@ impl Node {
                 };
                 let target_title =
                     source.map(|(_, title)| title.clone()).unwrap_or_default();
-                Some((Default::default(), target, target_title))
+                Some((None, target, target_title))
             } else {
                 None
             }?;
@@ -540,8 +588,8 @@ impl View {
         let node = self.nodes.get(&node_id)?;
 
         // Get the target list appropriate to the node type
-        let (mut targets, default) = if node.device_info.is_some() {
-            (node.routes.clone(), None)
+        let (mut targets, default) = if let Some(routes) = &node.routes {
+            (routes.clone(), None)
         } else if node.media_class.is_sink_input() {
             (self.sinks.clone(), self.default_sink)
         } else if node.media_class.is_source_output() {
