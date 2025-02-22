@@ -122,7 +122,8 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             }
             libspa_sys::SPA_PARAM_ROUTE_available => {
                 if let Value::Id(libspa::utils::Id(value)) = prop.value {
-                    available = Some(value == 2);
+                    available =
+                        Some(value != libspa_sys::SPA_PARAM_AVAILABILITY_no);
                 }
             }
             libspa_sys::SPA_PARAM_ROUTE_profiles => {
@@ -182,7 +183,8 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             }
             libspa_sys::SPA_PARAM_ROUTE_available => {
                 if let Value::Id(libspa::utils::Id(value)) = prop.value {
-                    available = Some(value == 2);
+                    available =
+                        Some(value != libspa_sys::SPA_PARAM_AVAILABILITY_no);
                 }
             }
             libspa_sys::SPA_PARAM_ROUTE_props => {
@@ -267,7 +269,8 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             }
             libspa_sys::SPA_PARAM_PROFILE_available => {
                 if let Value::Id(libspa::utils::Id(value)) = prop.value {
-                    available = Some(value == 2);
+                    available =
+                        Some(value != libspa_sys::SPA_PARAM_AVAILABILITY_no);
                 }
             }
             libspa_sys::SPA_PARAM_PROFILE_classes => {
