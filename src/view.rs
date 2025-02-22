@@ -108,9 +108,14 @@ fn route_targets(
                     route.devices.iter().find(|route_device| {
                         profile_devices.contains(route_device)
                     })?;
+                let title = if route.available {
+                    route.description.clone()
+                } else {
+                    format!("{} (unavailable)", route.description)
+                };
                 Some((
                     Target::Route(device.id, route.index, *route_device),
-                    route.description.clone(),
+                    title,
                 ))
             })
             .collect(),
@@ -183,10 +188,21 @@ impl Node {
 
             let (target, target_title) = match active_route(device, card_device)
             {
-                Some(route) => (
-                    Some(Target::Route(device.id, route.index, card_device)),
-                    route.description.clone(),
-                ),
+                Some(route) => {
+                    let target_title = if route.available {
+                        route.description.clone()
+                    } else {
+                        format!("{} (unavailable)", route.description)
+                    };
+                    (
+                        Some(Target::Route(
+                            device.id,
+                            route.index,
+                            card_device,
+                        )),
+                        target_title,
+                    )
+                }
                 None => (None, String::new()),
             };
 

@@ -32,6 +32,7 @@ pub struct Route {
     pub device: i32,
     pub profile: i32,
     pub description: String,
+    pub available: bool,
     pub volumes: Vec<f32>,
     pub mute: bool,
 }
@@ -140,6 +141,7 @@ impl State {
                 device,
                 profile,
                 description,
+                available,
                 volumes,
                 mute,
             ) => {
@@ -150,6 +152,7 @@ impl State {
                         device,
                         profile,
                         description,
+                        available,
                         volumes,
                         mute,
                     },

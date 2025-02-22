@@ -154,6 +154,7 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     let mut device = None;
     let mut profile = None;
     let mut description = None;
+    let mut available = None;
     let mut channel_volumes = None;
     let mut mute = None;
 
@@ -177,6 +178,11 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             libspa_sys::SPA_PARAM_ROUTE_description => {
                 if let Value::String(value) = prop.value {
                     description = Some(value);
+                }
+            }
+            libspa_sys::SPA_PARAM_ROUTE_available => {
+                if let Value::Id(libspa::utils::Id(value)) = prop.value {
+                    available = Some(value == 2);
                 }
             }
             libspa_sys::SPA_PARAM_ROUTE_props => {
@@ -211,6 +217,7 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         device?,
         profile?,
         description?,
+        available?,
         channel_volumes?,
         mute?,
     ))
