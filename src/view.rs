@@ -161,62 +161,74 @@ impl Node {
             };
 
         let media_class = node.media_class.as_ref()?.clone();
-        let (routes, target, target_title) =
-            if let Some(device_id) = node.device_id {
-                let device = state.devices.get(&device_id)?;
-                let card_device = node.card_profile_device?;
+        let (routes, target, target_title) = if let Some(device_id) =
+            node.device_id
+        {
+            let device = state.devices.get(&device_id)?;
+            let card_device = node.card_profile_device?;
 
-                let mut routes: Vec<_> = routes(device, &media_class)
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|route| {
-                        (Target::Route(route.index), route.description.clone())
-                    })
-                    .collect();
-                routes.sort_by(|(_, a), (_, b)| a.cmp(b));
-                let routes = routes;
+            let mut routes: Vec<_> = routes(device, &media_class)
+                .unwrap_or_default()
+                .iter()
+                .map(|route| {
+                    (Target::Route(route.index), route.description.clone())
+                })
+                .collect();
+            routes.sort_by(|(_, a), (_, b)| a.cmp(b));
+            let routes = routes;
 
-                let (target, target_title) =
-                    match active_route(device, card_device) {
-                        Some(route) => (
-                            Some(Target::Route(route.index)),
-                            route.description.clone(),
-                        ),
-                        None => (None, String::new()),
-                    };
+            let (target, target_title) = match active_route(device, card_device)
+            {
+                Some(route) => (
+                    Some(Target::Route(route.index)),
+                    route.description.clone(),
+                ),
+                None => (None, String::new()),
+            };
 
-                Some((Some(routes), target, target_title))
-            } else if media_class.is_sink_input() {
-                let outputs = state.outputs(id);
-                let sink = sinks.iter().find(|(target, _)| {
-                    matches!(target, Target::Node(sink_id)
+            Some((Some(routes), target, target_title))
+        } else if media_class.is_sink_input() {
+            let outputs = state.outputs(id);
+            let sink = sinks.iter().find(|(target, _)| {
+                matches!(target, Target::Node(sink_id)
                     if outputs.contains(sink_id))
-                });
-                let target = if !has_target(state, node.id) {
-                    Some(Target::Default)
-                } else {
-                    sink.map(|&(target, _)| target)
-                };
-                let target_title =
-                    sink.map(|(_, title)| title.clone()).unwrap_or_default();
-                Some((None, target, target_title))
-            } else if media_class.is_source_output() {
-                let inputs = state.inputs(id);
-                let source = sources.iter().find(|(target, _)| {
-                    matches!(target, Target::Node(source_id)
-                    if inputs.contains(source_id))
-                });
-                let target = if !has_target(state, node.id) {
-                    Some(Target::Default)
-                } else {
-                    source.map(|&(target, _)| target)
-                };
-                let target_title =
-                    source.map(|(_, title)| title.clone()).unwrap_or_default();
-                Some((None, target, target_title))
+            });
+            let (target, target_title) = if !has_target(state, node.id) {
+                (
+                    Some(Target::Default),
+                    sink.map(|(_, title)| title.clone())
+                        .unwrap_or("No default".to_string()),
+                )
             } else {
-                None
-            }?;
+                (
+                    sink.map(|&(target, _)| target),
+                    sink.map(|(_, title)| title.clone()).unwrap_or_default(),
+                )
+            };
+            Some((None, target, target_title))
+        } else if media_class.is_source_output() {
+            let inputs = state.inputs(id);
+            let source = sources.iter().find(|(target, _)| {
+                matches!(target, Target::Node(source_id)
+                    if inputs.contains(source_id))
+            });
+            let (target, target_title) = if !has_target(state, node.id) {
+                (
+                    Some(Target::Default),
+                    source
+                        .map(|(_, title)| title.clone())
+                        .unwrap_or("No default".to_string()),
+                )
+            } else {
+                (
+                    source.map(|&(target, _)| target),
+                    source.map(|(_, title)| title.clone()).unwrap_or_default(),
+                )
+            };
+            Some((None, target, target_title))
+        } else {
+            None
+        }?;
 
         Some(Self {
             id,
@@ -598,17 +610,19 @@ impl View {
             (Default::default(), None)
         };
         // Get and format the name of the default target
-        let default_name = default.and_then(|default| {
-            targets
-                .iter()
-                .find(|(target, _)| *target == default)
-                .map(|(_, name)| format!("Default: {}", name))
-        });
+        let default_name = default
+            .and_then(|default| {
+                targets
+                    .iter()
+                    .find(|(target, _)| *target == default)
+                    .map(|(_, name)| format!("Default: {}", name))
+            })
+            .unwrap_or("Default: No default".to_string());
         // Sort targets by name
         targets.sort_by(|(_, a), (_, b)| a.cmp(b));
         // If the targets are nodes, add the default node to the top
-        if let (Some(Target::Node(_)), Some(default_name)) =
-            (default, default_name.as_ref())
+        if node.media_class.is_sink_input()
+            || node.media_class.is_source_output()
         {
             targets.insert(0, (Target::Default, default_name.clone()));
         };
