@@ -32,7 +32,7 @@ pub struct View {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Target {
     Node(ObjectId),
-    Route(i32),
+    Route(i32, i32),
     Default,
 }
 
@@ -82,14 +82,14 @@ pub enum NodeType {
     All,
 }
 
-/// Gets the potential EnumRoutes for a device and media class.
-/// These are EnumRoutes where profiles contains the active profile's index,
-/// and devices contains at least one of the profile's devices for the given
-/// media class.
-fn routes<'a>(
-    device: &'a state::Device,
+/// Gets the potential Target::Routes for a device and media class.
+/// These come from the EnumRoutes where profiles contains the active profile's
+/// index, and devices contains at least one of the profile's devices for the
+/// given media class.
+fn route_targets(
+    device: &state::Device,
     media_class: &MediaClass,
-) -> Option<Vec<&'a state::EnumRoute>> {
+) -> Option<Vec<(Target, String)>> {
     let profile_index = device.profile_index?;
     let profile = device.profiles.get(&profile_index)?;
     let profile_devices = profile
@@ -100,12 +100,26 @@ fn routes<'a>(
         device
             .enum_routes
             .values()
-            .filter(|route| {
+            .filter_map(|route| {
+                if route.profiles.contains(&profile_index) {
+                    let device = route
+                        .devices
+                        .iter()
+                        .find(|device| profile_devices.contains(device))?;
+                    Some((
+                        Target::Route(route.index, *device),
+                        route.description.clone(),
+                    ))
+                } else {
+                    None
+                }
+                /*
                 route.profiles.contains(&profile_index)
                     && route
                         .devices
                         .iter()
                         .any(|device| profile_devices.contains(device))
+                 */
             })
             .collect(),
     )
@@ -170,20 +184,15 @@ impl Node {
             let device = state.devices.get(&device_id)?;
             let card_device = node.card_profile_device?;
 
-            let mut routes: Vec<_> = routes(device, &media_class)
-                .unwrap_or_default()
-                .iter()
-                .map(|route| {
-                    (Target::Route(route.index), route.description.clone())
-                })
-                .collect();
+            let mut routes: Vec<_> =
+                route_targets(device, &media_class).unwrap_or_default();
             routes.sort_by(|(_, a), (_, b)| a.cmp(b));
             let routes = routes;
 
             let (target, target_title) = match active_route(device, card_device)
             {
                 Some(route) => (
-                    Some(Target::Route(route.index)),
+                    Some(Target::Route(route.index, card_device)),
                     route.description.clone(),
                 ),
                 None => (None, String::new()),
@@ -479,7 +488,7 @@ impl View {
                     ),
                 ]
             }
-            Target::Route(_) => {
+            Target::Route(_, _) => {
                 todo!()
             }
         }
