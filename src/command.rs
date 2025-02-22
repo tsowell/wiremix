@@ -7,6 +7,7 @@ pub enum Command {
     DeviceMute(ObjectId, i32, i32, bool),
     NodeVolumes(ObjectId, Vec<f32>),
     DeviceVolumes(ObjectId, i32, i32, Vec<f32>),
+    DeviceSetRoute(ObjectId, i32, i32),
     NodeCaptureStart(ObjectId, i32, bool),
     NodeCaptureStop(ObjectId),
     MetadataSetProperty(ObjectId, u32, String, Option<String>, Option<String>),

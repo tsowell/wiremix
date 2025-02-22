@@ -32,7 +32,7 @@ pub struct View {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Target {
     Node(ObjectId),
-    Route(i32, i32),
+    Route(ObjectId, i32, i32),
     Default,
 }
 
@@ -101,25 +101,17 @@ fn route_targets(
             .enum_routes
             .values()
             .filter_map(|route| {
-                if route.profiles.contains(&profile_index) {
-                    let device = route
-                        .devices
-                        .iter()
-                        .find(|device| profile_devices.contains(device))?;
-                    Some((
-                        Target::Route(route.index, *device),
-                        route.description.clone(),
-                    ))
-                } else {
-                    None
+                if !route.profiles.contains(&profile_index) {
+                    return None;
                 }
-                /*
-                route.profiles.contains(&profile_index)
-                    && route
-                        .devices
-                        .iter()
-                        .any(|device| profile_devices.contains(device))
-                 */
+                let route_device =
+                    route.devices.iter().find(|route_device| {
+                        profile_devices.contains(route_device)
+                    })?;
+                Some((
+                    Target::Route(device.id, route.index, *route_device),
+                    route.description.clone(),
+                ))
             })
             .collect(),
     )
@@ -192,7 +184,7 @@ impl Node {
             let (target, target_title) = match active_route(device, card_device)
             {
                 Some(route) => (
-                    Some(Target::Route(route.index, card_device)),
+                    Some(Target::Route(device.id, route.index, card_device)),
                     route.description.clone(),
                 ),
                 None => (None, String::new()),
@@ -488,8 +480,12 @@ impl View {
                     ),
                 ]
             }
-            Target::Route(_, _) => {
-                todo!()
+            Target::Route(device_id, route_index, route_device) => {
+                vec![Command::DeviceSetRoute(
+                    device_id,
+                    route_index,
+                    route_device,
+                )]
             }
         }
     }

@@ -39,6 +39,11 @@ pub fn execute_command(
                 device_set_volumes(device, route_index, route_device, volumes);
             }
         }
+        Command::DeviceSetRoute(obj_id, route_index, route_device) => {
+            if let Some(device) = proxies.get_device(obj_id) {
+                device_set_route(device, route_index, route_device);
+            }
+        }
         Command::NodeCaptureStart(obj_id, object_serial, capture_sink) => {
             let result = stream::capture_node(
                 core,
@@ -155,43 +160,51 @@ fn device_set_volumes(
     );
 }
 
+fn device_set_route(device: &Device, route_index: i32, route_device: i32) {
+    device_set_properties(device, route_index, route_device, Vec::new());
+}
+
 fn device_set_properties(
     device: &Device,
     route_index: i32,
     route_device: i32,
     properties: Vec<Property>,
 ) {
+    let mut route_properties = Vec::new();
+    route_properties.push(Property {
+        key: libspa_sys::SPA_PARAM_ROUTE_index,
+        flags: PropertyFlags::empty(),
+        value: Value::Int(route_index),
+    });
+    route_properties.push(Property {
+        key: libspa_sys::SPA_PARAM_ROUTE_device,
+        flags: PropertyFlags::empty(),
+        value: Value::Int(route_device),
+    });
+    if !properties.is_empty() {
+        route_properties.push(Property {
+            key: libspa_sys::SPA_PARAM_ROUTE_props,
+            flags: PropertyFlags::empty(),
+            value: Value::Object(Object {
+                type_: libspa_sys::SPA_TYPE_OBJECT_Props,
+                id: libspa_sys::SPA_PARAM_Route,
+                properties,
+            }),
+        });
+    }
+    route_properties.push(Property {
+        key: libspa_sys::SPA_PARAM_ROUTE_save,
+        flags: PropertyFlags::empty(),
+        value: Value::Bool(true),
+    });
+    let route_properties = route_properties;
+
     let values: Vec<u8> = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
             type_: libspa_sys::SPA_TYPE_OBJECT_ParamRoute,
             id: libspa_sys::SPA_PARAM_Route,
-            properties: vec![
-                Property {
-                    key: libspa_sys::SPA_PARAM_ROUTE_index,
-                    flags: PropertyFlags::empty(),
-                    value: Value::Int(route_index),
-                },
-                Property {
-                    key: libspa_sys::SPA_PARAM_ROUTE_device,
-                    flags: PropertyFlags::empty(),
-                    value: Value::Int(route_device),
-                },
-                Property {
-                    key: libspa_sys::SPA_PARAM_ROUTE_props,
-                    flags: PropertyFlags::empty(),
-                    value: Value::Object(Object {
-                        type_: libspa_sys::SPA_TYPE_OBJECT_Props,
-                        id: libspa_sys::SPA_PARAM_Route,
-                        properties,
-                    }),
-                },
-                Property {
-                    key: libspa_sys::SPA_PARAM_ROUTE_save,
-                    flags: PropertyFlags::empty(),
-                    value: Value::Bool(true),
-                },
-            ],
+            properties: route_properties,
         }),
     )
     .unwrap()
