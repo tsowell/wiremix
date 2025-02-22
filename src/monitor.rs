@@ -1,6 +1,5 @@
 mod deserialize;
 mod device;
-mod device_status;
 mod event_sender;
 mod execute;
 mod link;
@@ -28,9 +27,8 @@ use pipewire::{
 use crate::command::Command;
 use crate::event::{Event, MonitorEvent};
 use crate::monitor::{
-    device_status::DeviceStatusTracker, event_sender::EventSender,
-    proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
-    sync_registry::SyncRegistry,
+    event_sender::EventSender, proxy_registry::ProxyRegistry,
+    stream_registry::StreamRegistry, sync_registry::SyncRegistry,
 };
 use crate::object::ObjectId;
 
@@ -186,8 +184,6 @@ fn monitor_pipewire(
         },
     );
 
-    let statuses = Rc::new(RefCell::new(DeviceStatusTracker::new()));
-
     let _registry_listener = registry
         .add_listener_local()
         .global({
@@ -234,9 +230,8 @@ fn monitor_pipewire(
                         }
                     }
                     ObjectType::Device => {
-                        let result = device::monitor_device(
-                            &registry, obj, &sender, &statuses,
-                        );
+                        let result =
+                            device::monitor_device(&registry, obj, &sender);
                         match result {
                             Some((device, listener)) => {
                                 proxies.borrow_mut().add_device(

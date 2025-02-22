@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use pipewire::{
@@ -15,16 +14,13 @@ use libspa::{
 
 use crate::event::MonitorEvent;
 use crate::media_class::MediaClass;
-use crate::monitor::{
-    deserialize::deserialize, device_status::DeviceStatusTracker, EventSender,
-};
+use crate::monitor::{deserialize::deserialize, EventSender};
 use crate::object::ObjectId;
 
 pub fn monitor_device(
     registry: &Registry,
     obj: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
-    statuses: &Rc<RefCell<DeviceStatusTracker>>,
 ) -> Option<(Rc<Device>, Box<dyn Listener>)> {
     let obj_id = ObjectId::from(obj);
 
@@ -34,9 +30,6 @@ pub fn monitor_device(
         "Audio/Device" => (),
         _ => return None,
     }
-
-    // Remove old device status, if present.
-    statuses.borrow_mut().remove(&obj_id);
 
     sender.send(MonitorEvent::DeviceMediaClass(
         obj_id,
@@ -59,30 +52,18 @@ pub fn monitor_device(
         .add_listener_local()
         .param({
             let sender_weak = Rc::downgrade(sender);
-            let statuses_weak = Rc::downgrade(statuses);
             move |_seq, id, _index, _next, param| {
                 let Some(sender) = sender_weak.upgrade() else {
-                    return;
-                };
-                let Some(statuses) = statuses_weak.upgrade() else {
                     return;
                 };
                 if let Some(param) = deserialize(param) {
                     if let Some(event) = match id {
                         ParamType::EnumRoute => {
-                            statuses.borrow_mut().set(obj_id, id);
                             device_enum_route(obj_id, param)
                         }
-                        ParamType::Route => {
-                            statuses.borrow_mut().set(obj_id, id);
-                            device_route(obj_id, param)
-                        }
-                        ParamType::Profile => {
-                            statuses.borrow_mut().set(obj_id, id);
-                            device_profile(obj_id, param)
-                        }
+                        ParamType::Route => device_route(obj_id, param),
+                        ParamType::Profile => device_profile(obj_id, param),
                         ParamType::EnumProfile => {
-                            statuses.borrow_mut().set(obj_id, id);
                             device_enum_profile(obj_id, param)
                         }
                         _ => None,
@@ -95,7 +76,6 @@ pub fn monitor_device(
         .info({
             let sender_weak = Rc::downgrade(sender);
             let device_weak = Rc::downgrade(&device);
-            let statuses_weak = Rc::downgrade(statuses);
             move |info| {
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
@@ -109,17 +89,8 @@ pub fn monitor_device(
                 let Some(device) = device_weak.upgrade() else {
                     return;
                 };
-                let Some(statuses) = statuses_weak.upgrade() else {
-                    return;
-                };
-                let statuses = statuses.borrow();
-                let Some(status) = statuses.get(obj_id) else {
-                    return;
-                };
                 for param in params.into_iter() {
-                    if !status.get(param) {
-                        device.enum_params(0, Some(param), 0, u32::MAX);
-                    }
+                    device.enum_params(0, Some(param), 0, u32::MAX);
                 }
             }
         })
