@@ -82,6 +82,13 @@ pub enum NodeType {
     All,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum ListType {
+    Node(NodeType),
+    #[default]
+    Device,
+}
+
 /// Gets the potential Target::Routes for a device and media class.
 /// These come from the EnumRoutes where profiles contains the active profile's
 /// index, and devices contains at least one of the profile's devices for the
@@ -553,68 +560,67 @@ impl View {
         }
     }
 
-    fn node_ids(&self, node_type: NodeType) -> &[ObjectId] {
+    fn ids(&self, node_type: ListType) -> &[ObjectId] {
         match node_type {
-            NodeType::Playback => &self.nodes_playback,
-            NodeType::Recording => &self.nodes_recording,
-            NodeType::Output => &self.nodes_output,
-            NodeType::Input => &self.nodes_input,
-            NodeType::All => &self.nodes_all,
+            ListType::Node(NodeType::Playback) => &self.nodes_playback,
+            ListType::Node(NodeType::Recording) => &self.nodes_recording,
+            ListType::Node(NodeType::Output) => &self.nodes_output,
+            ListType::Node(NodeType::Input) => &self.nodes_input,
+            ListType::Node(NodeType::All) => &self.nodes_all,
+            ListType::Device => todo!(),
         }
     }
 
     pub fn full_nodes(&self, node_type: NodeType) -> Vec<&Node> {
-        let node_ids = self.node_ids(node_type);
+        let node_ids = self.ids(ListType::Node(node_type));
         node_ids
             .iter()
             .filter_map(|node_id| self.nodes.get(node_id))
             .collect()
     }
 
-    pub fn next_node_id(
+    pub fn next_id(
         &self,
-        node_type: NodeType,
-        node_id: Option<ObjectId>,
+        list_type: ListType,
+        object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let nodes = self.node_ids(node_type);
-        let next_index = match node_id {
-            Some(node_id) => nodes
+        let objects = self.ids(list_type);
+        let next_index = match object_id {
+            Some(object_id) => objects
                 .iter()
-                .position(|&id| id == node_id)?
+                .position(|&id| id == object_id)?
                 .saturating_add(1),
             None => 0,
         };
-        nodes.get(next_index).copied()
+        objects.get(next_index).copied()
     }
 
-    pub fn previous_node_id(
+    pub fn previous_id(
         &self,
-        node_type: NodeType,
-        node_id: Option<ObjectId>,
+        list_type: ListType,
+        object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let nodes = self.node_ids(node_type);
-        let next_index = match node_id {
-            Some(node_id) => nodes
+        let objects = self.ids(list_type);
+        let next_index = match object_id {
+            Some(object_id) => objects
                 .iter()
-                .position(|&id| id == node_id)?
+                .position(|&id| id == object_id)?
                 .saturating_sub(1),
             None => 0,
         };
-        nodes.get(next_index).copied()
+        objects.get(next_index).copied()
     }
 
-    pub fn node_position(
+    pub fn position(
         &self,
-        node_type: NodeType,
-        node_id: ObjectId,
+        list_type: ListType,
+        object_id: ObjectId,
     ) -> Option<usize> {
-        self.node_ids(node_type)
-            .iter()
-            .position(|&id| id == node_id)
+        self.ids(list_type).iter().position(|&id| id == object_id)
     }
 
-    pub fn nodes_len(&self, node_type: NodeType) -> usize {
-        self.node_ids(node_type).len()
+    pub fn len(&self, list_type: ListType) -> usize {
+        self.ids(list_type).len()
     }
 
     pub fn targets(

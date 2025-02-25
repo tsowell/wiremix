@@ -9,18 +9,18 @@ use crate::device_type::DeviceType;
 use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
-use crate::view;
+use crate::view::{self, ListType};
 
-/// NodeList stores information for filtering and displaying a subset of Nodes
-/// from the global STATE.
+/// ObjectList stores information for filtering and displaying a subset of
+/// objects from the global STATE.
 #[derive(Default)]
-pub struct NodeList {
+pub struct ObjectList {
     /// Index of the first node in viewport
     top: usize,
     /// ID of the currently selected node
     pub selected: Option<ObjectId>,
     /// Which set of nodes to use from the View
-    pub node_type: view::NodeType,
+    pub list_type: ListType,
     /// Default device type to use
     pub device_type: Option<DeviceType>,
     /// Target popup state
@@ -29,15 +29,12 @@ pub struct NodeList {
     pub targets: Vec<(view::Target, String)>,
 }
 
-impl NodeList {
-    pub fn new(
-        node_type: view::NodeType,
-        device_type: Option<DeviceType>,
-    ) -> Self {
+impl ObjectList {
+    pub fn new(list_type: ListType, device_type: Option<DeviceType>) -> Self {
         Self {
             top: 0,
             selected: None,
-            node_type,
+            list_type,
             device_type,
             ..Default::default()
         }
@@ -106,30 +103,77 @@ impl NodeList {
     }
 }
 
-pub struct NodeListWidget<'a> {
-    pub node_list: &'a mut NodeList,
+pub struct ObjectListWidget<'a> {
+    pub object_list: &'a mut ObjectList,
     pub view: &'a view::View,
 }
 
-impl Widget for &mut NodeListWidget<'_> {
+impl<'a> ObjectListWidget<'a> {
+    fn render_node_list(
+        &mut self,
+        node_type: view::NodeType,
+        list_area: Rect,
+        nodes_layout: &[Rect],
+        nodes_visible: usize,
+        area: Rect,
+        buf: &mut Buffer,
+    ) {
+        let all_nodes = self.view.full_nodes(node_type);
+        let nodes = all_nodes
+            .iter()
+            .skip(self.object_list.top)
+            // Take one extra so we can render a partial node at the bottom of
+            // the area.
+            .take(nodes_visible + 1);
+
+        let nodes_and_areas: Vec<(&&view::Node, &Rect)> =
+            nodes.zip(nodes_layout.iter()).collect();
+        for (node, &node_area) in &nodes_and_areas {
+            let selected = self
+                .object_list
+                .selected
+                .map(|id| id == node.id)
+                .unwrap_or_default();
+            NodeWidget::new(node, selected, self.object_list.device_type)
+                .render(node_area, buf);
+        }
+
+        // Show the target popup?
+        if self.object_list.list_state.selected().is_some() {
+            // Get the area for the selected node
+            if let Some((_, node_area)) =
+                nodes_and_areas.iter().find(|(node, _)| {
+                    self.object_list
+                        .selected
+                        .map(|id| id == node.id)
+                        .unwrap_or_default()
+                })
+            {
+                PopupWidget {
+                    object_list: self.object_list,
+                    list_area: &list_area,
+                    parent_area: &area,
+                }
+                .render(**node_area, buf);
+            }
+        }
+    }
+}
+
+impl Widget for &mut ObjectListWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let (header_area, list_area, footer_area) = self.node_list.areas(&area);
+        let (header_area, list_area, footer_area) =
+            self.object_list.areas(&area);
 
         let spacing = 2;
         let node_height_with_spacing = NodeWidget::height() + spacing;
         let nodes_visible =
             (list_area.height / node_height_with_spacing) as usize;
 
-        let all_nodes = self.view.full_nodes(self.node_list.node_type);
-        let nodes = all_nodes
-            .iter()
-            .skip(self.node_list.top)
-            // Take one extra so we can render a partial node at the bottom
-            // of the area.
-            .take(nodes_visible + 1);
+        let len = self.view.len(self.object_list.list_type);
 
         // Indicate we can scroll up if there are nodes above the viewport.
-        if self.node_list.top > 0 {
+        if self.object_list.top > 0 {
             Line::from(Span::styled(
                 "•••",
                 Style::default().fg(Color::DarkGray),
@@ -142,11 +186,11 @@ impl Widget for &mut NodeListWidget<'_> {
         // viewport, with an exception for when the last row is partially
         // rendered but still has all the important parts rendered,
         // excluding margins, etc.
-        let is_bottom_last = self.node_list.top + nodes_visible
-            == all_nodes.len().saturating_sub(1);
+        let is_bottom_last =
+            self.object_list.top + nodes_visible == len.saturating_sub(1);
         let is_bottom_enough = (list_area.height % node_height_with_spacing)
             >= NodeWidget::important_height();
-        if self.node_list.top + nodes_visible < all_nodes.len()
+        if self.object_list.top + nodes_visible < len
             && !(is_bottom_last && is_bottom_enough)
         {
             Line::from(Span::styled(
@@ -171,42 +215,24 @@ impl Widget for &mut NodeListWidget<'_> {
                 .split(list_area)
         };
 
-        let nodes_and_areas: Vec<(&&view::Node, &Rect)> =
-            nodes.zip(nodes_layout.iter()).collect();
-        for (node, &node_area) in &nodes_and_areas {
-            let selected = self
-                .node_list
-                .selected
-                .map(|id| id == node.id)
-                .unwrap_or_default();
-            NodeWidget::new(node, selected, self.node_list.device_type)
-                .render(node_area, buf);
-        }
-
-        // Show the target popup?
-        if self.node_list.list_state.selected().is_some() {
-            // Get the area for the selected node
-            if let Some((_, node_area)) =
-                nodes_and_areas.iter().find(|(node, _)| {
-                    self.node_list
-                        .selected
-                        .map(|id| id == node.id)
-                        .unwrap_or_default()
-                })
-            {
-                PopupWidget {
-                    node_list: self.node_list,
-                    list_area: &list_area,
-                    parent_area: &area,
-                }
-                .render(**node_area, buf);
+        match self.object_list.list_type {
+            ListType::Node(node_type) => {
+                self.render_node_list(
+                    node_type,
+                    list_area,
+                    &nodes_layout,
+                    nodes_visible,
+                    area,
+                    buf,
+                );
             }
+            ListType::Device => todo!(),
         }
     }
 }
 
 struct PopupWidget<'a> {
-    node_list: &'a mut NodeList,
+    object_list: &'a mut ObjectList,
     list_area: &'a Rect,
     parent_area: &'a Rect,
 }
@@ -214,7 +240,7 @@ struct PopupWidget<'a> {
 impl Widget for PopupWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let targets: Vec<_> = self
-            .node_list
+            .object_list
             .targets
             .iter()
             .map(|(_, title)| title.clone())
@@ -244,7 +270,7 @@ impl Widget for PopupWidget<'_> {
             &list,
             popup_area,
             buf,
-            &mut self.node_list.list_state,
+            &mut self.object_list.list_state,
         );
     }
 }
@@ -267,57 +293,57 @@ mod tests {
     }
 
     #[test]
-    fn node_list_up_overflow() {
+    fn object_list_up_overflow() {
         init();
 
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut node_list = NodeList::new(Box::new(|_node| true));
+        let mut object_list = ObjectList::new(Box::new(|_node| true));
 
-        node_list.up();
-        node_list.update(rect);
-        assert_eq!(node_list.top, 0);
-        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(0)));
+        object_list.up();
+        object_list.update(rect);
+        assert_eq!(object_list.top, 0);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
     }
 
     #[test]
-    fn node_list_down_overflow() {
+    fn object_list_down_overflow() {
         init();
 
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut node_list = NodeList::new(Box::new(|_node| true));
+        let mut object_list = ObjectList::new(Box::new(|_node| true));
 
         let nodes_len =
             STATE.with_borrow(|state| -> usize { state.nodes.len() });
 
         for _ in 0..(nodes_len * 2) {
-            node_list.down();
+            object_list.down();
         }
 
-        node_list.update(rect);
-        assert_eq!(node_list.top, 7);
-        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(9)));
+        object_list.update(rect);
+        assert_eq!(object_list.top, 7);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
     }
 
     #[test]
-    fn node_list_remove_last_nodes() {
+    fn object_list_remove_last_nodes() {
         init();
 
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut node_list = NodeList::new(Box::new(|_node| true));
+        let mut object_list = ObjectList::new(Box::new(|_node| true));
 
         let nodes_len =
             STATE.with_borrow(|state| -> usize { state.nodes.len() });
 
         // Move to end of list
         for _ in 0..(nodes_len * 2) {
-            node_list.down();
+            object_list.down();
         }
-        node_list.update(rect);
-        assert_eq!(node_list.top, 7);
-        assert_eq!(node_list.selected, Some(ObjectId::from_raw_id(9)));
+        object_list.update(rect);
+        assert_eq!(object_list.top, 7);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
 
         // Remove the visible nodes
         STATE.with_borrow_mut(|state| {
@@ -327,8 +353,8 @@ mod tests {
         });
         // Viewport is now below end of list
 
-        node_list.update(rect);
-        assert_eq!(node_list.top, 4);
-        assert_eq!(node_list.selected, None);
+        object_list.update(rect);
+        assert_eq!(object_list.top, 4);
+        assert_eq!(object_list.selected, None);
     }
 }

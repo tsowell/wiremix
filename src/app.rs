@@ -19,9 +19,9 @@ use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::event::Event;
 use crate::named_constraints::with_named_constraints;
-use crate::node_list::{NodeList, NodeListWidget};
+use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::State;
-use crate::view::{self, View, VolumeAdjustment};
+use crate::view::{self, ListType, View, VolumeAdjustment};
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
@@ -33,11 +33,11 @@ pub enum Action {
 
 struct Tab {
     title: String,
-    list: NodeList,
+    list: ObjectList,
 }
 
 impl Tab {
-    fn new(title: String, list: NodeList) -> Self {
+    fn new(title: String, list: ObjectList) -> Self {
         Self { title, list }
     }
 }
@@ -64,24 +64,33 @@ impl App {
         let tabs = vec![
             Tab::new(
                 String::from("Playback"),
-                NodeList::new(view::NodeType::Playback, None),
+                ObjectList::new(ListType::Node(view::NodeType::Playback), None),
             ),
             Tab::new(
                 String::from("Recording"),
-                NodeList::new(view::NodeType::Recording, None),
+                ObjectList::new(
+                    ListType::Node(view::NodeType::Recording),
+                    None,
+                ),
             ),
             Tab::new(
                 String::from("Output Devices"),
-                NodeList::new(view::NodeType::Output, Some(DeviceType::Sink)),
+                ObjectList::new(
+                    ListType::Node(view::NodeType::Output),
+                    Some(DeviceType::Sink),
+                ),
             ),
             Tab::new(
                 String::from("Input Devices"),
-                NodeList::new(view::NodeType::Input, Some(DeviceType::Source)),
+                ObjectList::new(
+                    ListType::Node(view::NodeType::Input),
+                    Some(DeviceType::Source),
+                ),
             ),
             Tab::new(
                 String::from("Configuration"),
                 /* TODO - for now just show all nodes */
-                NodeList::new(view::NodeType::All, None),
+                ObjectList::new(ListType::Node(view::NodeType::All), None),
             ),
         ];
         App {
@@ -112,8 +121,8 @@ impl App {
             if self.is_ready && self.selected_list().selected.is_none() {
                 let new_selected = {
                     let selected_list = self.selected_list();
-                    let node_type = selected_list.node_type;
-                    self.view.next_node_id(node_type, None)
+                    let list_type = selected_list.list_type;
+                    self.view.next_id(list_type, None)
                 };
                 if new_selected.is_some() {
                     self.selected_list_mut().selected = new_selected;
@@ -121,16 +130,16 @@ impl App {
             }
 
             terminal.draw(|frame| {
-                let node_type = self.selected_list().node_type;
+                let list_type = self.selected_list().list_type;
                 let selected_index =
                     self.selected_list().selected.and_then(|selected| {
-                        self.view.node_position(node_type, selected)
+                        self.view.position(list_type, selected)
                     });
-                let nodes_len = self.view.nodes_len(node_type);
+                let len = self.view.len(list_type);
                 self.selected_list_mut().update(
                     frame.area(),
                     selected_index,
-                    nodes_len,
+                    len,
                 );
                 self.draw(frame);
             })?;
@@ -223,11 +232,11 @@ impl App {
         Ok(())
     }
 
-    fn selected_list(&self) -> &NodeList {
+    fn selected_list(&self) -> &ObjectList {
         &self.tabs[self.selected_tab_index].list
     }
 
-    fn selected_list_mut(&mut self) -> &mut NodeList {
+    fn selected_list_mut(&mut self) -> &mut ObjectList {
         &mut self.tabs[self.selected_tab_index].list
     }
 
@@ -311,8 +320,8 @@ impl App {
                 } else {
                     let new_selected = {
                         let selected = selected_list.selected;
-                        let node_type = selected_list.node_type;
-                        self.view.next_node_id(node_type, selected)
+                        let list_type = selected_list.list_type;
+                        self.view.next_id(list_type, selected)
                     };
                     if new_selected.is_some() {
                         self.selected_list_mut().selected = new_selected;
@@ -326,8 +335,8 @@ impl App {
                 } else {
                     let new_selected = {
                         let selected = selected_list.selected;
-                        let node_type = selected_list.node_type;
-                        self.view.previous_node_id(node_type, selected)
+                        let list_type = selected_list.list_type;
+                        self.view.previous_id(list_type, selected)
                     };
                     if new_selected.is_some() {
                         self.selected_list_mut().selected = new_selected;
@@ -423,8 +432,8 @@ impl<'a> StatefulWidget for AppWidget<'a> {
                 .push((menu_areas[i], Action::SelectTab(i)));
         }
 
-        let mut widget = NodeListWidget {
-            node_list: &mut state.tabs[self.selected_tab_index].list,
+        let mut widget = ObjectListWidget {
+            object_list: &mut state.tabs[self.selected_tab_index].list,
             view: self.view,
         };
         widget.render(list_area, buf);
