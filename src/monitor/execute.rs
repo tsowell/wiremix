@@ -44,6 +44,11 @@ pub fn execute_command(
                 device_set_route(device, route_index, route_device);
             }
         }
+        Command::DeviceSetProfile(obj_id, profile_index) => {
+            if let Some(device) = proxies.devices.get(&obj_id) {
+                device_set_profile(device, profile_index);
+            }
+        }
         Command::NodeCaptureStart(obj_id, object_serial, capture_sink) => {
             let result = stream::capture_node(
                 core,
@@ -123,7 +128,7 @@ fn device_set_mute(
     route_device: i32,
     mute: bool,
 ) {
-    device_set_properties(
+    device_set_route_properties(
         device,
         route_index,
         route_device,
@@ -148,7 +153,7 @@ fn device_set_volumes(
     route_device: i32,
     volumes: Vec<f32>,
 ) {
-    device_set_properties(
+    device_set_route_properties(
         device,
         route_index,
         route_device,
@@ -161,10 +166,10 @@ fn device_set_volumes(
 }
 
 fn device_set_route(device: &Device, route_index: i32, route_device: i32) {
-    device_set_properties(device, route_index, route_device, Vec::new());
+    device_set_route_properties(device, route_index, route_device, Vec::new());
 }
 
-fn device_set_properties(
+fn device_set_route_properties(
     device: &Device,
     route_index: i32,
     route_device: i32,
@@ -212,4 +217,33 @@ fn device_set_properties(
     .into_inner();
 
     device.set_param(ParamType::Route, 0, Pod::from_bytes(&values).unwrap());
+}
+
+fn device_set_profile(device: &Device, profile_index: i32) {
+    let properties = vec![
+        Property {
+            key: libspa_sys::SPA_PARAM_PROFILE_index,
+            flags: PropertyFlags::empty(),
+            value: Value::Int(profile_index),
+        },
+        Property {
+            key: libspa_sys::SPA_PARAM_PROFILE_save,
+            flags: PropertyFlags::empty(),
+            value: Value::Bool(true),
+        },
+    ];
+
+    let values: Vec<u8> = PodSerializer::serialize(
+        std::io::Cursor::new(Vec::new()),
+        &Value::Object(Object {
+            type_: libspa_sys::SPA_TYPE_OBJECT_ParamProfile,
+            id: libspa_sys::SPA_PARAM_Profile,
+            properties,
+        }),
+    )
+    .unwrap()
+    .0
+    .into_inner();
+
+    device.set_param(ParamType::Profile, 0, Pod::from_bytes(&values).unwrap());
 }

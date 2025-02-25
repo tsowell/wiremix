@@ -587,7 +587,9 @@ impl View {
                     route_device,
                 )]
             }
-            Target::Profile(device_id, profile_index) => todo!(),
+            Target::Profile(device_id, profile_index) => {
+                vec![Command::DeviceSetProfile(device_id, profile_index)]
+            }
         }
     }
 
