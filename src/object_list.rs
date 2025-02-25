@@ -56,7 +56,11 @@ impl ObjectList {
         objects_len: usize,
     ) {
         let (_, list_area, _) = self.areas(&area);
-        let objects_visible = (list_area.height / NodeWidget::height()) as usize;
+        let important_height = match self.list_type {
+            ListType::Node(_) => NodeWidget::important_height(),
+            ListType::Device => DeviceWidget::important_height(),
+        };
+        let objects_visible = (list_area.height / important_height) as usize;
 
         // If objects were removed and the viewport is now below the visible
         // objects, move the viewport up so that the bottom of the object list
