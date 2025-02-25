@@ -16,11 +16,11 @@ use crate::view::{self, ListType};
 /// objects from the global STATE.
 #[derive(Default)]
 pub struct ObjectList {
-    /// Index of the first node in viewport
+    /// Index of the first object in viewport
     top: usize,
-    /// ID of the currently selected node
+    /// ID of the currently selected object
     pub selected: Option<ObjectId>,
-    /// Which set of nodes to use from the View
+    /// Which set of objects to use from the View
     pub list_type: ListType,
     /// Default device type to use
     pub device_type: Option<DeviceType>,
@@ -48,36 +48,36 @@ impl ObjectList {
             .map(|(target, _)| target)
     }
 
-    /// Reconciles changes to nodes, viewport, and selection.
+    /// Reconciles changes to objects, viewport, and selection.
     pub fn update(
         &mut self,
         area: Rect,
         selected_index: Option<usize>,
-        nodes_len: usize,
+        objects_len: usize,
     ) {
         let (_, list_area, _) = self.areas(&area);
-        let nodes_visible = (list_area.height / NodeWidget::height()) as usize;
+        let objects_visible = (list_area.height / NodeWidget::height()) as usize;
 
-        // If nodes were removed and the viewport is now below the visible
-        // nodes, move the viewport up so that the bottom of the node list
+        // If objects were removed and the viewport is now below the visible
+        // objects, move the viewport up so that the bottom of the object list
         // is visible.
-        if self.top >= nodes_len {
-            self.top = nodes_len.saturating_sub(nodes_visible);
+        if self.top >= objects_len {
+            self.top = objects_len.saturating_sub(objects_visible);
         }
 
-        // Make sure the selected node is visible and adjust the viewport
+        // Make sure the selected object is visible and adjust the viewport
         // if necessary.
         if self.selected.is_some() {
             match selected_index {
                 Some(selected_index) => {
-                    if selected_index >= self.top + nodes_visible {
+                    if selected_index >= self.top + objects_visible {
                         self.top =
-                            selected_index.saturating_sub(nodes_visible - 1);
+                            selected_index.saturating_sub(objects_visible - 1);
                     } else if selected_index < self.top {
                         self.top = selected_index;
                     }
                 }
-                None => self.selected = None, // The selected node is gone!
+                None => self.selected = None, // The selected object is gone!
             }
         }
     }
