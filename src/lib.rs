@@ -1,6 +1,7 @@
 pub mod app;
 pub mod command;
 pub mod device_type;
+pub mod device_widget;
 pub mod event;
 pub mod input;
 pub mod media_class;

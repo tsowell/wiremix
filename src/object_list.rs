@@ -1,13 +1,14 @@
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListState, StatefulWidget, Widget},
+    widgets::{ListState, Widget},
 };
 
 use crate::device_type::DeviceType;
+use crate::device_widget::{DevicePopupWidget, DeviceWidget};
 use crate::named_constraints::with_named_constraints;
-use crate::node_widget::NodeWidget;
+use crate::node_widget::{NodePopupWidget, NodeWidget};
 use crate::object::ObjectId;
 use crate::view::{self, ListType};
 
@@ -113,48 +114,88 @@ impl ObjectListWidget<'_> {
         &mut self,
         node_type: view::NodeType,
         list_area: Rect,
-        nodes_layout: &[Rect],
-        nodes_visible: usize,
+        objects_layout: &[Rect],
+        objects_visible: usize,
         area: Rect,
         buf: &mut Buffer,
     ) {
-        let all_nodes = self.view.full_nodes(node_type);
-        let nodes = all_nodes
+        let all_objects = self.view.full_nodes(node_type);
+        let objects = all_objects
             .iter()
             .skip(self.object_list.top)
             // Take one extra so we can render a partial node at the bottom of
             // the area.
-            .take(nodes_visible + 1);
+            .take(objects_visible + 1);
 
-        let nodes_and_areas: Vec<(&&view::Node, &Rect)> =
-            nodes.zip(nodes_layout.iter()).collect();
-        for (node, &node_area) in &nodes_and_areas {
+        let objects_and_areas: Vec<(&&view::Node, &Rect)> =
+            objects.zip(objects_layout.iter()).collect();
+        for (object, &object_area) in &objects_and_areas {
             let selected = self
                 .object_list
                 .selected
-                .map(|id| id == node.id)
+                .map(|id| id == object.id)
                 .unwrap_or_default();
-            NodeWidget::new(node, selected, self.object_list.device_type)
-                .render(node_area, buf);
+            NodeWidget::new(object, selected, self.object_list.device_type)
+                .render(object_area, buf);
         }
 
         // Show the target popup?
         if self.object_list.list_state.selected().is_some() {
-            // Get the area for the selected node
-            if let Some((_, node_area)) =
-                nodes_and_areas.iter().find(|(node, _)| {
+            // Get the area for the selected object
+            if let Some((_, object_area)) =
+                objects_and_areas.iter().find(|(object, _)| {
                     self.object_list
                         .selected
-                        .map(|id| id == node.id)
+                        .map(|id| id == object.id)
                         .unwrap_or_default()
                 })
             {
-                PopupWidget {
-                    object_list: self.object_list,
-                    list_area: &list_area,
-                    parent_area: &area,
-                }
-                .render(**node_area, buf);
+                NodePopupWidget::new(self.object_list, &list_area, &area)
+                    .render(**object_area, buf);
+            }
+        }
+    }
+
+    fn render_device_list(
+        &mut self,
+        list_area: Rect,
+        objects_layout: &[Rect],
+        objects_visible: usize,
+        area: Rect,
+        buf: &mut Buffer,
+    ) {
+        let all_objects = self.view.full_devices();
+        let objects = all_objects
+            .iter()
+            .skip(self.object_list.top)
+            // Take one extra so we can render a partial node at the bottom of
+            // the area.
+            .take(objects_visible + 1);
+
+        let objects_and_areas: Vec<(&&view::Device, &Rect)> =
+            objects.zip(objects_layout.iter()).collect();
+        for (object, &object_area) in &objects_and_areas {
+            let selected = self
+                .object_list
+                .selected
+                .map(|id| id == object.id)
+                .unwrap_or_default();
+            DeviceWidget::new(object, selected).render(object_area, buf);
+        }
+
+        // Show the target popup?
+        if self.object_list.list_state.selected().is_some() {
+            // Get the area for the selected object
+            if let Some((_, object_area)) =
+                objects_and_areas.iter().find(|(object, _)| {
+                    self.object_list
+                        .selected
+                        .map(|id| id == object.id)
+                        .unwrap_or_default()
+                })
+            {
+                DevicePopupWidget::new(self.object_list, &list_area, &area)
+                    .render(**object_area, buf);
             }
         }
     }
@@ -165,14 +206,25 @@ impl Widget for &mut ObjectListWidget<'_> {
         let (header_area, list_area, footer_area) =
             self.object_list.areas(&area);
 
-        let spacing = 2;
-        let node_height_with_spacing = NodeWidget::height() + spacing;
-        let nodes_visible =
-            (list_area.height / node_height_with_spacing) as usize;
+        let (spacing, height, important_height) = match self
+            .object_list
+            .list_type
+        {
+            ListType::Node(_) => {
+                (2, NodeWidget::height(), NodeWidget::important_height())
+            }
+            ListType::Device => {
+                (1, DeviceWidget::height(), DeviceWidget::important_height())
+            }
+        };
+
+        let object_height_with_spacing = height + spacing;
+        let objects_visible =
+            (list_area.height / object_height_with_spacing) as usize;
 
         let len = self.view.len(self.object_list.list_type);
 
-        // Indicate we can scroll up if there are nodes above the viewport.
+        // Indicate we can scroll up if there are objects above the viewport.
         if self.object_list.top > 0 {
             Line::from(Span::styled(
                 "•••",
@@ -182,15 +234,15 @@ impl Widget for &mut ObjectListWidget<'_> {
             .render(header_area, buf);
         }
 
-        // Indicate we can scroll down if there are nodes below the
+        // Indicate we can scroll down if there are objects below the
         // viewport, with an exception for when the last row is partially
         // rendered but still has all the important parts rendered,
         // excluding margins, etc.
         let is_bottom_last =
-            self.object_list.top + nodes_visible == len.saturating_sub(1);
-        let is_bottom_enough = (list_area.height % node_height_with_spacing)
-            >= NodeWidget::important_height();
-        if self.object_list.top + nodes_visible < len
+            self.object_list.top + objects_visible == len.saturating_sub(1);
+        let is_bottom_enough =
+            (list_area.height % object_height_with_spacing) >= important_height;
+        if self.object_list.top + objects_visible < len
             && !(is_bottom_last && is_bottom_enough)
         {
             Line::from(Span::styled(
@@ -201,12 +253,12 @@ impl Widget for &mut ObjectListWidget<'_> {
             .render(footer_area, buf);
         }
 
-        let nodes_layout = {
-            let node_height = NodeWidget::height();
+        let objects_layout = {
+            let object_height = height;
             let mut constraints =
-                vec![Constraint::Length(node_height); nodes_visible];
-            // A variable-length constraint for a partial last node
-            constraints.push(Constraint::Max(node_height));
+                vec![Constraint::Length(object_height); objects_visible];
+            // A variable-length constraint for a partial last object
+            constraints.push(Constraint::Max(object_height));
 
             Layout::default()
                 .direction(Direction::Vertical)
@@ -220,58 +272,22 @@ impl Widget for &mut ObjectListWidget<'_> {
                 self.render_node_list(
                     node_type,
                     list_area,
-                    &nodes_layout,
-                    nodes_visible,
+                    &objects_layout,
+                    objects_visible,
                     area,
                     buf,
                 );
             }
-            ListType::Device => todo!(),
+            ListType::Device => {
+                self.render_device_list(
+                    list_area,
+                    &objects_layout,
+                    objects_visible,
+                    area,
+                    buf,
+                );
+            }
         }
-    }
-}
-
-struct PopupWidget<'a> {
-    object_list: &'a mut ObjectList,
-    list_area: &'a Rect,
-    parent_area: &'a Rect,
-}
-
-impl Widget for PopupWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let targets: Vec<_> = self
-            .object_list
-            .targets
-            .iter()
-            .map(|(_, title)| title.clone())
-            .collect();
-        let max_target_length =
-            targets.iter().map(|s| s.len()).max().unwrap_or(0);
-
-        let popup_area = Rect::new(
-            self.list_area.right() - max_target_length as u16 - 2,
-            area.top() - 1,
-            max_target_length as u16 + 2,
-            std::cmp::min(7, targets.len() as u16 + 2),
-        )
-        .clamp(*self.parent_area);
-
-        Clear.render(popup_area, buf);
-
-        let list = List::new(targets)
-            .block(Block::default().borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::REVERSED),
-            );
-
-        StatefulWidget::render(
-            &list,
-            popup_area,
-            buf,
-            &mut self.object_list.list_state,
-        );
     }
 }
 

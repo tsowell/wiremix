@@ -20,6 +20,8 @@ pub struct View {
     pub nodes_output: Vec<ObjectId>,
     pub nodes_input: Vec<ObjectId>,
 
+    pub devices_all: Vec<ObjectId>,
+
     pub sinks: Vec<(Target, String)>,
     pub sources: Vec<(Target, String)>,
 
@@ -33,6 +35,7 @@ pub struct View {
 pub enum Target {
     Node(ObjectId),
     Route(ObjectId, i32, i32),
+    Profile(ObjectId, i32),
     Default,
 }
 
@@ -65,6 +68,13 @@ pub struct Node {
 #[derive(Debug)]
 pub struct Device {
     pub id: ObjectId,
+    pub object_serial: i32,
+    pub title: String,
+
+    pub profiles: Vec<(Target, String)>,
+
+    pub target_title: String,
+    pub target: Option<Target>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -87,6 +97,16 @@ pub enum ListType {
     Node(NodeType),
     #[default]
     Device,
+}
+
+impl ListType {
+    pub fn is_node(&self) -> bool {
+        matches!(self, ListType::Node(_))
+    }
+
+    pub fn is_device(&self) -> bool {
+        matches!(self, ListType::Device)
+    }
 }
 
 /// Gets the potential Target::Routes for a device and media class.
@@ -278,6 +298,49 @@ impl Node {
     }
 }
 
+impl Device {
+    pub fn from(device: &state::Device) -> Option<Device> {
+        let id = device.id;
+
+        let title = device.description.as_ref()?.clone();
+
+        let mut profiles: Vec<_> = device
+            .profiles
+            .values()
+            .map(|profile| {
+                let title = if profile.available {
+                    profile.description.clone()
+                } else {
+                    format!("{} (unavailable)", profile.description)
+                };
+                (profile.index, title)
+            })
+            .collect();
+        profiles.sort_by_key(|&(index, _)| index);
+        let profiles = profiles
+            .into_iter()
+            .map(|(index, title)| (Target::Profile(id, index), title))
+            .collect();
+
+        let target_title = device
+            .profiles
+            .get(&device.profile_index?)?
+            .description
+            .clone();
+
+        let target = Some(Target::Profile(id, device.profile_index?));
+
+        Some(Device {
+            id,
+            object_serial: device.object_serial?,
+            title,
+            profiles,
+            target_title,
+            target,
+        })
+    }
+}
+
 fn default_for(state: &state::State, which: &str) -> Option<String> {
     let metadata = state.get_metadata_by_name("default")?;
     let json = metadata.properties.get(&0)?.get(which)?;
@@ -392,6 +455,13 @@ impl View {
             .map(|node| (node.id, node))
             .collect();
 
+        let devices: HashMap<ObjectId, Device> = state
+            .devices
+            .values()
+            .filter_map(Device::from)
+            .map(|device| (device.id, device))
+            .collect();
+
         let mut nodes_all = Vec::new();
         let mut nodes_playback = Vec::new();
         let mut nodes_recording = Vec::new();
@@ -420,14 +490,21 @@ impl View {
         let nodes_output = nodes_output;
         let nodes_input = nodes_input;
 
+        let devices_all = devices
+            .iter()
+            .sorted_by_key(|(_, device)| device.object_serial)
+            .map(|(&id, _)| id)
+            .collect();
+
         Self {
             nodes,
-            devices: Default::default(),
+            devices,
             nodes_all,
             nodes_playback,
             nodes_recording,
             nodes_output,
             nodes_input,
+            devices_all,
             sinks,
             sources,
             default_sink,
@@ -510,6 +587,7 @@ impl View {
                     route_device,
                 )]
             }
+            Target::Profile(device_id, profile_index) => todo!(),
         }
     }
 
@@ -567,7 +645,7 @@ impl View {
             ListType::Node(NodeType::Output) => &self.nodes_output,
             ListType::Node(NodeType::Input) => &self.nodes_input,
             ListType::Node(NodeType::All) => &self.nodes_all,
-            ListType::Device => todo!(),
+            ListType::Device => &self.devices_all,
         }
     }
 
@@ -576,6 +654,14 @@ impl View {
         node_ids
             .iter()
             .filter_map(|node_id| self.nodes.get(node_id))
+            .collect()
+    }
+
+    pub fn full_devices(&self) -> Vec<&Device> {
+        let device_ids = self.ids(ListType::Device);
+        device_ids
+            .iter()
+            .filter_map(|device_id| self.devices.get(device_id))
             .collect()
     }
 
@@ -623,7 +709,7 @@ impl View {
         self.ids(list_type).len()
     }
 
-    pub fn targets(
+    pub fn node_targets(
         &self,
         node_id: ObjectId,
     ) -> Option<(Vec<(Target, String)>, usize)> {
@@ -666,6 +752,25 @@ impl View {
                 targets
                     .iter()
                     .position(|&(target, _)| target == node_target)
+            })
+            .unwrap_or(0);
+
+        Some((targets, selected_position))
+    }
+
+    pub fn device_targets(
+        &self,
+        device_id: ObjectId,
+    ) -> Option<(Vec<(Target, String)>, usize)> {
+        let device = self.devices.get(&device_id)?;
+
+        let targets = device.profiles.clone();
+        let selected_position = device
+            .target
+            .and_then(|device_target| {
+                targets
+                    .iter()
+                    .position(|&(target, _)| target == device_target)
             })
             .unwrap_or(0);
 

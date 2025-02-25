@@ -321,4 +321,10 @@ fn device_info_props(
             device_description.to_string(),
         ));
     }
+
+    if let Some(object_serial) = props.get("object.serial") {
+        if let Ok(object_serial) = object_serial.parse() {
+            sender.send(MonitorEvent::DeviceObjectSerial(id, object_serial));
+        }
+    }
 }

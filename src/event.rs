@@ -14,6 +14,7 @@ pub enum MonitorEvent {
     DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(MediaClass, Vec<i32>)>),
     DeviceProfile(ObjectId, i32),
     DeviceRoute(ObjectId, i32, i32, i32, String, bool, Vec<f32>, bool),
+    DeviceObjectSerial(ObjectId, i32),
 
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, u32, Option<String>, Option<String>),

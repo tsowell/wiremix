@@ -1,14 +1,18 @@
 use ratatui::{
     layout::Flex,
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Padding, Widget},
+    widgets::{
+        Block, BorderType, Borders, Clear, List, Padding, StatefulWidget,
+        Widget,
+    },
 };
 
 use crate::device_type::DeviceType;
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
+use crate::object_list::ObjectList;
 use crate::truncate;
 use crate::view;
 
@@ -213,5 +217,63 @@ impl Widget for NodeWidget<'_> {
                 _ => meter::render_mono(meter_area, buf, None),
             },
         }
+    }
+}
+
+pub struct NodePopupWidget<'a> {
+    object_list: &'a mut ObjectList,
+    list_area: &'a Rect,
+    parent_area: &'a Rect,
+}
+
+impl<'a> NodePopupWidget<'a> {
+    pub fn new(
+        object_list: &'a mut ObjectList,
+        list_area: &'a Rect,
+        parent_area: &'a Rect,
+    ) -> Self {
+        Self {
+            object_list,
+            list_area,
+            parent_area,
+        }
+    }
+}
+
+impl Widget for NodePopupWidget<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let targets: Vec<_> = self
+            .object_list
+            .targets
+            .iter()
+            .map(|(_, title)| title.clone())
+            .collect();
+        let max_target_length =
+            targets.iter().map(|s| s.len()).max().unwrap_or(0);
+
+        let popup_area = Rect::new(
+            self.list_area.right() - max_target_length as u16 - 2,
+            area.top() - 1,
+            max_target_length as u16 + 2,
+            std::cmp::min(7, targets.len() as u16 + 2),
+        )
+        .clamp(*self.parent_area);
+
+        Clear.render(popup_area, buf);
+
+        let list = List::new(targets)
+            .block(Block::default().borders(Borders::ALL))
+            .highlight_style(
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::REVERSED),
+            );
+
+        StatefulWidget::render(
+            &list,
+            popup_area,
+            buf,
+            &mut self.object_list.list_state,
+        );
     }
 }

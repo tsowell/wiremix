@@ -89,8 +89,7 @@ impl App {
             ),
             Tab::new(
                 String::from("Configuration"),
-                /* TODO - for now just show all nodes */
-                ObjectList::new(ListType::Node(view::NodeType::All), None),
+                ObjectList::new(ListType::Device, None),
             ),
         ];
         App {
@@ -242,7 +241,7 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('m') => {
+            KeyCode::Char('m') if self.selected_list().list_type.is_node() => {
                 let command = self
                     .selected_list()
                     .selected
@@ -251,7 +250,7 @@ impl App {
                     let _ = self.tx.send(command);
                 }
             }
-            KeyCode::Char('d') => {
+            KeyCode::Char('d') if self.selected_list().list_type.is_node() => {
                 let node_id = self.selected_list().selected;
                 let device_type = self.selected_list().device_type;
                 let command = node_id.zip(device_type).and_then(
@@ -263,7 +262,7 @@ impl App {
                     let _ = self.tx.send(command);
                 }
             }
-            KeyCode::Char('l') => {
+            KeyCode::Char('l') if self.selected_list().list_type.is_node() => {
                 let command =
                     self.selected_list().selected.and_then(|node_id| {
                         self.view
@@ -273,7 +272,7 @@ impl App {
                     let _ = self.tx.send(command);
                 }
             }
-            KeyCode::Char('h') => {
+            KeyCode::Char('h') if self.selected_list().list_type.is_node() => {
                 let command =
                     self.selected_list().selected.and_then(|node_id| {
                         self.view
@@ -285,10 +284,18 @@ impl App {
             }
             KeyCode::Char('q') => self.exit(None),
             KeyCode::Char('c') => {
-                let targets = self
-                    .selected_list()
-                    .selected
-                    .and_then(|node_id| self.view.targets(node_id));
+                let targets = match self.selected_list().list_type {
+                    ListType::Node(_) => {
+                        self.selected_list().selected.and_then(|object_id| {
+                            self.view.node_targets(object_id)
+                        })
+                    }
+                    ListType::Device => {
+                        self.selected_list().selected.and_then(|object_id| {
+                            self.view.device_targets(object_id)
+                        })
+                    }
+                };
                 if let Some((targets, index)) = targets {
                     if !targets.is_empty() {
                         let selected_list = self.selected_list_mut();
@@ -303,8 +310,8 @@ impl App {
                 let commands = selected_list
                     .selected
                     .zip(selected_list.selected_target())
-                    .map(|(node_id, &target)| {
-                        self.view.set_target(node_id, target)
+                    .map(|(object_id, &target)| {
+                        self.view.set_target(object_id, target)
                     })
                     .into_iter()
                     .flatten();

@@ -41,6 +41,7 @@ pub struct Route {
 #[derive(Default, Debug)]
 pub struct Device {
     pub id: ObjectId,
+    pub object_serial: Option<i32>,
     pub name: Option<String>,
     pub nick: Option<String>,
     pub description: Option<String>,
@@ -114,6 +115,9 @@ impl State {
             }
             MonitorEvent::DeviceNick(id, nick) => {
                 self.device_entry(id).nick = Some(nick);
+            }
+            MonitorEvent::DeviceObjectSerial(id, object_serial) => {
+                self.device_entry(id).object_serial = Some(object_serial);
             }
             MonitorEvent::DeviceEnumProfile(
                 id,
