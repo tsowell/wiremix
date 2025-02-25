@@ -132,10 +132,10 @@ fn route_targets(
 /// Get the active route for a device and card device.
 /// This is the route on a device Node IF the route's profile matches the
 /// device's current profile. Otherwise, there is no valid route.
-fn active_route<'a>(
-    device: &'a state::Device,
+fn active_route(
+    device: &state::Device,
     card_device: i32,
-) -> Option<&'a state::Route> {
+) -> Option<&state::Route> {
     let profile_index = device.profile_index?;
 
     device

@@ -108,7 +108,7 @@ pub struct ObjectListWidget<'a> {
     pub view: &'a view::View,
 }
 
-impl<'a> ObjectListWidget<'a> {
+impl ObjectListWidget<'_> {
     fn render_node_list(
         &mut self,
         node_type: view::NodeType,
