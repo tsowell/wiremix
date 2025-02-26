@@ -237,6 +237,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(header_area, buf);
+            click_areas.push((header_area, Action::ScrollUp));
         }
 
         // Indicate we can scroll down if there are objects below the
@@ -256,6 +257,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(footer_area, buf);
+            click_areas.push((footer_area, Action::ScrollDown));
         }
 
         let objects_layout = {

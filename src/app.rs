@@ -29,6 +29,8 @@ use crate::{trace, trace_dbg};
 #[derive(Clone)]
 pub enum Action {
     SelectTab(usize),
+    ScrollUp,
+    ScrollDown,
 }
 
 struct Tab {
@@ -321,34 +323,10 @@ impl App {
                 self.selected_list_mut().list_state.select(None);
             }
             KeyCode::Char('j') => {
-                let selected_list = self.selected_list();
-                if selected_list.list_state.selected().is_some() {
-                    self.selected_list_mut().list_state.select_next();
-                } else {
-                    let new_selected = {
-                        let selected = selected_list.selected;
-                        let list_type = selected_list.list_type;
-                        self.view.next_id(list_type, selected)
-                    };
-                    if new_selected.is_some() {
-                        self.selected_list_mut().selected = new_selected;
-                    }
-                }
+                self.handle_action(Action::ScrollDown);
             }
             KeyCode::Char('k') => {
-                let selected_list = self.selected_list();
-                if selected_list.list_state.selected().is_some() {
-                    self.selected_list_mut().list_state.select_previous();
-                } else {
-                    let new_selected = {
-                        let selected = selected_list.selected;
-                        let list_type = selected_list.list_type;
-                        self.view.previous_id(list_type, selected)
-                    };
-                    if new_selected.is_some() {
-                        self.selected_list_mut().selected = new_selected;
-                    }
-                }
+                self.handle_action(Action::ScrollUp);
             }
             KeyCode::Char('H') => {
                 self.selected_tab_index =
@@ -382,6 +360,40 @@ impl App {
     fn handle_action(&mut self, action: Action) {
         match action {
             Action::SelectTab(index) => self.selected_tab_index = index,
+            Action::ScrollDown => self.action_scroll_down(),
+            Action::ScrollUp => self.action_scroll_up(),
+        }
+    }
+
+    fn action_scroll_down(&mut self) {
+        let selected_list = self.selected_list();
+        if selected_list.list_state.selected().is_some() {
+            self.selected_list_mut().list_state.select_next();
+        } else {
+            let new_selected = {
+                let selected = selected_list.selected;
+                let list_type = selected_list.list_type;
+                self.view.next_id(list_type, selected)
+            };
+            if new_selected.is_some() {
+                self.selected_list_mut().selected = new_selected;
+            }
+        }
+    }
+
+    fn action_scroll_up(&mut self) {
+        let selected_list = self.selected_list();
+        if selected_list.list_state.selected().is_some() {
+            self.selected_list_mut().list_state.select_previous();
+        } else {
+            let new_selected = {
+                let selected = selected_list.selected;
+                let list_type = selected_list.list_type;
+                self.view.previous_id(list_type, selected)
+            };
+            if new_selected.is_some() {
+                self.selected_list_mut().selected = new_selected;
+            }
         }
     }
 }
