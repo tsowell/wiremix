@@ -107,19 +107,20 @@ fn node_set_volumes(node: &Node, volumes: Vec<f32>) {
 }
 
 fn node_set_properties(node: &Node, properties: Vec<Property>) {
-    let values: Vec<u8> = PodSerializer::serialize(
+    let values = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
             type_: libspa_sys::SPA_TYPE_OBJECT_Props,
             id: libspa_sys::SPA_PARAM_Props,
             properties,
         }),
-    )
-    .unwrap()
-    .0
-    .into_inner();
+    );
 
-    node.set_param(ParamType::Props, 0, Pod::from_bytes(&values).unwrap());
+    if let Ok((values, _)) = values {
+        if let Some(pod) = Pod::from_bytes(&values.into_inner()) {
+            node.set_param(ParamType::Props, 0, pod);
+        }
+    }
 }
 
 fn device_set_mute(
@@ -204,19 +205,20 @@ fn device_set_route_properties(
     });
     let route_properties = route_properties;
 
-    let values: Vec<u8> = PodSerializer::serialize(
+    let values = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
             type_: libspa_sys::SPA_TYPE_OBJECT_ParamRoute,
             id: libspa_sys::SPA_PARAM_Route,
             properties: route_properties,
         }),
-    )
-    .unwrap()
-    .0
-    .into_inner();
+    );
 
-    device.set_param(ParamType::Route, 0, Pod::from_bytes(&values).unwrap());
+    if let Ok((values, _)) = values {
+        if let Some(pod) = Pod::from_bytes(&values.into_inner()) {
+            device.set_param(ParamType::Route, 0, pod);
+        }
+    }
 }
 
 fn device_set_profile(device: &Device, profile_index: i32) {
@@ -233,17 +235,18 @@ fn device_set_profile(device: &Device, profile_index: i32) {
         },
     ];
 
-    let values: Vec<u8> = PodSerializer::serialize(
+    let values = PodSerializer::serialize(
         std::io::Cursor::new(Vec::new()),
         &Value::Object(Object {
             type_: libspa_sys::SPA_TYPE_OBJECT_ParamProfile,
             id: libspa_sys::SPA_PARAM_Profile,
             properties,
         }),
-    )
-    .unwrap()
-    .0
-    .into_inner();
+    );
 
-    device.set_param(ParamType::Profile, 0, Pod::from_bytes(&values).unwrap());
+    if let Ok((values, _)) = values {
+        if let Some(pod) = Pod::from_bytes(&values.into_inner()) {
+            device.set_param(ParamType::Profile, 0, pod);
+        }
+    }
 }
