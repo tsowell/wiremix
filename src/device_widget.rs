@@ -1,4 +1,5 @@
 use ratatui::{
+    layout::Flex,
     prelude::{Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
@@ -58,6 +59,7 @@ impl Widget for DeviceWidget<'_> {
                 Layout::default()
                     .direction(Direction::Vertical)
                     .constraints(constraints)
+                    .flex(Flex::Legacy)
                     .split(border_block.inner(area))
             }
         );
