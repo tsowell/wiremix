@@ -24,7 +24,7 @@ impl<'a> DeviceWidget<'a> {
 
     /// Height of a full device display.
     pub fn height() -> u16 {
-        4
+        3
     }
 
     /// Spacing between objects
@@ -51,7 +51,8 @@ impl Widget for DeviceWidget<'_> {
         let _layout = with_named_constraints!(
             [
                 (Constraint::Length(1), Some(&mut title_area)),
-                (Constraint::Length(3), Some(&mut target_area)),
+                (Constraint::Length(1), None),
+                (Constraint::Length(1), Some(&mut target_area)),
             ],
             |constraints| {
                 Layout::default()
@@ -62,13 +63,10 @@ impl Widget for DeviceWidget<'_> {
         );
         border_block.render(area, buf);
 
-        Line::from(format!(" {}", self.device.title)).render(title_area, buf);
+        Line::from(format!("   {}", self.device.title)).render(title_area, buf);
 
-        let target_block = Block::default().borders(Borders::ALL);
-        (&target_block).render(target_area, buf);
-
-        Line::from(format!(" {}", self.device.target_title))
-            .render(target_block.inner(target_area), buf);
+        Line::from(format!("    ▼ {}", self.device.target_title))
+            .render(target_area, buf);
     }
 }
 
@@ -98,13 +96,15 @@ impl Widget for DevicePopupWidget<'_> {
             .object_list
             .targets
             .iter()
-            .map(|(_, title)| format!(" {}", title))
+            .map(|(_, title)| title.clone())
             .collect();
+        let max_target_length =
+            targets.iter().map(|s| s.len()).max().unwrap_or(0);
 
         let popup_area = Rect::new(
-            self.list_area.left() + 1,
+            self.list_area.left() + 6,
             area.top() + 1,
-            self.list_area.width - 1,
+            max_target_length as u16 + 2,
             std::cmp::min(7, targets.len() as u16 + 2),
         )
         .clamp(*self.parent_area);
