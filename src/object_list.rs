@@ -2,9 +2,10 @@ use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{ListState, Widget},
+    widgets::{ListState, StatefulWidget, Widget},
 };
 
+use crate::app::Action;
 use crate::device_type::DeviceType;
 use crate::device_widget::{DevicePopupWidget, DeviceWidget};
 use crate::named_constraints::with_named_constraints;
@@ -207,8 +208,12 @@ impl ObjectListWidget<'_> {
     }
 }
 
-impl Widget for &mut ObjectListWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for &mut ObjectListWidget<'_> {
+    type State = Vec<(Rect, Action)>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let click_areas = state;
+
         let (header_area, list_area, footer_area) =
             self.object_list.areas(&area);
 

@@ -443,6 +443,6 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             object_list: &mut state.tabs[self.selected_tab_index].list,
             view: self.view,
         };
-        widget.render(list_area, buf);
+        widget.render(list_area, buf, state.click_areas);
     }
 }
