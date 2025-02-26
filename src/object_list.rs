@@ -123,7 +123,7 @@ impl ObjectListWidget<'_> {
         list_area: Rect,
         objects_layout: &[Rect],
         objects_visible: usize,
-        click_areas: &mut Vec<(Rect, Action)>,
+        click_areas: &mut Vec<(Rect, Vec<Action>)>,
         area: Rect,
         buf: &mut Buffer,
     ) {
@@ -169,7 +169,7 @@ impl ObjectListWidget<'_> {
         list_area: Rect,
         objects_layout: &[Rect],
         objects_visible: usize,
-        click_areas: &mut Vec<(Rect, Action)>,
+        click_areas: &mut Vec<(Rect, Vec<Action>)>,
         area: Rect,
         buf: &mut Buffer,
     ) {
@@ -215,7 +215,7 @@ impl ObjectListWidget<'_> {
 }
 
 impl StatefulWidget for &mut ObjectListWidget<'_> {
-    type State = Vec<(Rect, Action)>;
+    type State = Vec<(Rect, Vec<Action>)>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let click_areas = state;
@@ -243,7 +243,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(header_area, buf);
-            click_areas.push((header_area, Action::ScrollUp));
+            click_areas.push((header_area, vec![Action::ScrollUp]));
         }
 
         // Indicate we can scroll down if there are objects below the
@@ -263,7 +263,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(footer_area, buf);
-            click_areas.push((footer_area, Action::ScrollDown));
+            click_areas.push((footer_area, vec![Action::ScrollDown]));
         }
 
         let objects_layout = {

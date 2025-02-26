@@ -19,6 +19,7 @@ use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::event::Event;
 use crate::named_constraints::with_named_constraints;
+use crate::object::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::State;
 use crate::view::{self, ListType, View, VolumeAdjustment};
@@ -26,11 +27,15 @@ use crate::view::{self, ListType, View, VolumeAdjustment};
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Action {
     SelectTab(usize),
     ScrollUp,
     ScrollDown,
+    OpenPopup,
+    ClosePopup,
+    SelectObject(ObjectId),
+    SetTarget(view::Target),
 }
 
 struct Tab {
@@ -51,7 +56,7 @@ pub struct App {
     error_message: Option<String>,
     tabs: Vec<Tab>,
     selected_tab_index: usize,
-    click_areas: Vec<(Rect, Action)>,
+    click_areas: Vec<(Rect, Vec<Action>)>,
     /// The monitor has received all initial information.
     is_ready: bool,
     state: State,
@@ -294,27 +299,9 @@ impl App {
             }
             KeyCode::Char('q') => self.exit(None),
             KeyCode::Char('c') => {
-                let targets = match self.selected_list().list_type {
-                    ListType::Node(_) => {
-                        self.selected_list().selected.and_then(|object_id| {
-                            self.view.node_targets(object_id)
-                        })
-                    }
-                    ListType::Device => {
-                        self.selected_list().selected.and_then(|object_id| {
-                            self.view.device_targets(object_id)
-                        })
-                    }
-                };
-                if let Some((targets, index)) = targets {
-                    if !targets.is_empty() {
-                        let selected_list = self.selected_list_mut();
-                        selected_list.targets = targets;
-                        selected_list.list_state.select(Some(index));
-                    }
-                }
+                self.handle_action(Action::OpenPopup);
             }
-            KeyCode::Esc => self.selected_list_mut().list_state.select(None),
+            KeyCode::Esc => self.handle_action(Action::ClosePopup),
             KeyCode::Enter => {
                 let selected_list = self.selected_list();
                 let commands = selected_list
@@ -348,7 +335,7 @@ impl App {
     }
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
-        let action = self
+        let actions = self
             .click_areas
             .iter()
             .rev()
@@ -358,10 +345,12 @@ impl App {
                     y: mouse_event.row,
                 })
             })
-            .map(|(_, action)| action);
+            .map(|(_, action)| action.clone())
+            .into_iter()
+            .flatten();
 
-        if let Some(action) = action {
-            self.handle_action(action.clone());
+        for action in actions {
+            self.handle_action(action);
         }
     }
 
@@ -370,6 +359,14 @@ impl App {
             Action::SelectTab(index) => self.selected_tab_index = index,
             Action::ScrollDown => self.action_scroll_down(),
             Action::ScrollUp => self.action_scroll_up(),
+            Action::OpenPopup => self.action_open_popup(),
+            Action::ClosePopup => {
+                self.selected_list_mut().list_state.select(None)
+            }
+            Action::SetTarget(target) => self.action_set_target(target),
+            Action::SelectObject(object_id) => {
+                self.selected_list_mut().selected = Some(object_id)
+            }
         }
     }
 
@@ -404,6 +401,39 @@ impl App {
             }
         }
     }
+
+    fn action_open_popup(&mut self) {
+        let targets = match self.selected_list().list_type {
+            ListType::Node(_) => self
+                .selected_list()
+                .selected
+                .and_then(|object_id| self.view.node_targets(object_id)),
+            ListType::Device => self
+                .selected_list()
+                .selected
+                .and_then(|object_id| self.view.device_targets(object_id)),
+        };
+        if let Some((targets, index)) = targets {
+            if !targets.is_empty() {
+                let selected_list = self.selected_list_mut();
+                selected_list.targets = targets;
+                selected_list.list_state.select(Some(index));
+            }
+        }
+    }
+
+    fn action_set_target(&mut self, target: view::Target) {
+        self.selected_list_mut().list_state.select(None);
+        let commands = self
+            .selected_list()
+            .selected
+            .map(|object_id| self.view.set_target(object_id, target))
+            .into_iter()
+            .flatten();
+        for command in commands {
+            let _ = self.tx.send(command);
+        }
+    }
 }
 
 pub struct AppWidget<'a> {
@@ -412,7 +442,7 @@ pub struct AppWidget<'a> {
 }
 
 pub struct AppWidgetState<'a> {
-    click_areas: &'a mut Vec<(Rect, Action)>,
+    click_areas: &'a mut Vec<(Rect, Vec<Action>)>,
     tabs: &'a mut Vec<Tab>,
 }
 
@@ -456,7 +486,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
             state
                 .click_areas
-                .push((menu_areas[i], Action::SelectTab(i)));
+                .push((menu_areas[i], vec![Action::SelectTab(i)]));
         }
 
         let mut widget = ObjectListWidget {

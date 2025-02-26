@@ -67,10 +67,12 @@ impl<'a> NodeWidget<'a> {
 }
 
 impl StatefulWidget for NodeWidget<'_> {
-    type State = Vec<(Rect, Action)>;
+    type State = Vec<(Rect, Vec<Action>)>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let click_areas = state;
+
+        click_areas.push((area, vec![Action::SelectObject(self.node.id)]));
 
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
@@ -133,6 +135,11 @@ impl StatefulWidget for NodeWidget<'_> {
         Line::from(right)
             .alignment(Alignment::Right)
             .render(header_right, buf);
+        click_areas.push((
+            header_right,
+            vec![Action::SelectObject(self.node.id), Action::OpenPopup],
+        ));
+
         let default_string = if is_default(self.node, self.device_type) {
             "◇ "
         } else {
@@ -246,7 +253,7 @@ impl<'a> NodePopupWidget<'a> {
 }
 
 impl StatefulWidget for NodePopupWidget<'_> {
-    type State = Vec<(Rect, Action)>;
+    type State = Vec<(Rect, Vec<Action>)>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let click_areas = state;
@@ -268,6 +275,9 @@ impl StatefulWidget for NodePopupWidget<'_> {
         )
         .clamp(*self.parent_area);
 
+        // Click anywhere else in the object list to close the popup.
+        click_areas.push((*self.parent_area, vec![Action::ClosePopup]));
+
         Clear.render(popup_area, buf);
 
         let list = List::new(targets)
@@ -284,5 +294,28 @@ impl StatefulWidget for NodePopupWidget<'_> {
             buf,
             &mut self.object_list.list_state,
         );
+
+        for i in 0..(popup_area.height - 2) {
+            let target_area = Rect::new(
+                popup_area.x,
+                popup_area.y + 1 + i,
+                popup_area.width,
+                1,
+            );
+
+            let target = self
+                .object_list
+                .targets
+                .iter()
+                .skip(self.object_list.list_state.offset())
+                .nth(i as usize)
+                .map(|(target, _)| target);
+            if let Some(target) = target {
+                click_areas.push((
+                    target_area,
+                    vec![Action::SetTarget(*target)],
+                ));
+            }
+        }
     }
 }
