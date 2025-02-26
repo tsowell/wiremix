@@ -56,11 +56,13 @@ impl ObjectList {
         objects_len: usize,
     ) {
         let (_, list_area, _) = self.areas(&area);
-        let important_height = match self.list_type {
-            ListType::Node(_) => NodeWidget::important_height(),
-            ListType::Device => DeviceWidget::important_height(),
+        let full_height = match self.list_type {
+            ListType::Node(_) => NodeWidget::height() + NodeWidget::spacing(),
+            ListType::Device => {
+                DeviceWidget::height() + DeviceWidget::spacing()
+            }
         };
-        let objects_visible = (list_area.height / important_height) as usize;
+        let objects_visible = (list_area.height / full_height) as usize;
 
         // If objects were removed and the viewport is now below the visible
         // objects, move the viewport up so that the bottom of the object list
@@ -210,21 +212,15 @@ impl Widget for &mut ObjectListWidget<'_> {
         let (header_area, list_area, footer_area) =
             self.object_list.areas(&area);
 
-        let (spacing, height, important_height) = match self
-            .object_list
-            .list_type
-        {
-            ListType::Node(_) => {
-                (2, NodeWidget::height(), NodeWidget::important_height())
-            }
+        let (spacing, height) = match self.object_list.list_type {
+            ListType::Node(_) => (NodeWidget::spacing(), NodeWidget::height()),
             ListType::Device => {
-                (1, DeviceWidget::height(), DeviceWidget::important_height())
+                (DeviceWidget::spacing(), DeviceWidget::height())
             }
         };
 
-        let object_height_with_spacing = height + spacing;
-        let objects_visible =
-            (list_area.height / object_height_with_spacing) as usize;
+        let full_object_height = height + spacing;
+        let objects_visible = (list_area.height / full_object_height) as usize;
 
         let len = self.view.len(self.object_list.list_type);
 
@@ -245,7 +241,7 @@ impl Widget for &mut ObjectListWidget<'_> {
         let is_bottom_last =
             self.object_list.top + objects_visible == len.saturating_sub(1);
         let is_bottom_enough =
-            (list_area.height % object_height_with_spacing) >= important_height;
+            (list_area.height % full_object_height) >= height;
         if self.object_list.top + objects_visible < len
             && !(is_bottom_last && is_bottom_enough)
         {

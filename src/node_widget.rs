@@ -59,9 +59,9 @@ impl<'a> NodeWidget<'a> {
         3
     }
 
-    /// Height of the important parts (excluding blank margin lines at bottom).
-    pub fn important_height() -> u16 {
-        3
+    /// Spacing between nodes
+    pub fn spacing() -> u16 {
+        2
     }
 }
 

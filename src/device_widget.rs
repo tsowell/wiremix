@@ -27,9 +27,9 @@ impl<'a> DeviceWidget<'a> {
         4
     }
 
-    /// Height of the important parts (excluding blank margin lines at bottom).
-    pub fn important_height() -> u16 {
-        4
+    /// Spacing between objects
+    pub fn spacing() -> u16 {
+        1
     }
 }
 
