@@ -29,7 +29,7 @@ impl<'a> DeviceWidget<'a> {
 
     /// Spacing between objects
     pub fn spacing() -> u16 {
-        1
+        2
     }
 }
 
