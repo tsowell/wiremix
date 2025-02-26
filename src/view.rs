@@ -322,11 +322,12 @@ impl Device {
             .map(|(index, title)| (Target::Profile(id, index), title))
             .collect();
 
-        let target_title = device
-            .profiles
-            .get(&device.profile_index?)?
-            .description
-            .clone();
+        let target_profile = device.profiles.get(&device.profile_index?)?;
+        let target_title = if target_profile.available {
+            target_profile.description.clone()
+        } else {
+            format!("{} (unavailable)", target_profile.description)
+        };
 
         let target = Some(Target::Profile(id, device.profile_index?));
 
