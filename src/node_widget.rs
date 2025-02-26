@@ -311,10 +311,8 @@ impl StatefulWidget for NodePopupWidget<'_> {
                 .nth(i as usize)
                 .map(|(target, _)| target);
             if let Some(target) = target {
-                click_areas.push((
-                    target_area,
-                    vec![Action::SetTarget(*target)],
-                ));
+                click_areas
+                    .push((target_area, vec![Action::SetTarget(*target)]));
             }
         }
     }

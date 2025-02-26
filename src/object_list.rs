@@ -116,16 +116,20 @@ pub struct ObjectListWidget<'a> {
     pub view: &'a view::View,
 }
 
+struct ObjectListRenderContext<'a> {
+    list_area: Rect,
+    objects_layout: &'a [Rect],
+    objects_visible: usize,
+}
+
 impl ObjectListWidget<'_> {
     fn render_node_list(
         &mut self,
         node_type: view::NodeType,
-        list_area: Rect,
-        objects_layout: &[Rect],
-        objects_visible: usize,
-        click_areas: &mut Vec<(Rect, Vec<Action>)>,
+        context: ObjectListRenderContext,
         area: Rect,
         buf: &mut Buffer,
+        click_areas: &mut Vec<(Rect, Vec<Action>)>,
     ) {
         let all_objects = self.view.full_nodes(node_type);
         let objects = all_objects
@@ -133,10 +137,10 @@ impl ObjectListWidget<'_> {
             .skip(self.object_list.top)
             // Take one extra so we can render a partial node at the bottom of
             // the area.
-            .take(objects_visible + 1);
+            .take(context.objects_visible + 1);
 
         let objects_and_areas: Vec<(&&view::Node, &Rect)> =
-            objects.zip(objects_layout.iter()).collect();
+            objects.zip(context.objects_layout.iter()).collect();
         for (object, &object_area) in &objects_and_areas {
             let selected = self
                 .object_list
@@ -158,20 +162,22 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                NodePopupWidget::new(self.object_list, &list_area, &area)
-                    .render(**object_area, buf, click_areas);
+                NodePopupWidget::new(
+                    self.object_list,
+                    &context.list_area,
+                    &area,
+                )
+                .render(**object_area, buf, click_areas);
             }
         }
     }
 
     fn render_device_list(
         &mut self,
-        list_area: Rect,
-        objects_layout: &[Rect],
-        objects_visible: usize,
-        click_areas: &mut Vec<(Rect, Vec<Action>)>,
+        context: ObjectListRenderContext,
         area: Rect,
         buf: &mut Buffer,
+        click_areas: &mut Vec<(Rect, Vec<Action>)>,
     ) {
         let all_objects = self.view.full_devices();
         let objects = all_objects
@@ -179,10 +185,10 @@ impl ObjectListWidget<'_> {
             .skip(self.object_list.top)
             // Take one extra so we can render a partial node at the bottom of
             // the area.
-            .take(objects_visible + 1);
+            .take(context.objects_visible + 1);
 
         let objects_and_areas: Vec<(&&view::Device, &Rect)> =
-            objects.zip(objects_layout.iter()).collect();
+            objects.zip(context.objects_layout.iter()).collect();
         for (object, &object_area) in &objects_and_areas {
             let selected = self
                 .object_list
@@ -207,8 +213,12 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                DevicePopupWidget::new(self.object_list, &list_area, &area)
-                    .render(**object_area, buf, click_areas);
+                DevicePopupWidget::new(
+                    self.object_list,
+                    &context.list_area,
+                    &area,
+                )
+                .render(**object_area, buf, click_areas);
             }
         }
     }
@@ -284,22 +294,26 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ListType::Node(node_type) => {
                 self.render_node_list(
                     node_type,
-                    list_area,
-                    &objects_layout,
-                    objects_visible,
-                    click_areas,
+                    ObjectListRenderContext {
+                        list_area,
+                        objects_layout: &objects_layout,
+                        objects_visible,
+                    },
                     area,
                     buf,
+                    click_areas,
                 );
             }
             ListType::Device => {
                 self.render_device_list(
-                    list_area,
-                    &objects_layout,
-                    objects_visible,
-                    click_areas,
+                    ObjectListRenderContext {
+                        list_area,
+                        objects_layout: &objects_layout,
+                        objects_visible,
+                    },
                     area,
                     buf,
+                    click_areas,
                 );
             }
         }
