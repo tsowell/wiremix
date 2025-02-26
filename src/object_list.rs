@@ -123,6 +123,7 @@ impl ObjectListWidget<'_> {
         list_area: Rect,
         objects_layout: &[Rect],
         objects_visible: usize,
+        click_areas: &mut Vec<(Rect, Action)>,
         area: Rect,
         buf: &mut Buffer,
     ) {
@@ -143,7 +144,7 @@ impl ObjectListWidget<'_> {
                 .map(|id| id == object.id)
                 .unwrap_or_default();
             NodeWidget::new(object, selected, self.object_list.device_type)
-                .render(object_area, buf);
+                .render(object_area, buf, click_areas);
         }
 
         // Show the target popup?
@@ -158,7 +159,7 @@ impl ObjectListWidget<'_> {
                 })
             {
                 NodePopupWidget::new(self.object_list, &list_area, &area)
-                    .render(**object_area, buf);
+                    .render(**object_area, buf, click_areas);
             }
         }
     }
@@ -168,6 +169,7 @@ impl ObjectListWidget<'_> {
         list_area: Rect,
         objects_layout: &[Rect],
         objects_visible: usize,
+        click_areas: &mut Vec<(Rect, Action)>,
         area: Rect,
         buf: &mut Buffer,
     ) {
@@ -187,7 +189,11 @@ impl ObjectListWidget<'_> {
                 .selected
                 .map(|id| id == object.id)
                 .unwrap_or_default();
-            DeviceWidget::new(object, selected).render(object_area, buf);
+            DeviceWidget::new(object, selected).render(
+                object_area,
+                buf,
+                click_areas,
+            );
         }
 
         // Show the target popup?
@@ -202,7 +208,7 @@ impl ObjectListWidget<'_> {
                 })
             {
                 DevicePopupWidget::new(self.object_list, &list_area, &area)
-                    .render(**object_area, buf);
+                    .render(**object_area, buf, click_areas);
             }
         }
     }
@@ -281,6 +287,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                     list_area,
                     &objects_layout,
                     objects_visible,
+                    click_areas,
                     area,
                     buf,
                 );
@@ -290,6 +297,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                     list_area,
                     &objects_layout,
                     objects_visible,
+                    click_areas,
                     area,
                     buf,
                 );

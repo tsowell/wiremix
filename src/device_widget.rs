@@ -9,6 +9,7 @@ use ratatui::{
     },
 };
 
+use crate::app::Action;
 use crate::named_constraints::with_named_constraints;
 use crate::object_list::ObjectList;
 use crate::view;
@@ -34,8 +35,12 @@ impl<'a> DeviceWidget<'a> {
     }
 }
 
-impl Widget for DeviceWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for DeviceWidget<'_> {
+    type State = Vec<(Rect, Action)>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let click_areas = state;
+
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
         } else {
@@ -92,8 +97,12 @@ impl<'a> DevicePopupWidget<'a> {
     }
 }
 
-impl Widget for DevicePopupWidget<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl StatefulWidget for DevicePopupWidget<'_> {
+    type State = Vec<(Rect, Action)>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let click_areas = state;
+
         let targets: Vec<_> = self
             .object_list
             .targets
