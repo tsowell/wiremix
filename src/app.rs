@@ -227,6 +227,14 @@ impl App {
                     ..
                 },
             ) => self.handle_mouse_event(mouse_event),
+            CrosstermEvent::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollDown,
+                ..
+            }) => self.handle_action(Action::ScrollDown),
+            CrosstermEvent::Mouse(MouseEvent {
+                kind: MouseEventKind::ScrollUp,
+                ..
+            }) => self.handle_action(Action::ScrollUp),
             _ => (),
         };
 
