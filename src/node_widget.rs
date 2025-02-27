@@ -337,6 +337,13 @@ impl StatefulWidget for NodePopupWidget<'_> {
             vec![Action::ClosePopup],
         ));
 
+        // But clicking on the border does nothing.
+        mouse_areas.push((
+            popup_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![],
+        ));
+
         Clear.render(popup_area, buf);
 
         let list = List::new(targets)
@@ -354,6 +361,49 @@ impl StatefulWidget for NodePopupWidget<'_> {
             &mut self.object_list.list_state,
         );
 
+        let first_index = self.object_list.list_state.offset();
+
+        if first_index > 0 {
+            let top_area =
+                Rect::new(popup_area.x, popup_area.y, popup_area.width, 1);
+
+            Line::from(Span::styled(
+                "•••",
+                Style::default().fg(Color::DarkGray),
+            ))
+            .alignment(Alignment::Center)
+            .render(top_area, buf);
+
+            mouse_areas.push((
+                top_area,
+                vec![MouseEventKind::Down(MouseButton::Left)],
+                vec![Action::ScrollUp],
+            ));
+        }
+
+        let last_index = first_index + popup_area.height as usize - 2;
+        if last_index < self.object_list.targets.len() {
+            let bottom_area = Rect::new(
+                popup_area.x,
+                popup_area.y + popup_area.height - 1,
+                popup_area.width,
+                1,
+            );
+
+            Line::from(Span::styled(
+                "•••",
+                Style::default().fg(Color::DarkGray),
+            ))
+            .alignment(Alignment::Center)
+            .render(bottom_area, buf);
+
+            mouse_areas.push((
+                bottom_area,
+                vec![MouseEventKind::Down(MouseButton::Left)],
+                vec![Action::ScrollDown],
+            ));
+        }
+
         for i in 0..(popup_area.height - 2) {
             let target_area = Rect::new(
                 popup_area.x,
@@ -366,7 +416,7 @@ impl StatefulWidget for NodePopupWidget<'_> {
                 .object_list
                 .targets
                 .iter()
-                .skip(self.object_list.list_state.offset())
+                .skip(first_index)
                 .nth(i as usize)
                 .map(|(target, _)| target);
             if let Some(target) = target {
