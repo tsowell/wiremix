@@ -86,6 +86,24 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![Action::SelectObject(self.node.id), Action::SetDefault],
         ));
 
+        mouse_areas.push((
+            area,
+            vec![MouseEventKind::ScrollLeft],
+            vec![
+                Action::SelectObject(self.node.id),
+                Action::RelativeVolume(-0.01),
+            ],
+        ));
+
+        mouse_areas.push((
+            area,
+            vec![MouseEventKind::ScrollRight],
+            vec![
+                Action::SelectObject(self.node.id),
+                Action::RelativeVolume(0.01),
+            ],
+        ));
+
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
         } else {
@@ -241,7 +259,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 ],
                 vec![
                     Action::SelectObject(self.node.id),
-                    Action::SetVolume(volume),
+                    Action::AbsoluteVolume(volume),
                 ],
             ));
         }
