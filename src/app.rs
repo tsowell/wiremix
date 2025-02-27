@@ -11,8 +11,8 @@ use ratatui::{
 };
 
 use crossterm::event::{
-    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseEvent,
-    MouseEventKind,
+    Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind, MouseButton,
+    MouseEvent, MouseEventKind,
 };
 
 use crate::command::Command;
@@ -51,6 +51,10 @@ impl Tab {
     }
 }
 
+// Mouse events matching one of the MouseEventKinds within the Rect will
+// perform the Actions.
+pub type MouseArea = (Rect, Vec<MouseEventKind>, Vec<Action>);
+
 pub struct App {
     exit: bool,
     tx: pipewire::channel::Sender<Command>,
@@ -58,7 +62,7 @@ pub struct App {
     error_message: Option<String>,
     tabs: Vec<Tab>,
     selected_tab_index: usize,
-    click_areas: Vec<(Rect, Vec<Action>)>,
+    mouse_areas: Vec<MouseArea>,
     /// The monitor has received all initial information.
     is_ready: bool,
     state: State,
@@ -108,7 +112,7 @@ impl App {
             error_message: Default::default(),
             tabs,
             selected_tab_index: Default::default(),
-            click_areas: Default::default(),
+            mouse_areas: Default::default(),
             is_ready: Default::default(),
             state: Default::default(),
             view: Default::default(),
@@ -120,7 +124,7 @@ impl App {
         trace::initialize_logging()?;
 
         while !self.exit {
-            self.click_areas.clear();
+            self.mouse_areas.clear();
 
             self.view = View::from(&self.state);
             #[cfg(feature = "trace")]
@@ -163,7 +167,7 @@ impl App {
             view: &self.view,
         };
         let mut widget_state = AppWidgetState {
-            click_areas: &mut self.click_areas,
+            mouse_areas: &mut self.mouse_areas,
             tabs: &mut self.tabs,
         };
 
@@ -228,20 +232,9 @@ impl App {
             {
                 self.handle_key_event(key_event)
             }
-            CrosstermEvent::Mouse(
-                mouse_event @ MouseEvent {
-                    kind: MouseEventKind::Down(_),
-                    ..
-                },
-            ) => self.handle_mouse_event(mouse_event),
-            CrosstermEvent::Mouse(MouseEvent {
-                kind: MouseEventKind::ScrollDown,
-                ..
-            }) => self.handle_action(Action::ScrollDown),
-            CrosstermEvent::Mouse(MouseEvent {
-                kind: MouseEventKind::ScrollUp,
-                ..
-            }) => self.handle_action(Action::ScrollUp),
+            CrosstermEvent::Mouse(mouse_event) => {
+                self.handle_mouse_event(mouse_event)
+            }
             _ => (),
         };
 
@@ -332,16 +325,16 @@ impl App {
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
         let actions = self
-            .click_areas
+            .mouse_areas
             .iter()
             .rev()
-            .find(|(rect, _)| {
+            .find(|(rect, kinds, _)| {
                 rect.contains(Position {
                     x: mouse_event.column,
                     y: mouse_event.row,
-                })
+                }) && kinds.contains(&mouse_event.kind)
             })
-            .map(|(_, action)| action.clone())
+            .map(|(_, _, action)| action.clone())
             .into_iter()
             .flatten();
 
@@ -460,7 +453,7 @@ pub struct AppWidget<'a> {
 }
 
 pub struct AppWidgetState<'a> {
-    click_areas: &'a mut Vec<(Rect, Vec<Action>)>,
+    mouse_areas: &'a mut Vec<MouseArea>,
     tabs: &'a mut Vec<Tab>,
 }
 
@@ -502,15 +495,17 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             };
             Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
 
-            state
-                .click_areas
-                .push((menu_areas[i], vec![Action::SelectTab(i)]));
+            state.mouse_areas.push((
+                menu_areas[i],
+                vec![MouseEventKind::Down(MouseButton::Left)],
+                vec![Action::SelectTab(i)],
+            ));
         }
 
         let mut widget = ObjectListWidget {
             object_list: &mut state.tabs[self.selected_tab_index].list,
             view: self.view,
         };
-        widget.render(list_area, buf, state.click_areas);
+        widget.render(list_area, buf, state.mouse_areas);
     }
 }

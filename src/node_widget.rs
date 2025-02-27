@@ -9,7 +9,9 @@ use ratatui::{
     },
 };
 
-use crate::app::Action;
+use crossterm::event::{MouseButton, MouseEventKind};
+
+use crate::app::{Action, MouseArea};
 use crate::device_type::DeviceType;
 use crate::meter;
 use crate::named_constraints::with_named_constraints;
@@ -67,12 +69,16 @@ impl<'a> NodeWidget<'a> {
 }
 
 impl StatefulWidget for NodeWidget<'_> {
-    type State = Vec<(Rect, Vec<Action>)>;
+    type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let click_areas = state;
+        let mouse_areas = state;
 
-        click_areas.push((area, vec![Action::SelectObject(self.node.id)]));
+        mouse_areas.push((
+            area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::SelectObject(self.node.id)],
+        ));
 
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
@@ -135,8 +141,9 @@ impl StatefulWidget for NodeWidget<'_> {
         Line::from(right)
             .alignment(Alignment::Right)
             .render(header_right, buf);
-        click_areas.push((
+        mouse_areas.push((
             header_right,
+            vec![MouseEventKind::Down(MouseButton::Left)],
             vec![Action::SelectObject(self.node.id), Action::OpenPopup],
         ));
 
@@ -209,8 +216,9 @@ impl StatefulWidget for NodeWidget<'_> {
             Line::from("muted").render(volume_label, buf);
         }
 
-        click_areas.push((
+        mouse_areas.push((
             volume_label,
+            vec![MouseEventKind::Down(MouseButton::Left)],
             vec![Action::SelectObject(self.node.id), Action::ToggleMute],
         ));
 
@@ -219,8 +227,12 @@ impl StatefulWidget for NodeWidget<'_> {
                 Rect::new(volume_bar.x + i, volume_bar.y, 1, volume_bar.height);
 
             let volume = (1.5 / volume_bar.width as f32) * i as f32;
-            click_areas.push((
+            mouse_areas.push((
                 volume_area,
+                vec![
+                    MouseEventKind::Down(MouseButton::Left),
+                    MouseEventKind::Drag(MouseButton::Left),
+                ],
                 vec![
                     Action::SelectObject(self.node.id),
                     Action::SetVolume(volume),
@@ -272,10 +284,10 @@ impl<'a> NodePopupWidget<'a> {
 }
 
 impl StatefulWidget for NodePopupWidget<'_> {
-    type State = Vec<(Rect, Vec<Action>)>;
+    type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let click_areas = state;
+        let mouse_areas = state;
 
         let targets: Vec<_> = self
             .object_list
@@ -295,7 +307,11 @@ impl StatefulWidget for NodePopupWidget<'_> {
         .clamp(*self.parent_area);
 
         // Click anywhere else in the object list to close the popup.
-        click_areas.push((*self.parent_area, vec![Action::ClosePopup]));
+        mouse_areas.push((
+            *self.parent_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::ClosePopup],
+        ));
 
         Clear.render(popup_area, buf);
 
@@ -330,8 +346,11 @@ impl StatefulWidget for NodePopupWidget<'_> {
                 .nth(i as usize)
                 .map(|(target, _)| target);
             if let Some(target) = target {
-                click_areas
-                    .push((target_area, vec![Action::SetTarget(*target)]));
+                mouse_areas.push((
+                    target_area,
+                    vec![MouseEventKind::Down(MouseButton::Left)],
+                    vec![Action::SetTarget(*target)],
+                ));
             }
         }
     }

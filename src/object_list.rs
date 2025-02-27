@@ -5,7 +5,9 @@ use ratatui::{
     widgets::{ListState, StatefulWidget, Widget},
 };
 
-use crate::app::Action;
+use crossterm::event::{MouseButton, MouseEventKind};
+
+use crate::app::{Action, MouseArea};
 use crate::device_type::DeviceType;
 use crate::device_widget::{DevicePopupWidget, DeviceWidget};
 use crate::named_constraints::with_named_constraints;
@@ -129,7 +131,7 @@ impl ObjectListWidget<'_> {
         context: ObjectListRenderContext,
         area: Rect,
         buf: &mut Buffer,
-        click_areas: &mut Vec<(Rect, Vec<Action>)>,
+        mouse_areas: &mut Vec<MouseArea>,
     ) {
         let all_objects = self.view.full_nodes(node_type);
         let objects = all_objects
@@ -148,7 +150,7 @@ impl ObjectListWidget<'_> {
                 .map(|id| id == object.id)
                 .unwrap_or_default();
             NodeWidget::new(object, selected, self.object_list.device_type)
-                .render(object_area, buf, click_areas);
+                .render(object_area, buf, mouse_areas);
         }
 
         // Show the target popup?
@@ -167,7 +169,7 @@ impl ObjectListWidget<'_> {
                     &context.list_area,
                     &area,
                 )
-                .render(**object_area, buf, click_areas);
+                .render(**object_area, buf, mouse_areas);
             }
         }
     }
@@ -177,7 +179,7 @@ impl ObjectListWidget<'_> {
         context: ObjectListRenderContext,
         area: Rect,
         buf: &mut Buffer,
-        click_areas: &mut Vec<(Rect, Vec<Action>)>,
+        mouse_areas: &mut Vec<MouseArea>,
     ) {
         let all_objects = self.view.full_devices();
         let objects = all_objects
@@ -198,7 +200,7 @@ impl ObjectListWidget<'_> {
             DeviceWidget::new(object, selected).render(
                 object_area,
                 buf,
-                click_areas,
+                mouse_areas,
             );
         }
 
@@ -218,20 +220,44 @@ impl ObjectListWidget<'_> {
                     &context.list_area,
                     &area,
                 )
-                .render(**object_area, buf, click_areas);
+                .render(**object_area, buf, mouse_areas);
             }
         }
     }
 }
 
 impl StatefulWidget for &mut ObjectListWidget<'_> {
-    type State = Vec<(Rect, Vec<Action>)>;
+    type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let click_areas = state;
+        let mouse_areas = state;
 
         let (header_area, list_area, footer_area) =
             self.object_list.areas(&area);
+
+        mouse_areas.push((
+            header_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::ScrollUp],
+        ));
+
+        mouse_areas.push((
+            footer_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::ScrollDown],
+        ));
+
+        mouse_areas.push((
+            list_area,
+            vec![MouseEventKind::ScrollUp],
+            vec![Action::ScrollUp],
+        ));
+
+        mouse_areas.push((
+            list_area,
+            vec![MouseEventKind::ScrollDown],
+            vec![Action::ScrollDown],
+        ));
 
         let (spacing, height) = match self.object_list.list_type {
             ListType::Node(_) => (NodeWidget::spacing(), NodeWidget::height()),
@@ -253,7 +279,6 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(header_area, buf);
-            click_areas.push((header_area, vec![Action::ScrollUp]));
         }
 
         // Indicate we can scroll down if there are objects below the
@@ -273,7 +298,6 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             ))
             .alignment(Alignment::Center)
             .render(footer_area, buf);
-            click_areas.push((footer_area, vec![Action::ScrollDown]));
         }
 
         let objects_layout = {
@@ -301,7 +325,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                     },
                     area,
                     buf,
-                    click_areas,
+                    mouse_areas,
                 );
             }
             ListType::Device => {
@@ -313,7 +337,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                     },
                     area,
                     buf,
-                    click_areas,
+                    mouse_areas,
                 );
             }
         }

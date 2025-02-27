@@ -9,7 +9,9 @@ use ratatui::{
     },
 };
 
-use crate::app::Action;
+use crossterm::event::{MouseButton, MouseEventKind};
+
+use crate::app::{Action, MouseArea};
 use crate::named_constraints::with_named_constraints;
 use crate::object_list::ObjectList;
 use crate::view;
@@ -36,12 +38,16 @@ impl<'a> DeviceWidget<'a> {
 }
 
 impl StatefulWidget for DeviceWidget<'_> {
-    type State = Vec<(Rect, Vec<Action>)>;
+    type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let click_areas = state;
+        let mouse_areas = state;
 
-        click_areas.push((area, vec![Action::SelectObject(self.device.id)]));
+        mouse_areas.push((
+            area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::SelectObject(self.device.id)],
+        ));
 
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
@@ -76,8 +82,9 @@ impl StatefulWidget for DeviceWidget<'_> {
 
         Line::from(format!("    ▼ {}", self.device.target_title))
             .render(target_area, buf);
-        click_areas.push((
+        mouse_areas.push((
             target_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
             vec![Action::SelectObject(self.device.id), Action::OpenPopup],
         ));
     }
@@ -104,10 +111,10 @@ impl<'a> DevicePopupWidget<'a> {
 }
 
 impl StatefulWidget for DevicePopupWidget<'_> {
-    type State = Vec<(Rect, Vec<Action>)>;
+    type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let click_areas = state;
+        let mouse_areas = state;
 
         let targets: Vec<_> = self
             .object_list
@@ -127,7 +134,11 @@ impl StatefulWidget for DevicePopupWidget<'_> {
         .clamp(*self.parent_area);
 
         // Click anywhere else in the object list to close the popup.
-        click_areas.push((*self.parent_area, vec![Action::ClosePopup]));
+        mouse_areas.push((
+            *self.parent_area,
+            vec![MouseEventKind::Down(MouseButton::Left)],
+            vec![Action::ClosePopup],
+        ));
 
         Clear.render(popup_area, buf);
 
@@ -162,8 +173,11 @@ impl StatefulWidget for DevicePopupWidget<'_> {
                 .nth(i as usize)
                 .map(|(target, _)| target);
             if let Some(target) = target {
-                click_areas
-                    .push((target_area, vec![Action::SetTarget(*target)]));
+                mouse_areas.push((
+                    target_area,
+                    vec![MouseEventKind::Down(MouseButton::Left)],
+                    vec![Action::SetTarget(*target)],
+                ));
             }
         }
     }
