@@ -10,7 +10,6 @@ use crossterm::event::{MouseButton, MouseEventKind};
 use crate::app::{Action, MouseArea};
 use crate::device_type::DeviceType;
 use crate::device_widget::DeviceWidget;
-use crate::named_constraints::with_named_constraints;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
 use crate::popup_widget::PopupWidget;
@@ -93,24 +92,16 @@ impl ObjectList {
     }
 
     fn areas(&self, area: &Rect) -> (Rect, Rect, Rect) {
-        let mut header_area = Default::default();
-        let mut list_area = Default::default();
-        let mut footer_area = Default::default();
-        with_named_constraints!(
-            [
-                (Constraint::Length(1), Some(&mut header_area)),
-                (Constraint::Min(0), Some(&mut list_area)),
-                (Constraint::Length(1), Some(&mut footer_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(constraints)
-                    .split(*area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // header_area
+                Constraint::Min(0),    // list_area
+                Constraint::Length(1), // footer_area
+            ])
+            .split(*area);
 
-        (header_area, list_area, footer_area)
+        (layout[0], layout[1], layout[2])
     }
 }
 

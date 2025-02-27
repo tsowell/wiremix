@@ -9,7 +9,6 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
-use crate::named_constraints::with_named_constraints;
 use crate::object_list::ObjectList;
 use crate::view;
 
@@ -67,62 +66,44 @@ impl StatefulWidget for DeviceWidget<'_> {
             vec![Action::SelectObject(self.device.id)],
         ));
 
-        let mut selected_area = Default::default();
-        let mut node_area = Default::default();
-        let _layout = with_named_constraints!(
-            [
-                (Constraint::Length(1), Some(&mut selected_area)),
-                (Constraint::Min(0), Some(&mut node_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(1), // selected_area
+                Constraint::Min(0),    // node_area
+            ])
+            .split(area);
+        let selected_area = layout[0];
+        let node_area = layout[1];
 
         if self.selected {
-            let mut top = Default::default();
-            let mut center = Default::default();
-            let mut bottom = Default::default();
-            let _layout = with_named_constraints!(
-                [
-                    (Constraint::Length(1), Some(&mut top)),
-                    (Constraint::Length(1), Some(&mut center)),
-                    (Constraint::Length(1), Some(&mut bottom)),
-                ],
-                |constraints| {
-                    Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints(constraints)
-                        .split(selected_area)
-                }
-            );
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                ])
+                .split(selected_area);
 
             let style = Style::default().fg(Color::LightCyan);
 
-            Line::from(Span::styled("░", style)).render(top, buf);
-            Line::from(Span::styled("▒", style)).render(center, buf);
-            Line::from(Span::styled("░", style)).render(bottom, buf);
+            Line::from(Span::styled("░", style)).render(rows[0], buf);
+            Line::from(Span::styled("▒", style)).render(rows[1], buf);
+            Line::from(Span::styled("░", style)).render(rows[2], buf);
         }
 
-        let mut title_area = Default::default();
-        let mut target_area = Default::default();
-        let _layout = with_named_constraints!(
-            [
-                (Constraint::Length(1), Some(&mut title_area)),
-                (Constraint::Length(1), None),
-                (Constraint::Length(1), Some(&mut target_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(constraints)
-                    .flex(Flex::Legacy)
-                    .split(node_area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // title_area
+                Constraint::Length(1), // target_area
+            ])
+            .spacing(1)
+            .flex(Flex::Legacy)
+            .split(node_area);
+        let title_area = layout[0];
+        let target_area = layout[1];
 
         Line::from(format!("   {}", self.device.title)).render(title_area, buf);
 

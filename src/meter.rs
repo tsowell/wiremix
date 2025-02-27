@@ -4,8 +4,6 @@ use ratatui::{
     text::{Line, Span},
 };
 
-use crate::named_constraints::with_named_constraints;
-
 fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
     let peak = peak.cbrt();
     let total_width = area.width as usize;
@@ -31,24 +29,18 @@ pub fn render_stereo(
     buf: &mut Buffer,
     peaks: Option<(f32, f32)>,
 ) {
-    let mut meter_left = Default::default();
-    let mut meter_center = Default::default();
-    let mut meter_right = Default::default();
-    with_named_constraints!(
-        [
-            (Constraint::Fill(2), Some(&mut meter_left)),
-            (Constraint::Length(1), None),
-            (Constraint::Length(2), Some(&mut meter_center)),
-            (Constraint::Length(1), None),
-            (Constraint::Fill(2), Some(&mut meter_right)),
-        ],
-        |constraints| {
-            Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(constraints)
-                .split(meter_area)
-        }
-    );
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Fill(2),   // meter_left
+            Constraint::Length(2), // meter_center
+            Constraint::Fill(2),   // meter_right
+        ])
+        .spacing(1)
+        .split(meter_area);
+    let meter_left = layout[0];
+    let meter_center = layout[1];
+    let meter_right = layout[2];
 
     let (left_peak, right_peak) = peaks.unwrap_or_default();
 

@@ -18,7 +18,6 @@ use crossterm::event::{
 use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::event::Event;
-use crate::named_constraints::with_named_constraints;
 use crate::object::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::State;
@@ -468,20 +467,15 @@ impl<'a> StatefulWidget for AppWidget<'a> {
     type State = AppWidgetState<'a>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let mut list_area = Default::default();
-        let mut menu_area = Default::default();
-        with_named_constraints!(
-            [
-                (Constraint::Min(0), Some(&mut list_area)),
-                (Constraint::Length(1), Some(&mut menu_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(constraints)
-                    .split(area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),    // list_area
+                Constraint::Length(1), // menu_area
+            ])
+            .split(area);
+        let list_area = layout[0];
+        let menu_area = layout[1];
 
         let mut constraints: Vec<Constraint> = Default::default();
         for tab in state.tabs.iter() {

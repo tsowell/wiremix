@@ -11,7 +11,6 @@ use crossterm::event::{MouseButton, MouseEventKind};
 use crate::app::{Action, MouseArea};
 use crate::device_type::DeviceType;
 use crate::meter;
-use crate::named_constraints::with_named_constraints;
 use crate::object_list::ObjectList;
 use crate::truncate;
 use crate::view;
@@ -122,62 +121,44 @@ impl StatefulWidget for NodeWidget<'_> {
             ],
         ));
 
-        let mut selected_area = Default::default();
-        let mut node_area = Default::default();
-        let _layout = with_named_constraints!(
-            [
-                (Constraint::Length(1), Some(&mut selected_area)),
-                (Constraint::Min(0), Some(&mut node_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(1), // selected_area
+                Constraint::Min(0),    // node_area
+            ])
+            .split(area);
+        let selected_area = layout[0];
+        let node_area = layout[1];
 
         if self.selected {
-            let mut top = Default::default();
-            let mut center = Default::default();
-            let mut bottom = Default::default();
-            let _layout = with_named_constraints!(
-                [
-                    (Constraint::Length(1), Some(&mut top)),
-                    (Constraint::Length(1), Some(&mut center)),
-                    (Constraint::Length(1), Some(&mut bottom)),
-                ],
-                |constraints| {
-                    Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints(constraints)
-                        .split(selected_area)
-                }
-            );
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                ])
+                .split(selected_area);
 
             let style = Style::default().fg(Color::LightCyan);
 
-            Line::from(Span::styled("░", style)).render(top, buf);
-            Line::from(Span::styled("▒", style)).render(center, buf);
-            Line::from(Span::styled("░", style)).render(bottom, buf);
+            Line::from(Span::styled("░", style)).render(rows[0], buf);
+            Line::from(Span::styled("▒", style)).render(rows[1], buf);
+            Line::from(Span::styled("░", style)).render(rows[2], buf);
         }
 
-        let mut header_area = Default::default();
-        let mut bar_area = Default::default();
-        let _layout = with_named_constraints!(
-            [
-                (Constraint::Length(1), Some(&mut header_area)),
-                (Constraint::Length(1), None),
-                (Constraint::Length(1), Some(&mut bar_area)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints(constraints)
-                    .flex(Flex::Legacy)
-                    .split(node_area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(1), // header_area
+                Constraint::Length(1), // bar_area
+            ])
+            .spacing(1)
+            .flex(Flex::Legacy)
+            .split(node_area);
+        let header_area = layout[0];
+        let bar_area = layout[1];
 
         let left = node_title(self.node, self.device_type);
         let right = match self.node.target {
@@ -187,26 +168,17 @@ impl StatefulWidget for NodeWidget<'_> {
             _ => self.node.target_title.clone(),
         };
 
-        let mut header_left = Default::default();
-        let mut header_right = Default::default();
-        with_named_constraints!(
-            [
-                (Constraint::Length(1), None),
-                (Constraint::Min(0), Some(&mut header_left)),
-                (Constraint::Length(1), None), // Padding
-                (
-                    Constraint::Length(right.len() as u16),
-                    Some(&mut header_right)
-                ),
-                (Constraint::Length(1), None),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(header_area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Min(0),                     // header_left
+                Constraint::Length(right.len() as u16), // header_right
+            ])
+            .horizontal_margin(1)
+            .spacing(1)
+            .split(header_area);
+        let header_left = layout[0];
+        let header_right = layout[1];
 
         Line::from(right)
             .alignment(Alignment::Right)
@@ -227,39 +199,29 @@ impl StatefulWidget for NodeWidget<'_> {
         Line::from(vec![Span::from(default_string), Span::from(left)])
             .render(header_left, buf);
 
-        let mut volume_area = Default::default();
-        let mut meter_area = Default::default();
-        with_named_constraints!(
-            [
-                (Constraint::Length(2), None),
-                (Constraint::Fill(4), Some(&mut volume_area)),
-                (Constraint::Fill(1), None),
-                (Constraint::Fill(4), Some(&mut meter_area)),
-                (Constraint::Fill(1), None),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(bar_area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(2), // _padding
+                Constraint::Fill(4),   // volume_area
+                Constraint::Fill(1),   // _padding
+                Constraint::Fill(4),   // meter_area
+                Constraint::Fill(1),   // _padding
+            ])
+            .split(bar_area);
+        let volume_area = layout[1];
+        let meter_area = layout[3];
 
-        let mut volume_label = Default::default();
-        let mut volume_bar = Default::default();
-        with_named_constraints!(
-            [
-                (Constraint::Length(5), Some(&mut volume_label)),
-                (Constraint::Length(1), None), // Padding
-                (Constraint::Min(0), Some(&mut volume_bar)),
-            ],
-            |constraints| {
-                Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints(constraints)
-                    .split(volume_area)
-            }
-        );
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(5), // volume_label
+                Constraint::Min(0),    // volume_bar
+            ])
+            .spacing(1)
+            .split(volume_area);
+        let volume_label = layout[0];
+        let volume_bar = layout[1];
 
         let volumes = &self.node.volumes;
         if !volumes.is_empty() {
