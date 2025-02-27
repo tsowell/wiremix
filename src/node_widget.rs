@@ -3,7 +3,7 @@ use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Padding, StatefulWidget, Widget},
+    widgets::{StatefulWidget, Widget},
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
@@ -122,17 +122,46 @@ impl StatefulWidget for NodeWidget<'_> {
             ],
         ));
 
-        let (borders, padding) = if self.selected {
-            (Borders::LEFT, Padding::ZERO)
-        } else {
-            (Borders::NONE, Padding::left(1))
-        };
+        let mut selected_area = Default::default();
+        let mut node_area = Default::default();
+        let _layout = with_named_constraints!(
+            [
+                (Constraint::Length(1), Some(&mut selected_area)),
+                (Constraint::Min(0), Some(&mut node_area)),
+            ],
+            |constraints| {
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints(constraints)
+                    .split(area)
+            }
+        );
 
-        let border_block = Block::default()
-            .borders(borders)
-            .padding(padding)
-            .border_type(BorderType::Thick)
-            .border_style(Style::new().fg(Color::Cyan));
+        if self.selected {
+            let mut top = Default::default();
+            let mut center = Default::default();
+            let mut bottom = Default::default();
+            let _layout = with_named_constraints!(
+                [
+                    (Constraint::Length(1), Some(&mut top)),
+                    (Constraint::Length(1), Some(&mut center)),
+                    (Constraint::Length(1), Some(&mut bottom)),
+                ],
+                |constraints| {
+                    Layout::default()
+                        .direction(Direction::Vertical)
+                        .constraints(constraints)
+                        .split(selected_area)
+                }
+            );
+
+            let style = Style::default().fg(Color::Cyan);
+
+            Line::from(Span::styled("░", style)).render(top, buf);
+            Line::from(Span::styled("▒", style)).render(center, buf);
+            Line::from(Span::styled("░", style)).render(bottom, buf);
+        }
+
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
         let _layout = with_named_constraints!(
@@ -146,10 +175,9 @@ impl StatefulWidget for NodeWidget<'_> {
                     .direction(Direction::Vertical)
                     .constraints(constraints)
                     .flex(Flex::Legacy)
-                    .split(border_block.inner(area))
+                    .split(node_area)
             }
         );
-        border_block.render(area, buf);
 
         let left = node_title(self.node, self.device_type);
         let right = match self.node.target {
