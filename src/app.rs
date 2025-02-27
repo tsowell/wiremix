@@ -36,6 +36,8 @@ pub enum Action {
     ClosePopup,
     SelectObject(ObjectId),
     SetTarget(view::Target),
+    ToggleMute,
+    SetVolume(f32),
 }
 
 struct Tab {
@@ -257,13 +259,7 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('m') if self.selected_list().list_type.is_node() => {
-                let command = self
-                    .selected_list()
-                    .selected
-                    .and_then(|node_id| self.view.mute(node_id));
-                if let Some(command) = command {
-                    let _ = self.tx.send(command);
-                }
+                self.handle_action(Action::ToggleMute);
             }
             KeyCode::Char('d') if self.selected_list().list_type.is_node() => {
                 let node_id = self.selected_list().selected;
@@ -367,6 +363,8 @@ impl App {
             Action::SelectObject(object_id) => {
                 self.selected_list_mut().selected = Some(object_id)
             }
+            Action::ToggleMute => self.action_toggle_mute(),
+            Action::SetVolume(volume) => self.action_set_volume(volume),
         }
     }
 
@@ -431,6 +429,26 @@ impl App {
             .into_iter()
             .flatten();
         for command in commands {
+            let _ = self.tx.send(command);
+        }
+    }
+
+    fn action_toggle_mute(&mut self) {
+        let command = self
+            .selected_list()
+            .selected
+            .and_then(|node_id| self.view.mute(node_id));
+        if let Some(command) = command {
+            let _ = self.tx.send(command);
+        }
+    }
+
+    fn action_set_volume(&mut self, volume: f32) {
+        let command = self.selected_list().selected.and_then(|node_id| {
+            self.view
+                .volume(node_id, VolumeAdjustment::Absolute(volume))
+        });
+        if let Some(command) = command {
             let _ = self.tx.send(command);
         }
     }

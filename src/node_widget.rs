@@ -209,6 +209,25 @@ impl StatefulWidget for NodeWidget<'_> {
             Line::from("muted").render(volume_label, buf);
         }
 
+        click_areas.push((
+            volume_label,
+            vec![Action::SelectObject(self.node.id), Action::ToggleMute],
+        ));
+
+        for i in 0..=volume_bar.width {
+            let volume_area =
+                Rect::new(volume_bar.x + i, volume_bar.y, 1, volume_bar.height);
+
+            let volume = (1.5 / volume_bar.width as f32) * i as f32;
+            click_areas.push((
+                volume_area,
+                vec![
+                    Action::SelectObject(self.node.id),
+                    Action::SetVolume(volume),
+                ],
+            ));
+        }
+
         match self.node.peaks.as_deref() {
             Some([left, right]) => {
                 meter::render_stereo(meter_area, buf, Some((*left, *right)))

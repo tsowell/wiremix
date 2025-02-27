@@ -80,6 +80,7 @@ pub struct Device {
 #[derive(Debug, Clone, Copy)]
 pub enum VolumeAdjustment {
     Relative(f32),
+    Absolute(f32),
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -625,6 +626,9 @@ impl View {
             VolumeAdjustment::Relative(delta) => {
                 let avg = volumes.iter().sum::<f32>() / volumes.len() as f32;
                 volumes.fill((avg.cbrt() + delta).max(0.0).powi(3));
+            }
+            VolumeAdjustment::Absolute(volume) => {
+                volumes.fill(volume.max(0.0).powi(3));
             }
         }
         let volumes = volumes;
