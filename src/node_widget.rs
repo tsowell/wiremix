@@ -132,7 +132,7 @@ impl StatefulWidget for NodeWidget<'_> {
             .borders(borders)
             .padding(padding)
             .border_type(BorderType::Thick)
-            .border_style(Style::new().fg(Color::Green));
+            .border_style(Style::new().fg(Color::Cyan));
         let mut header_area = Default::default();
         let mut bar_area = Default::default();
         let _layout = with_named_constraints!(

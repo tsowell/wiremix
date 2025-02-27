@@ -77,7 +77,7 @@ impl StatefulWidget for DeviceWidget<'_> {
             .borders(borders)
             .padding(padding)
             .border_type(BorderType::Thick)
-            .border_style(Style::new().fg(Color::Green));
+            .border_style(Style::new().fg(Color::Cyan));
         let mut title_area = Default::default();
         let mut target_area = Default::default();
         let _layout = with_named_constraints!(

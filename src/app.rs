@@ -496,7 +496,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
         for (i, tab) in state.tabs.iter().enumerate() {
             let (title, style) = if i == self.selected_tab_index {
-                (tab.title.to_uppercase(), Style::default().fg(Color::Green))
+                (tab.title.to_uppercase(), Style::default().fg(Color::Cyan))
             } else {
                 (tab.title.clone(), Style::default())
             };
