@@ -485,20 +485,19 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
         let mut constraints: Vec<Constraint> = Default::default();
         for tab in state.tabs.iter() {
-            constraints.push(Constraint::Length(tab.title.len() as u16));
+            constraints.push(Constraint::Length(tab.title.len() as u16 + 2));
         }
 
         let menu_areas = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(constraints)
-            .spacing(2)
             .split(menu_area);
 
         for (i, tab) in state.tabs.iter().enumerate() {
             let (title, style) = if i == self.selected_tab_index {
-                (tab.title.to_uppercase(), Style::default().fg(Color::Cyan))
+                (format!("[{}]", tab.title), Style::default().fg(Color::Cyan))
             } else {
-                (tab.title.clone(), Style::default())
+                (format!(" {} ", tab.title), Style::default())
             };
             Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
 
