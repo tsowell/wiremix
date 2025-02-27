@@ -304,6 +304,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                 vec![Constraint::Length(object_height); objects_visible];
             // A variable-length constraint for a partial last object
             constraints.push(Constraint::Max(object_height));
+            let constraints = constraints;
 
             Layout::default()
                 .direction(Direction::Vertical)

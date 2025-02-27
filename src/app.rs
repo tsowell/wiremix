@@ -477,10 +477,11 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         let list_area = layout[0];
         let menu_area = layout[1];
 
-        let mut constraints: Vec<Constraint> = Default::default();
-        for tab in state.tabs.iter() {
-            constraints.push(Constraint::Length(tab.title.len() as u16 + 2));
-        }
+        let constraints: Vec<_> = state
+            .tabs
+            .iter()
+            .map(|tab| Constraint::Length(tab.title.len() as u16 + 2))
+            .collect();
 
         let menu_areas = Layout::default()
             .direction(Direction::Horizontal)
