@@ -9,10 +9,11 @@ use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
 use crate::device_type::DeviceType;
-use crate::device_widget::{DevicePopupWidget, DeviceWidget};
+use crate::device_widget::DeviceWidget;
 use crate::named_constraints::with_named_constraints;
-use crate::node_widget::{NodePopupWidget, NodeWidget};
+use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
+use crate::popup_widget::PopupWidget;
 use crate::view::{self, ListType};
 
 /// ObjectList stores information for filtering and displaying a subset of
@@ -164,12 +165,15 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                NodePopupWidget::new(
+                PopupWidget::new(
                     self.object_list,
-                    &context.list_area,
-                    &area,
+                    &NodeWidget::popup_area(
+                        self.object_list,
+                        &context.list_area,
+                        object_area,
+                    ),
                 )
-                .render(**object_area, buf, mouse_areas);
+                .render(area, buf, mouse_areas);
             }
         }
     }
@@ -215,12 +219,15 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                DevicePopupWidget::new(
+                PopupWidget::new(
                     self.object_list,
-                    &context.list_area,
-                    &area,
+                    &DeviceWidget::popup_area(
+                        self.object_list,
+                        &context.list_area,
+                        object_area,
+                    ),
                 )
-                .render(**object_area, buf, mouse_areas);
+                .render(area, buf, mouse_areas);
             }
         }
     }

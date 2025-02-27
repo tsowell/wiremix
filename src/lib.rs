@@ -11,6 +11,7 @@ pub mod named_constraints;
 pub mod node_widget;
 pub mod object;
 pub mod object_list;
+pub mod popup_widget;
 pub mod state;
 pub mod truncate;
 pub mod view;

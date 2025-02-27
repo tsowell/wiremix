@@ -1,12 +1,9 @@
 use ratatui::{
     layout::Flex,
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
     text::{Line, Span},
-    widgets::{
-        Block, BorderType, Borders, Clear, List, Padding, StatefulWidget,
-        Widget,
-    },
+    widgets::{Block, BorderType, Borders, Padding, StatefulWidget, Widget},
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
@@ -65,6 +62,27 @@ impl<'a> NodeWidget<'a> {
     /// Spacing between nodes
     pub fn spacing() -> u16 {
         2
+    }
+
+    /// Area for the target popup
+    pub fn popup_area(
+        object_list: &ObjectList,
+        list_area: &Rect,
+        object_area: &Rect,
+    ) -> Rect {
+        let max_target_length = object_list
+            .targets
+            .iter()
+            .map(|(_, title)| title.len())
+            .max()
+            .unwrap_or(0);
+
+        Rect::new(
+            list_area.right() - max_target_length as u16 - 2,
+            object_area.top() - 1,
+            max_target_length as u16 + 2,
+            std::cmp::min(7, object_list.targets.len() as u16 + 2),
+        )
     }
 }
 
@@ -283,149 +301,6 @@ impl StatefulWidget for NodeWidget<'_> {
                 Some(2) => meter::render_stereo(meter_area, buf, None),
                 _ => meter::render_mono(meter_area, buf, None),
             },
-        }
-    }
-}
-
-pub struct NodePopupWidget<'a> {
-    object_list: &'a mut ObjectList,
-    list_area: &'a Rect,
-    parent_area: &'a Rect,
-}
-
-impl<'a> NodePopupWidget<'a> {
-    pub fn new(
-        object_list: &'a mut ObjectList,
-        list_area: &'a Rect,
-        parent_area: &'a Rect,
-    ) -> Self {
-        Self {
-            object_list,
-            list_area,
-            parent_area,
-        }
-    }
-}
-
-impl StatefulWidget for NodePopupWidget<'_> {
-    type State = Vec<MouseArea>;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let mouse_areas = state;
-
-        let targets: Vec<_> = self
-            .object_list
-            .targets
-            .iter()
-            .map(|(_, title)| title.clone())
-            .collect();
-        let max_target_length =
-            targets.iter().map(|s| s.len()).max().unwrap_or(0);
-
-        let popup_area = Rect::new(
-            self.list_area.right() - max_target_length as u16 - 2,
-            area.top() - 1,
-            max_target_length as u16 + 2,
-            std::cmp::min(7, targets.len() as u16 + 2),
-        )
-        .clamp(*self.parent_area);
-
-        // Click anywhere else in the object list to close the popup.
-        mouse_areas.push((
-            *self.parent_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::ClosePopup],
-        ));
-
-        // But clicking on the border does nothing.
-        mouse_areas.push((
-            popup_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![],
-        ));
-
-        Clear.render(popup_area, buf);
-
-        let list = List::new(targets)
-            .block(Block::default().borders(Borders::ALL))
-            .highlight_style(
-                Style::default()
-                    .fg(Color::Green)
-                    .add_modifier(Modifier::REVERSED),
-            );
-
-        StatefulWidget::render(
-            &list,
-            popup_area,
-            buf,
-            &mut self.object_list.list_state,
-        );
-
-        let first_index = self.object_list.list_state.offset();
-
-        if first_index > 0 {
-            let top_area =
-                Rect::new(popup_area.x, popup_area.y, popup_area.width, 1);
-
-            Line::from(Span::styled(
-                "•••",
-                Style::default().fg(Color::DarkGray),
-            ))
-            .alignment(Alignment::Center)
-            .render(top_area, buf);
-
-            mouse_areas.push((
-                top_area,
-                vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::ScrollUp],
-            ));
-        }
-
-        let last_index = first_index + popup_area.height as usize - 2;
-        if last_index < self.object_list.targets.len() {
-            let bottom_area = Rect::new(
-                popup_area.x,
-                popup_area.y + popup_area.height - 1,
-                popup_area.width,
-                1,
-            );
-
-            Line::from(Span::styled(
-                "•••",
-                Style::default().fg(Color::DarkGray),
-            ))
-            .alignment(Alignment::Center)
-            .render(bottom_area, buf);
-
-            mouse_areas.push((
-                bottom_area,
-                vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::ScrollDown],
-            ));
-        }
-
-        for i in 0..(popup_area.height - 2) {
-            let target_area = Rect::new(
-                popup_area.x,
-                popup_area.y + 1 + i,
-                popup_area.width,
-                1,
-            );
-
-            let target = self
-                .object_list
-                .targets
-                .iter()
-                .skip(first_index)
-                .nth(i as usize)
-                .map(|(target, _)| target);
-            if let Some(target) = target {
-                mouse_areas.push((
-                    target_area,
-                    vec![MouseEventKind::Down(MouseButton::Left)],
-                    vec![Action::SetTarget(*target)],
-                ));
-            }
         }
     }
 }
