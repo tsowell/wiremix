@@ -38,6 +38,7 @@ pub enum Action {
     SetTarget(view::Target),
     ToggleMute,
     SetVolume(f32),
+    SetDefault,
 }
 
 struct Tab {
@@ -255,16 +256,7 @@ impl App {
                 self.handle_action(Action::ToggleMute);
             }
             KeyCode::Char('d') if self.selected_list().list_type.is_node() => {
-                let node_id = self.selected_list().selected;
-                let device_type = self.selected_list().device_type;
-                let command = node_id.zip(device_type).and_then(
-                    |(node_id, device_type)| {
-                        self.view.set_default(node_id, device_type)
-                    },
-                );
-                if let Some(command) = command {
-                    let _ = self.tx.send(command);
-                }
+                self.handle_action(Action::SetDefault);
             }
             KeyCode::Char('l') if self.selected_list().list_type.is_node() => {
                 let command =
@@ -358,6 +350,7 @@ impl App {
             }
             Action::ToggleMute => self.action_toggle_mute(),
             Action::SetVolume(volume) => self.action_set_volume(volume),
+            Action::SetDefault => self.action_set_default(),
         }
     }
 
@@ -441,6 +434,18 @@ impl App {
             self.view
                 .volume(node_id, VolumeAdjustment::Absolute(volume))
         });
+        if let Some(command) = command {
+            let _ = self.tx.send(command);
+        }
+    }
+
+    fn action_set_default(&mut self) {
+        let node_id = self.selected_list().selected;
+        let device_type = self.selected_list().device_type;
+        let command =
+            node_id.zip(device_type).and_then(|(node_id, device_type)| {
+                self.view.set_default(node_id, device_type)
+            });
         if let Some(command) = command {
             let _ = self.tx.send(command);
         }

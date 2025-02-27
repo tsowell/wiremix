@@ -80,6 +80,12 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![Action::SelectObject(self.node.id)],
         ));
 
+        mouse_areas.push((
+            area,
+            vec![MouseEventKind::Down(MouseButton::Right)],
+            vec![Action::SelectObject(self.node.id), Action::SetDefault],
+        ));
+
         let (borders, padding) = if self.selected {
             (Borders::LEFT, Padding::ZERO)
         } else {
