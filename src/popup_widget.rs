@@ -59,7 +59,7 @@ impl StatefulWidget for PopupWidget<'_> {
             .block(Block::default().borders(Borders::ALL))
             .highlight_style(
                 Style::default()
-                    .fg(Color::Cyan)
+                    .fg(Color::LightCyan)
                     .add_modifier(Modifier::REVERSED),
             );
 

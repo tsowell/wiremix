@@ -155,7 +155,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 }
             );
 
-            let style = Style::default().fg(Color::Cyan);
+            let style = Style::default().fg(Color::LightCyan);
 
             Line::from(Span::styled("░", style)).render(top, buf);
             Line::from(Span::styled("▒", style)).render(center, buf);

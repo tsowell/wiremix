@@ -495,7 +495,10 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
         for (i, tab) in state.tabs.iter().enumerate() {
             let (title, style) = if i == self.selected_tab_index {
-                (format!("[{}]", tab.title), Style::default().fg(Color::Cyan))
+                (
+                    format!("[{}]", tab.title),
+                    Style::default().fg(Color::LightCyan),
+                )
             } else {
                 (format!(" {} ", tab.title), Style::default())
             };
