@@ -91,7 +91,7 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![MouseEventKind::ScrollLeft],
             vec![
                 Action::SelectObject(self.node.id),
-                Action::RelativeVolume(-0.01),
+                Action::SetRelativeVolume(-0.01),
             ],
         ));
 
@@ -100,7 +100,7 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![MouseEventKind::ScrollRight],
             vec![
                 Action::SelectObject(self.node.id),
-                Action::RelativeVolume(0.01),
+                Action::SetRelativeVolume(0.01),
             ],
         ));
 
@@ -259,7 +259,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 ],
                 vec![
                     Action::SelectObject(self.node.id),
-                    Action::AbsoluteVolume(volume),
+                    Action::SetAbsoluteVolume(volume),
                 ],
             ));
         }

@@ -37,8 +37,8 @@ pub enum Action {
     SelectObject(ObjectId),
     SetTarget(view::Target),
     ToggleMute,
-    AbsoluteVolume(f32),
-    RelativeVolume(f32),
+    SetAbsoluteVolume(f32),
+    SetRelativeVolume(f32),
     SetDefault,
 }
 
@@ -260,10 +260,10 @@ impl App {
                 self.handle_action(Action::SetDefault);
             }
             KeyCode::Char('l') if self.selected_list().list_type.is_node() => {
-                self.handle_action(Action::RelativeVolume(0.01));
+                self.handle_action(Action::SetRelativeVolume(0.01));
             }
             KeyCode::Char('h') if self.selected_list().list_type.is_node() => {
-                self.handle_action(Action::RelativeVolume(-0.01));
+                self.handle_action(Action::SetRelativeVolume(-0.01));
             }
             KeyCode::Char('q') => self.exit(None),
             KeyCode::Char('c') => {
@@ -336,11 +336,11 @@ impl App {
                 self.selected_list_mut().selected = Some(object_id)
             }
             Action::ToggleMute => self.action_toggle_mute(),
-            Action::AbsoluteVolume(volume) => {
-                self.action_absolute_volume(volume)
+            Action::SetAbsoluteVolume(volume) => {
+                self.action_set_absolute_volume(volume)
             }
-            Action::RelativeVolume(volume) => {
-                self.action_relative_volume(volume)
+            Action::SetRelativeVolume(volume) => {
+                self.action_set_relative_volume(volume)
             }
             Action::SetDefault => self.action_set_default(),
         }
@@ -421,7 +421,7 @@ impl App {
         }
     }
 
-    fn action_absolute_volume(&mut self, volume: f32) {
+    fn action_set_absolute_volume(&mut self, volume: f32) {
         let command = self.selected_list().selected.and_then(|node_id| {
             self.view
                 .volume(node_id, VolumeAdjustment::Absolute(volume))
@@ -431,7 +431,7 @@ impl App {
         }
     }
 
-    fn action_relative_volume(&mut self, volume: f32) {
+    fn action_set_relative_volume(&mut self, volume: f32) {
         let command = self.selected_list().selected.and_then(|node_id| {
             self.view
                 .volume(node_id, VolumeAdjustment::Relative(volume))
