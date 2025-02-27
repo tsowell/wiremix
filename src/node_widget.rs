@@ -268,7 +268,16 @@ impl StatefulWidget for NodeWidget<'_> {
             let volume_area =
                 Rect::new(volume_bar.x + i, volume_bar.y, 1, volume_bar.height);
 
-            let volume = (1.5 / volume_bar.width as f32) * i as f32;
+            let volume_step = 1.5 / volume_bar.width as f32;
+            let volume = volume_step * i as f32;
+            // Make the volume sticky around 100%. Otherwise it's often not
+            // possible to select by mouse.
+            let sticky_volume = if (1.0 - volume).abs() <= volume_step {
+                1.0
+            } else {
+                volume
+            };
+
             mouse_areas.push((
                 volume_area,
                 vec![
@@ -277,7 +286,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 ],
                 vec![
                     Action::SelectObject(self.node.id),
-                    Action::SetAbsoluteVolume(volume),
+                    Action::SetAbsoluteVolume(sticky_volume),
                 ],
             ));
         }
