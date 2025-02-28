@@ -231,7 +231,7 @@ impl Node {
                         target_title,
                     )
                 }
-                None => (None, String::new()),
+                None => (None, "No route selected".to_string()),
             };
 
             Some((Some(routes), target, target_title))
