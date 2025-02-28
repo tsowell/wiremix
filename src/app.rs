@@ -20,7 +20,7 @@ use crate::device_type::DeviceType;
 use crate::event::Event;
 use crate::object::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
-use crate::state::State;
+use crate::state::{State, StateDirty};
 use crate::view::{self, ListType, View};
 
 #[cfg(feature = "trace")]
@@ -127,7 +127,18 @@ impl App {
         while !self.exit {
             self.mouse_areas.clear();
 
-            self.view = View::from(&self.state);
+            // Update view if needed
+            match self.state.dirty {
+                StateDirty::Everything => {
+                    self.view = View::from(&self.state);
+                }
+                StateDirty::PeaksOnly => {
+                    self.view.update_peaks(&self.state);
+                }
+                _ => {}
+            }
+            self.state.dirty = StateDirty::Clean;
+
             #[cfg(feature = "trace")]
             trace_dbg!(&self.view);
 
@@ -184,10 +195,6 @@ impl App {
         trace_dbg!(&event);
 
         if let Event::Input(event) = event {
-            self.view = View::from(&self.state);
-            #[cfg(feature = "trace")]
-            trace_dbg!(&self.view);
-
             self.handle_input_event(event)
         } else if let Event::Error(error) = event {
             match error {

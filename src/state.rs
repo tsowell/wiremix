@@ -86,6 +86,14 @@ pub struct Metadata {
     pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum StateDirty {
+    #[default]
+    Clean,
+    PeaksOnly,
+    Everything,
+}
+
 #[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct State {
@@ -96,11 +104,27 @@ pub struct State {
     pub metadatas_by_name: HashMap<String, ObjectId>,
     // Nodes waiting on object.serial before we can start capture
     pub pending_capture: HashSet<ObjectId>,
+    // Used to optimize view rebuilding based on what has changed
+    pub dirty: StateDirty,
 }
 
 impl State {
     pub fn update(&mut self, event: MonitorEvent) -> Vec<Command> {
         let mut commands = Vec::new();
+
+        // Peaks updates are very frequent and easy to merge, so track if those
+        // are the only updates done since the state was last Clean.
+        match (self.dirty, &event) {
+            (
+                StateDirty::Clean | StateDirty::PeaksOnly,
+                MonitorEvent::NodePeaks(_, _),
+            ) => {
+                self.dirty = StateDirty::PeaksOnly;
+            }
+            _ => {
+                self.dirty = StateDirty::Everything;
+            }
+        }
 
         // Update
         match event {

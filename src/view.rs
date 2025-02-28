@@ -515,6 +515,14 @@ impl View {
         }
     }
 
+    pub fn update_peaks(&mut self, state: &state::State) {
+        for state_node in state.nodes.values() {
+            if let Some(node) = self.nodes.get_mut(&state_node.id) {
+                node.peaks = state_node.peaks.clone();
+            }
+        }
+    }
+
     pub fn set_default(
         &self,
         node_id: ObjectId,
