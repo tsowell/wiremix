@@ -5,22 +5,39 @@ use ratatui::{
 };
 
 fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
-    let peak = peak.cbrt();
-    let total_width = area.width as usize;
-    let lit_width = (peak * area.width as f32) as usize;
+    // Convert to dB between -20 and +6
+    let db = 20.0 * (peak + 1e-10).log10();
+    let reference_offset: f32 = 0.0;
+    let vu_value = (db + reference_offset).clamp(-20.0, 6.0);
 
-    let hilit_width =
-        ((peak - 0.70).clamp(0.0, 1.0) * area.width as f32) as usize;
+    // Percentage at which to put 0 dB
+    let zero = 0.75;
 
-    let unlit_width = total_width.saturating_sub(lit_width);
-    let lit_width = lit_width.saturating_sub(hilit_width);
+    // Scale to between 0.0 and 1.0, compressing positive values
+    let meter = if vu_value < 0.0 {
+        0.0 + ((vu_value + 20.0) / 20.0) * zero
+    } else {
+        zero + (vu_value / 6.0) * (1.0 - zero)
+    };
+
+    let total_chars = area.width as usize;
+
+    // The character position for 0 dB
+    let zero_char = (zero * total_chars as f32).round() as usize;
+    let lit_chars =
+        ((meter * total_chars as f32).round() as usize).min(total_chars);
+
+    // Assign colors
+    let green_chars = lit_chars.min(zero_char);
+    let red_chars = lit_chars.saturating_sub(zero_char);
+    let unlit_chars = total_chars - green_chars - red_chars;
 
     let ch = "▮";
 
     (
-        ch.repeat(lit_width),
-        ch.repeat(hilit_width),
-        ch.repeat(unlit_width),
+        ch.repeat(green_chars),
+        ch.repeat(red_chars),
+        ch.repeat(unlit_chars),
     )
 }
 
