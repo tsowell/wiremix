@@ -21,7 +21,7 @@ use crate::event::Event;
 use crate::object::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::State;
-use crate::view::{self, ListType, View, VolumeAdjustment};
+use crate::view::{self, ListType, View};
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
@@ -131,29 +131,17 @@ impl App {
             #[cfg(feature = "trace")]
             trace_dbg!(&self.view);
 
-            if self.is_ready && self.selected_list().selected.is_none() {
-                let new_selected = {
-                    let selected_list = self.selected_list();
-                    let list_type = selected_list.list_type;
-                    self.view.next_id(list_type, None)
-                };
-                if new_selected.is_some() {
-                    self.selected_list_mut().selected = new_selected;
-                }
+            if self.is_ready
+                && self.tabs[self.selected_tab_index].list.selected.is_none()
+            {
+                self.handle_action(Action::ScrollDown);
             }
 
             terminal.draw(|frame| {
-                let list_type = self.selected_list().list_type;
-                let selected_index =
-                    self.selected_list().selected.and_then(|selected| {
-                        self.view.position(list_type, selected)
-                    });
-                let len = self.view.len(list_type);
-                self.selected_list_mut().update(
-                    frame.area(),
-                    selected_index,
-                    len,
-                );
+                self.tabs[self.selected_tab_index]
+                    .list
+                    .update(frame.area(), &self.view);
+
                 self.draw(frame);
             })?;
             self.handle_events()?;
@@ -242,26 +230,18 @@ impl App {
         Ok(())
     }
 
-    fn selected_list(&self) -> &ObjectList {
-        &self.tabs[self.selected_tab_index].list
-    }
-
-    fn selected_list_mut(&mut self) -> &mut ObjectList {
-        &mut self.tabs[self.selected_tab_index].list
-    }
-
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('m') if self.selected_list().list_type.is_node() => {
+            KeyCode::Char('m') => {
                 self.handle_action(Action::ToggleMute);
             }
-            KeyCode::Char('d') if self.selected_list().list_type.is_node() => {
+            KeyCode::Char('d') => {
                 self.handle_action(Action::SetDefault);
             }
-            KeyCode::Char('l') if self.selected_list().list_type.is_node() => {
+            KeyCode::Char('l') => {
                 self.handle_action(Action::SetRelativeVolume(0.01));
             }
-            KeyCode::Char('h') if self.selected_list().list_type.is_node() => {
+            KeyCode::Char('h') => {
                 self.handle_action(Action::SetRelativeVolume(-0.01));
             }
             KeyCode::Char('q') => self.exit(None),
@@ -270,19 +250,12 @@ impl App {
             }
             KeyCode::Esc => self.handle_action(Action::ClosePopup),
             KeyCode::Enter => {
-                let selected_list = self.selected_list();
-                let commands = selected_list
-                    .selected
-                    .zip(selected_list.selected_target())
-                    .map(|(object_id, &target)| {
-                        self.view.set_target(object_id, target)
-                    })
-                    .into_iter()
-                    .flatten();
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .popup_select(&self.view);
                 for command in commands {
                     let _ = self.tx.send(command);
                 }
-                self.selected_list_mut().list_state.select(None);
             }
             KeyCode::Char('j') => {
                 self.handle_action(Action::ScrollDown);
@@ -324,131 +297,64 @@ impl App {
     fn handle_action(&mut self, action: Action) {
         match action {
             Action::SelectTab(index) => self.selected_tab_index = index,
-            Action::ScrollDown => self.action_scroll_down(),
-            Action::ScrollUp => self.action_scroll_up(),
-            Action::OpenPopup => self.action_open_popup(),
+            Action::ScrollDown => {
+                self.tabs[self.selected_tab_index].list.down(&self.view);
+            }
+            Action::ScrollUp => {
+                self.tabs[self.selected_tab_index].list.up(&self.view);
+            }
+            Action::OpenPopup => {
+                self.tabs[self.selected_tab_index]
+                    .list
+                    .popup_open(&self.view);
+            }
             Action::ClosePopup => {
-                self.selected_list_mut().list_state.select(None)
+                self.tabs[self.selected_tab_index].list.popup_close();
             }
-            Action::SetTarget(target) => self.action_set_target(target),
+            Action::SetTarget(target) => {
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .set_target(&self.view, target);
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
+            }
             Action::SelectObject(object_id) => {
-                self.selected_list_mut().selected = Some(object_id)
+                self.tabs[self.selected_tab_index].list.selected =
+                    Some(object_id)
             }
-            Action::ToggleMute => self.action_toggle_mute(),
+            Action::ToggleMute => {
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .toggle_mute(&self.view);
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
+            }
             Action::SetAbsoluteVolume(volume) => {
-                self.action_set_absolute_volume(volume)
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .set_absolute_volume(&self.view, volume);
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
             }
             Action::SetRelativeVolume(volume) => {
-                self.action_set_relative_volume(volume)
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .set_relative_volume(&self.view, volume);
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
             }
-            Action::SetDefault => self.action_set_default(),
-        }
-    }
-
-    fn action_scroll_down(&mut self) {
-        let selected_list = self.selected_list();
-        if selected_list.list_state.selected().is_some() {
-            self.selected_list_mut().list_state.select_next();
-        } else {
-            let new_selected = {
-                let selected = selected_list.selected;
-                let list_type = selected_list.list_type;
-                self.view.next_id(list_type, selected)
-            };
-            if new_selected.is_some() {
-                self.selected_list_mut().selected = new_selected;
+            Action::SetDefault => {
+                let commands = self.tabs[self.selected_tab_index]
+                    .list
+                    .set_default(&self.view);
+                for command in commands {
+                    let _ = self.tx.send(command);
+                }
             }
-        }
-    }
-
-    fn action_scroll_up(&mut self) {
-        let selected_list = self.selected_list();
-        if selected_list.list_state.selected().is_some() {
-            self.selected_list_mut().list_state.select_previous();
-        } else {
-            let new_selected = {
-                let selected = selected_list.selected;
-                let list_type = selected_list.list_type;
-                self.view.previous_id(list_type, selected)
-            };
-            if new_selected.is_some() {
-                self.selected_list_mut().selected = new_selected;
-            }
-        }
-    }
-
-    fn action_open_popup(&mut self) {
-        let targets = match self.selected_list().list_type {
-            ListType::Node(_) => self
-                .selected_list()
-                .selected
-                .and_then(|object_id| self.view.node_targets(object_id)),
-            ListType::Device => self
-                .selected_list()
-                .selected
-                .and_then(|object_id| self.view.device_targets(object_id)),
-        };
-        if let Some((targets, index)) = targets {
-            if !targets.is_empty() {
-                let selected_list = self.selected_list_mut();
-                selected_list.targets = targets;
-                selected_list.list_state.select(Some(index));
-            }
-        }
-    }
-
-    fn action_set_target(&mut self, target: view::Target) {
-        self.selected_list_mut().list_state.select(None);
-        let commands = self
-            .selected_list()
-            .selected
-            .map(|object_id| self.view.set_target(object_id, target))
-            .into_iter()
-            .flatten();
-        for command in commands {
-            let _ = self.tx.send(command);
-        }
-    }
-
-    fn action_toggle_mute(&mut self) {
-        let command = self
-            .selected_list()
-            .selected
-            .and_then(|node_id| self.view.mute(node_id));
-        if let Some(command) = command {
-            let _ = self.tx.send(command);
-        }
-    }
-
-    fn action_set_absolute_volume(&mut self, volume: f32) {
-        let command = self.selected_list().selected.and_then(|node_id| {
-            self.view
-                .volume(node_id, VolumeAdjustment::Absolute(volume))
-        });
-        if let Some(command) = command {
-            let _ = self.tx.send(command);
-        }
-    }
-
-    fn action_set_relative_volume(&mut self, volume: f32) {
-        let command = self.selected_list().selected.and_then(|node_id| {
-            self.view
-                .volume(node_id, VolumeAdjustment::Relative(volume))
-        });
-        if let Some(command) = command {
-            let _ = self.tx.send(command);
-        }
-    }
-
-    fn action_set_default(&mut self) {
-        let node_id = self.selected_list().selected;
-        let device_type = self.selected_list().device_type;
-        let command =
-            node_id.zip(device_type).and_then(|(node_id, device_type)| {
-                self.view.set_default(node_id, device_type)
-            });
-        if let Some(command) = command {
-            let _ = self.tx.send(command);
         }
     }
 }

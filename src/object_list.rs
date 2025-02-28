@@ -8,12 +8,13 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
+use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::device_widget::DeviceWidget;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
 use crate::popup_widget::PopupWidget;
-use crate::view::{self, ListType};
+use crate::view::{self, ListType, VolumeAdjustment};
 
 /// ObjectList stores information for filtering and displaying a subset of
 /// objects from the global STATE.
@@ -24,9 +25,9 @@ pub struct ObjectList {
     /// ID of the currently selected object
     pub selected: Option<ObjectId>,
     /// Which set of objects to use from the View
-    pub list_type: ListType,
+    list_type: ListType,
     /// Default device type to use
-    pub device_type: Option<DeviceType>,
+    device_type: Option<DeviceType>,
     /// Target popup state
     pub list_state: ListState,
     /// Targets
@@ -44,20 +45,144 @@ impl ObjectList {
         }
     }
 
-    pub fn selected_target(&self) -> Option<&view::Target> {
+    pub fn down(&mut self, view: &view::View) {
+        if self.list_state.selected().is_some() {
+            self.list_state.select_next();
+        } else {
+            let new_selected = { view.next_id(self.list_type, self.selected) };
+            if new_selected.is_some() {
+                self.selected = new_selected;
+            }
+        }
+    }
+
+    pub fn up(&mut self, view: &view::View) {
+        if self.list_state.selected().is_some() {
+            self.list_state.select_previous();
+        } else {
+            let new_selected =
+                { view.previous_id(self.list_type, self.selected) };
+            if new_selected.is_some() {
+                self.selected = new_selected;
+            }
+        }
+    }
+
+    pub fn popup_open(&mut self, view: &view::View) {
+        let targets = match self.list_type {
+            ListType::Node(_) => self
+                .selected
+                .and_then(|object_id| view.node_targets(object_id)),
+            ListType::Device => self
+                .selected
+                .and_then(|object_id| view.device_targets(object_id)),
+        };
+        if let Some((targets, index)) = targets {
+            if !targets.is_empty() {
+                self.targets = targets;
+                self.list_state.select(Some(index));
+            }
+        }
+    }
+
+    fn selected_target(&self) -> Option<&view::Target> {
         self.list_state
             .selected()
             .and_then(|index| self.targets.get(index))
             .map(|(target, _)| target)
     }
 
-    /// Reconciles changes to objects, viewport, and selection.
-    pub fn update(
+    pub fn popup_select(&mut self, view: &view::View) -> Vec<Command> {
+        let commands = self
+            .selected
+            .zip(self.selected_target())
+            .map(|(object_id, &target)| view.set_target(object_id, target))
+            .into_iter()
+            .flatten()
+            .collect();
+        self.list_state.select(None);
+        commands
+    }
+
+    pub fn popup_close(&mut self) {
+        self.list_state.select(None);
+    }
+
+    pub fn set_target(
         &mut self,
-        area: Rect,
-        selected_index: Option<usize>,
-        objects_len: usize,
-    ) {
+        view: &view::View,
+        target: view::Target,
+    ) -> Vec<Command> {
+        self.list_state.select(None);
+        self.selected
+            .map(|object_id| view.set_target(object_id, target))
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+
+    pub fn toggle_mute(&mut self, view: &view::View) -> Vec<Command> {
+        if matches!(self.list_type, ListType::Device) {
+            return Default::default();
+        }
+        self.selected
+            .and_then(|node_id| view.mute(node_id))
+            .into_iter()
+            .collect()
+    }
+
+    pub fn set_absolute_volume(
+        &mut self,
+        view: &view::View,
+        volume: f32,
+    ) -> Vec<Command> {
+        if matches!(self.list_type, ListType::Device) {
+            return Default::default();
+        }
+        self.selected
+            .and_then(|node_id| {
+                view.volume(node_id, VolumeAdjustment::Absolute(volume))
+            })
+            .into_iter()
+            .collect()
+    }
+
+    pub fn set_relative_volume(
+        &mut self,
+        view: &view::View,
+        volume: f32,
+    ) -> Vec<Command> {
+        if matches!(self.list_type, ListType::Device) {
+            return Default::default();
+        }
+        self.selected
+            .and_then(|node_id| {
+                view.volume(node_id, VolumeAdjustment::Relative(volume))
+            })
+            .into_iter()
+            .collect()
+    }
+
+    pub fn set_default(&mut self, view: &view::View) -> Vec<Command> {
+        if matches!(self.list_type, ListType::Device) {
+            return Default::default();
+        }
+        self.selected
+            .zip(self.device_type)
+            .and_then(|(node_id, device_type)| {
+                view.set_default(node_id, device_type)
+            })
+            .into_iter()
+            .collect()
+    }
+
+    /// Reconciles changes to objects, viewport, and selection.
+    pub fn update(&mut self, area: Rect, view: &view::View) {
+        let selected_index = self
+            .selected
+            .and_then(|selected| view.position(self.list_type, selected));
+        let objects_len = view.len(self.list_type);
+
         let (_, list_area, _) = self.areas(&area);
         let full_height = match self.list_type {
             ListType::Node(_) => NodeWidget::height() + NodeWidget::spacing(),
