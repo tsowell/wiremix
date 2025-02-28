@@ -27,8 +27,9 @@ pub enum MonitorEvent {
     NodeName(ObjectId, String),
     NodeNick(ObjectId, String),
     NodeObjectSerial(ObjectId, i32),
-    NodePeaks(ObjectId, Vec<f32>),
+    NodePeaks(ObjectId, Vec<f32>, u32),
     NodePositions(ObjectId, Vec<u32>),
+    NodeRate(ObjectId, u32),
     NodeVolumes(ObjectId, Vec<f32>),
     NodeMute(ObjectId, bool),
 

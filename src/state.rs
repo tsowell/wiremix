@@ -65,9 +65,36 @@ pub struct Node {
     pub volumes: Option<Vec<f32>>,
     pub mute: Option<bool>,
     pub peaks: Option<Vec<f32>>,
+    pub rate: Option<u32>,
     pub positions: Option<Vec<u32>>,
     pub device_id: Option<ObjectId>,
     pub card_profile_device: Option<i32>,
+}
+
+impl Node {
+    /// Update peaks with VU-meter-style ballistics
+    pub fn update_peaks(&mut self, peaks: Vec<f32>, samples: u32) {
+        let Some(rate) = self.rate else {
+            return;
+        };
+        let current_peaks =
+            self.peaks.clone().unwrap_or(vec![0.0; peaks.len()]);
+
+        // Attack/release time of 300 ms
+        let time_constant = 0.3;
+        let coef =
+            1.0 - (-(samples as f32) / (time_constant * rate as f32)).exp();
+
+        self.peaks = Some(
+            current_peaks
+                .into_iter()
+                .zip(peaks)
+                .map(|(current_peak, peak)| {
+                    current_peak + (peak - current_peak) * coef
+                })
+                .collect(),
+        );
+    }
 }
 
 #[allow(dead_code)]
@@ -117,7 +144,7 @@ impl State {
         match (self.dirty, &event) {
             (
                 StateDirty::Clean | StateDirty::PeaksOnly,
-                MonitorEvent::NodePeaks(_, _),
+                MonitorEvent::NodePeaks(..),
             ) => {
                 self.dirty = StateDirty::PeaksOnly;
             }
@@ -250,8 +277,11 @@ impl State {
                     commands.extend(self.start_capture_command(&id));
                 }
             }
-            MonitorEvent::NodePeaks(id, peaks) => {
-                self.node_entry(id).peaks = Some(peaks);
+            MonitorEvent::NodePeaks(id, peaks, samples) => {
+                self.node_entry(id).update_peaks(peaks, samples);
+            }
+            MonitorEvent::NodeRate(id, rate) => {
+                self.node_entry(id).rate = Some(rate);
             }
             MonitorEvent::NodePositions(id, positions) => {
                 self.node_entry(id).positions = Some(positions);

@@ -49,30 +49,42 @@ pub fn capture_node(
     let stream = Rc::new(stream);
     let listener = stream
         .add_local_listener_with_user_data(data)
-        .param_changed(move |_stream, user_data, id, param| {
-            // NULL means to clear the format
-            let Some(param) = param else {
-                return;
-            };
-            if id != ParamType::Format.as_raw() {
-                return;
-            }
+        .param_changed({
+            let sender_weak = Rc::downgrade(sender);
 
-            let (media_type, media_subtype) =
-                match format_utils::parse_format(param) {
-                    Ok(v) => v,
-                    Err(_) => return,
+            move |_stream, user_data, id, param| {
+                // NULL means to clear the format
+                let Some(param) = param else {
+                    return;
                 };
+                if id != ParamType::Format.as_raw() {
+                    return;
+                }
 
-            // only accept raw audio
-            if media_type != MediaType::Audio
-                || media_subtype != MediaSubtype::Raw
-            {
-                return;
+                let (media_type, media_subtype) =
+                    match format_utils::parse_format(param) {
+                        Ok(v) => v,
+                        Err(_) => return,
+                    };
+
+                // only accept raw audio
+                if media_type != MediaType::Audio
+                    || media_subtype != MediaSubtype::Raw
+                {
+                    return;
+                }
+
+                // call a helper function to parse the format for us.
+                let _ = user_data.format.parse(param);
+
+                let Some(sender) = sender_weak.upgrade() else {
+                    return;
+                };
+                sender.send(MonitorEvent::NodeRate(
+                    obj_id,
+                    user_data.format.rate(),
+                ));
             }
-
-            // call a helper function to parse the format for us.
-            let _ = user_data.format.parse(param);
         })
         .process({
             let sender_weak = Rc::downgrade(sender);
@@ -110,7 +122,9 @@ pub fn capture_node(
 
                         peaks.push(max);
                     }
-                    sender.send(MonitorEvent::NodePeaks(obj_id, peaks));
+                    sender.send(MonitorEvent::NodePeaks(
+                        obj_id, peaks, n_samples,
+                    ));
                     user_data.cursor_move = true;
                 }
             }
