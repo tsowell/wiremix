@@ -47,13 +47,13 @@ pub fn render_stereo(
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Fill(2),   // meter_left
-            Constraint::Length(2), // meter_center
+            Constraint::Length(2), // meter_live
             Constraint::Fill(2),   // meter_right
         ])
         .spacing(1)
         .split(meter_area);
     let meter_left = layout[0];
-    let meter_center = layout[1];
+    let meter_live = layout[1];
     let meter_right = layout[2];
 
     let (left_peak, right_peak) = peaks.unwrap_or_default();
@@ -87,13 +87,24 @@ pub fn render_stereo(
         "■■".to_string(),
         Style::default().fg(center_color),
     ))
-    .render(meter_center, buf);
+    .render(meter_live, buf);
 }
 
 pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
     let mono_peak = peak.unwrap_or_default();
 
-    let area = meter_area;
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(1), // meter_live
+            Constraint::Fill(2),   // meter_mono
+        ])
+        .spacing(1)
+        .split(meter_area);
+    let meter_live = layout[0];
+    let meter_mono = layout[1];
+
+    let area = meter_mono;
     let (normal_peak, overload_peak, unlit_peak) = render_peak(mono_peak, area);
     Line::from(vec![
         Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
@@ -101,4 +112,15 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
     ])
     .render(area, buf);
+
+    let live_color = if peak.is_some() {
+        Color::LightGreen
+    } else {
+        Color::DarkGray
+    };
+    Line::from(Span::styled(
+        "■".to_string(),
+        Style::default().fg(live_color),
+    ))
+    .render(meter_live, buf);
 }
