@@ -57,6 +57,7 @@ impl StatefulWidget for PopupWidget<'_> {
 
         let list = List::new(targets)
             .block(Block::default().borders(Borders::ALL))
+            .highlight_symbol("> ")
             .highlight_style(
                 Style::default()
                     .fg(Color::LightCyan)

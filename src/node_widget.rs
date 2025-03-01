@@ -79,8 +79,8 @@ impl<'a> NodeWidget<'a> {
             .max()
             .unwrap_or(0);
 
-        // Add 2 for vertical borders
-        let width = max_target_length.saturating_add(2) as u16;
+        // Add 2 for vertical borders and 2 for highlight symbol
+        let width = max_target_length.saturating_add(4) as u16;
         let height = std::cmp::min(max_visible_items, object_list.targets.len())
             .saturating_add(2) as u16; // Plus 2 for horizontal borders
 

@@ -49,10 +49,10 @@ impl<'a> DeviceWidget<'a> {
             .unwrap_or(0);
 
         // Position the popup so that the first item is over the displayed item
-        let x = list_area.left().saturating_add(6);
+        let x = list_area.left().saturating_add(4);
         let y = object_area.top().saturating_add(1);
-        // Add 2 for vertical borders
-        let width = max_target_length.saturating_add(2) as u16;
+        // Add 2 for vertical borders and 2 for highlight symbol
+        let width = max_target_length.saturating_add(4) as u16;
         let height = std::cmp::min(max_visible_items, object_list.targets.len())
             .saturating_add(2) as u16; // Add 2 for horizontal borders
 
