@@ -28,7 +28,7 @@ pub struct ProxyRegistry {
 
 impl Drop for ProxyRegistry {
     fn drop(&mut self) {
-        /* Drop listeners while their proxies are still alive. */
+        // Drop listeners while their proxies are still alive.
         self.garbage_listeners.clear();
         self.listeners.clear();
     }

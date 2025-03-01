@@ -21,7 +21,7 @@ pub struct StreamRegistry<D> {
 
 impl<D> Drop for StreamRegistry<D> {
     fn drop(&mut self) {
-        /* Drop listeners while the stream is still alive. */
+        // Drop listeners while the stream is still alive.
         self.garbage_listeners.clear();
         self.listeners.clear();
     }
