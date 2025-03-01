@@ -5,40 +5,35 @@ use ratatui::{
 };
 
 fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
-    // Convert to dB between -20 and +6
+    fn normalize(value: f32) -> f32 {
+        (value + 20.0) / 23.0
+    }
+
+    // Convert to dB between -20 and +3
     let db = 20.0 * (peak + 1e-10).log10();
-    let reference_offset: f32 = 0.0;
-    let vu_value = (db + reference_offset).clamp(-20.0, 6.0);
+    let vu_value = db.clamp(-20.0, 3.0);
 
-    // Percentage at which to put 0 dB
-    let zero = 0.75;
-
-    // Scale to between 0.0 and 1.0, compressing positive values
-    let meter = if vu_value < 0.0 {
-        0.0 + ((vu_value + 20.0) / 20.0) * zero
-    } else {
-        zero + (vu_value / 6.0) * (1.0 - zero)
-    };
+    let meter = normalize(vu_value);
 
     let total_chars = area.width as usize;
-
-    // The character position for 0 dB
-    let zero_char = (zero * total_chars as f32).round() as usize;
     let lit_chars =
         ((meter * total_chars as f32).round() as usize).min(total_chars);
 
+    // Values above 0.0 will be colored differently
+    let zero_char = (normalize(0.0) * total_chars as f32).round() as usize;
+
     // Assign colors
-    let green_chars = lit_chars.min(zero_char);
-    let red_chars = lit_chars.saturating_sub(zero_char);
+    let normal_chars = lit_chars.min(zero_char);
+    let overload_chars = lit_chars.saturating_sub(zero_char);
     let unlit_chars = total_chars
-        .saturating_sub(green_chars)
-        .saturating_sub(red_chars);
+        .saturating_sub(normal_chars)
+        .saturating_sub(overload_chars);
 
     let ch = "▮";
 
     (
-        ch.repeat(green_chars),
-        ch.repeat(red_chars),
+        ch.repeat(normal_chars),
+        ch.repeat(overload_chars),
         ch.repeat(unlit_chars),
     )
 }
@@ -64,20 +59,21 @@ pub fn render_stereo(
     let (left_peak, right_peak) = peaks.unwrap_or_default();
 
     let area = meter_left;
-    let (lit_peak, hilit_peak, unlit_peak) = render_peak(left_peak, area);
+    let (normal_peak, overload_peak, unlit_peak) = render_peak(left_peak, area);
     Line::from(vec![
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
-        Span::styled(hilit_peak, Style::default().fg(Color::Red)),
-        Span::styled(lit_peak, Style::default().fg(Color::LightGreen)),
+        Span::styled(overload_peak, Style::default().fg(Color::Red)),
+        Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
     ])
     .alignment(Alignment::Right)
     .render(area, buf);
 
     let area = meter_right;
-    let (lit_peak, hilit_peak, unlit_peak) = render_peak(right_peak, area);
+    let (normal_peak, overload_peak, unlit_peak) =
+        render_peak(right_peak, area);
     Line::from(vec![
-        Span::styled(lit_peak, Style::default().fg(Color::LightGreen)),
-        Span::styled(hilit_peak, Style::default().fg(Color::Red)),
+        Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
+        Span::styled(overload_peak, Style::default().fg(Color::Red)),
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
     ])
     .render(area, buf);
@@ -98,10 +94,10 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
     let mono_peak = peak.unwrap_or_default();
 
     let area = meter_area;
-    let (lit_peak, hilit_peak, unlit_peak) = render_peak(mono_peak, area);
+    let (normal_peak, overload_peak, unlit_peak) = render_peak(mono_peak, area);
     Line::from(vec![
-        Span::styled(lit_peak, Style::default().fg(Color::LightGreen)),
-        Span::styled(hilit_peak, Style::default().fg(Color::Red)),
+        Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
+        Span::styled(overload_peak, Style::default().fg(Color::Red)),
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
     ])
     .render(area, buf);
