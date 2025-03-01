@@ -46,8 +46,6 @@ pub fn monitor_device(
         ParamType::EnumProfile,
     ];
 
-    // Set up listening. Use a DeviceStatusTracker to avoid repeated Profile
-    // and EnumProfile events. These seem to be emitted on every Route change.
     let listener = device
         .add_listener_local()
         .param({
