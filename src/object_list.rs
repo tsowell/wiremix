@@ -185,9 +185,11 @@ impl ObjectList {
 
         let (_, list_area, _) = self.areas(&area);
         let full_height = match self.list_type {
-            ListType::Node(_) => NodeWidget::height() + NodeWidget::spacing(),
+            ListType::Node(_) => {
+                NodeWidget::height().saturating_add(NodeWidget::spacing())
+            }
             ListType::Device => {
-                DeviceWidget::height() + DeviceWidget::spacing()
+                DeviceWidget::height().saturating_add(DeviceWidget::spacing())
             }
         };
         let objects_visible = (list_area.height / full_height) as usize;
@@ -204,10 +206,18 @@ impl ObjectList {
         if self.selected.is_some() {
             match selected_index {
                 Some(selected_index) => {
-                    if selected_index >= self.top + objects_visible {
-                        self.top =
-                            selected_index.saturating_sub(objects_visible - 1);
+                    if selected_index
+                        >= self.top.saturating_add(objects_visible)
+                    {
+                        // The selection is below the viewport. Reposition the
+                        // viewport so that the selected item is at the bottom.
+                        let objects_visible_except_last =
+                            objects_visible.saturating_sub(1);
+                        self.top = selected_index
+                            .saturating_sub(objects_visible_except_last);
                     } else if selected_index < self.top {
+                        // The selected item is above the viewport. Reposition
+                        // so that it's the first visible item.
                         self.top = selected_index;
                     }
                 }
@@ -256,7 +266,7 @@ impl ObjectListWidget<'_> {
             .skip(self.object_list.top)
             // Take one extra so we can render a partial node at the bottom of
             // the area.
-            .take(context.objects_visible + 1);
+            .take(context.objects_visible.saturating_add(1));
 
         let objects_and_areas: Vec<(&&view::Node, &Rect)> =
             objects.zip(context.objects_layout.iter()).collect();
@@ -307,7 +317,7 @@ impl ObjectListWidget<'_> {
             .skip(self.object_list.top)
             // Take one extra so we can render a partial node at the bottom of
             // the area.
-            .take(context.objects_visible + 1);
+            .take(context.objects_visible.saturating_add(1));
 
         let objects_and_areas: Vec<(&&view::Device, &Rect)> =
             objects.zip(context.objects_layout.iter()).collect();
@@ -389,7 +399,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             }
         };
 
-        let full_object_height = height + spacing;
+        let full_object_height = height.saturating_add(spacing);
         let objects_visible = (list_area.height / full_object_height) as usize;
 
         let len = self.view.len(self.object_list.list_type);
@@ -409,10 +419,11 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         // rendered but still has all the important parts rendered,
         // excluding margins, etc.
         let is_bottom_last =
-            self.object_list.top + objects_visible == len.saturating_sub(1);
+            self.object_list.top.saturating_add(objects_visible)
+                == len.saturating_sub(1);
         let is_bottom_enough =
             (list_area.height % full_object_height) >= height;
-        if self.object_list.top + objects_visible < len
+        if self.object_list.top.saturating_add(objects_visible) < len
             && !(is_bottom_last && is_bottom_enough)
         {
             Line::from(Span::styled(

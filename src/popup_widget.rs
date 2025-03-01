@@ -72,6 +72,8 @@ impl StatefulWidget for PopupWidget<'_> {
 
         let first_index = self.object_list.list_state.offset();
 
+        // Add a clickable indicator to the top border if there or more items
+        // if scrolled up
         if first_index > 0 {
             let top_area =
                 Rect::new(popup_area.x, popup_area.y, popup_area.width, 1);
@@ -90,14 +92,17 @@ impl StatefulWidget for PopupWidget<'_> {
             ));
         }
 
-        let last_index = first_index + popup_area.height as usize - 2;
+        // Subtract 2 for vertical borders
+        let popup_area_inner_height =
+            (popup_area.height as usize).saturating_sub(2);
+        let last_index = first_index.saturating_add(popup_area_inner_height);
+        // Add a clickable indicator to the bottom border if there or more
+        // items if scrolled down
         if last_index < self.object_list.targets.len() {
-            let bottom_area = Rect::new(
-                popup_area.x,
-                popup_area.y + popup_area.height - 1,
-                popup_area.width,
-                1,
-            );
+            let y = popup_area
+                .y
+                .saturating_add(popup_area.height.saturating_sub(1));
+            let bottom_area = Rect::new(popup_area.x, y, popup_area.width, 1);
 
             Line::from(Span::styled(
                 "•••",
@@ -116,7 +121,7 @@ impl StatefulWidget for PopupWidget<'_> {
         for i in 0..(popup_area.height - 2) {
             let target_area = Rect::new(
                 popup_area.x,
-                popup_area.y + 1 + i,
+                popup_area.y.saturating_add(1).saturating_add(i),
                 popup_area.width,
                 1,
             );

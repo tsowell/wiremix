@@ -30,7 +30,9 @@ fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
     // Assign colors
     let green_chars = lit_chars.min(zero_char);
     let red_chars = lit_chars.saturating_sub(zero_char);
-    let unlit_chars = total_chars - green_chars - red_chars;
+    let unlit_chars = total_chars
+        .saturating_sub(green_chars)
+        .saturating_sub(red_chars);
 
     let ch = "▮";
 

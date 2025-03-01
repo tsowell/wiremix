@@ -69,6 +69,9 @@ impl<'a> NodeWidget<'a> {
         list_area: &Rect,
         object_area: &Rect,
     ) -> Rect {
+        // Number of items to show at once
+        let max_visible_items = 5;
+
         let max_target_length = object_list
             .targets
             .iter()
@@ -76,12 +79,17 @@ impl<'a> NodeWidget<'a> {
             .max()
             .unwrap_or(0);
 
-        Rect::new(
-            list_area.right() - max_target_length as u16 - 2,
-            object_area.top() - 1,
-            max_target_length as u16 + 2,
-            std::cmp::min(7, object_list.targets.len() as u16 + 2),
-        )
+        // Add 2 for vertical borders
+        let width = max_target_length.saturating_add(2) as u16;
+        let height = std::cmp::min(max_visible_items, object_list.targets.len())
+            .saturating_add(2) as u16; // Plus 2 for horizontal borders
+
+        // Align to the right of the list area
+        let x = list_area.right().saturating_sub(width);
+        // Subtract 1 for the top border
+        let y = object_area.top().saturating_sub(1);
+
+        Rect::new(x, y, width, height)
     }
 }
 
@@ -194,8 +202,10 @@ impl StatefulWidget for NodeWidget<'_> {
         } else {
             "  "
         };
-        let left =
-            truncate::with_ellipses(&left, (header_left.width - 2) as usize);
+        let left = truncate::with_ellipses(
+            &left,
+            (header_left.width.saturating_sub(2)) as usize,
+        );
         Line::from(vec![Span::from(default_string), Span::from(left)])
             .render(header_left, buf);
 
@@ -237,7 +247,8 @@ impl StatefulWidget for NodeWidget<'_> {
                 * volume_bar.width as f32) as usize;
 
             let filled = "━".repeat(count);
-            let blank = "╌".repeat(volume_bar.width as usize - count);
+            let blank =
+                "╌".repeat((volume_bar.width as usize).saturating_sub(count));
             Line::from(vec![
                 Span::styled(filled, Style::default().fg(Color::Blue)),
                 Span::styled(blank, Style::default().fg(Color::DarkGray)),
@@ -255,8 +266,12 @@ impl StatefulWidget for NodeWidget<'_> {
         ));
 
         for i in 0..=volume_bar.width {
-            let volume_area =
-                Rect::new(volume_bar.x + i, volume_bar.y, 1, volume_bar.height);
+            let volume_area = Rect::new(
+                volume_bar.x.saturating_add(i),
+                volume_bar.y,
+                1,
+                volume_bar.height,
+            );
 
             let volume_step = 1.5 / volume_bar.width as f32;
             let volume = volume_step * i as f32;

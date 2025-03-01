@@ -38,6 +38,9 @@ impl<'a> DeviceWidget<'a> {
         list_area: &Rect,
         object_area: &Rect,
     ) -> Rect {
+        // Number of items to show at once
+        let max_visible_items = 5;
+
         let max_target_length = object_list
             .targets
             .iter()
@@ -45,12 +48,15 @@ impl<'a> DeviceWidget<'a> {
             .max()
             .unwrap_or(0);
 
-        Rect::new(
-            list_area.left() + 6,
-            object_area.top() + 1,
-            max_target_length as u16 + 2,
-            std::cmp::min(7, object_list.targets.len() as u16 + 2),
-        )
+        // Position the popup so that the first item is over the displayed item
+        let x = list_area.left().saturating_add(6);
+        let y = object_area.top().saturating_add(1);
+        // Add 2 for vertical borders
+        let width = max_target_length.saturating_add(2) as u16;
+        let height = std::cmp::min(max_visible_items, object_list.targets.len())
+            .saturating_add(2) as u16; // Add 2 for horizontal borders
+
+        Rect::new(x, y, width, height)
     }
 }
 
