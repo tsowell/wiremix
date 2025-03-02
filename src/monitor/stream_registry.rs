@@ -9,13 +9,21 @@ use pipewire::stream::{Stream, StreamListener};
 
 use crate::object::ObjectId;
 
+/// Storage for keeping streams and their listeners alive
 pub struct StreamRegistry<D> {
+    /// Storage for keeping streams
     streams: HashMap<ObjectId, Rc<Stream>>,
+    /// Storage for keeping listeners alive
     listeners: HashMap<ObjectId, Vec<StreamListener<D>>>,
+    /// Streams pending deletion
     garbage_streams: Vec<Rc<Stream>>,
+    /// Listeners pending deletion
     garbage_listeners: Vec<StreamListener<D>>,
-    // Track garbage node IDs so we can report on who was collected.
+    /// Track garbage node IDs so [`Self::collect_garbage()`] can report on who
+    /// was collected.
     garbage_ids: HashSet<ObjectId>,
+    /// EventFd for signalling to [`crate::monitor`] that objects are pending
+    /// deletion and that [`Self::collect_garbage()`] needs to be called
     gc_fd: EventFd,
 }
 
@@ -44,6 +52,10 @@ impl<D> StreamRegistry<D> {
         &self.gc_fd
     }
 
+    /// Clean up streams and listeners pending deletion. It is unsafe to call
+    /// this from within the PipeWire main loop!
+    ///
+    /// Returns the IDs of the streams deleted.
     pub fn collect_garbage(&mut self) -> Vec<ObjectId> {
         self.garbage_listeners.clear();
         self.garbage_streams.clear();
@@ -51,6 +63,7 @@ impl<D> StreamRegistry<D> {
         self.garbage_ids.drain().collect()
     }
 
+    /// Register a stream and its listener, evicting any with the same ID.
     pub fn add_stream(
         &mut self,
         stream_id: ObjectId,
@@ -69,6 +82,8 @@ impl<D> StreamRegistry<D> {
         v.push(listener);
     }
 
+    /// Remove a stream, deferring deletion until [`Self::collect_garbage()`]
+    /// is called.
     pub fn remove(&mut self, stream_id: ObjectId) {
         if let Some(stream) = self.streams.remove(&stream_id) {
             let _ = stream.disconnect();

@@ -15,14 +15,24 @@ use pipewire::{
 
 use crate::object::ObjectId;
 
+/// Storage for keeping proxies and their listeners alive
 pub struct ProxyRegistry {
+    /// Storage for keeping devices alive
     pub devices: HashMap<ObjectId, Rc<Device>>,
+    /// Storage for keeping nodes alive
     pub nodes: HashMap<ObjectId, Rc<Node>>,
+    /// Storage for keeping metadata alive
     pub metadatas: HashMap<ObjectId, Rc<Metadata>>,
+    /// Storage for keeping links alive
     links: HashMap<ObjectId, Rc<Link>>,
+    /// Storage for keeping listeners alive
     listeners: HashMap<ObjectId, Vec<Box<dyn Listener>>>,
+    /// Devices, nodes, links, and metadata pending deletion
     garbage_proxies_t: Vec<Rc<dyn ProxyT>>,
+    /// Listeners pending deletion
     garbage_listeners: Vec<Box<dyn Listener>>,
+    /// EventFd for signalling to [`crate::monitor`] that objects are pending
+    /// deletion and that [`Self::collect_garbage()`] needs to be called
     gc_fd: EventFd,
 }
 
@@ -53,12 +63,15 @@ impl ProxyRegistry {
         &self.gc_fd
     }
 
+    /// Clean up proxies and listeners pending deletion. It is unsafe to call
+    /// this from within the PipeWire main loop!
     pub fn collect_garbage(&mut self) {
         self.garbage_listeners.clear();
         self.garbage_proxies_t.clear();
         let _ = self.gc_fd.read();
     }
 
+    /// Register a device and its listener, evicting any with the same ID.
     pub fn add_device(
         &mut self,
         obj_id: ObjectId,
@@ -77,6 +90,7 @@ impl ProxyRegistry {
         v.push(listener);
     }
 
+    /// Register a node and its listener, evicting any with the same ID.
     pub fn add_node(
         &mut self,
         obj_id: ObjectId,
@@ -95,6 +109,7 @@ impl ProxyRegistry {
         v.push(listener);
     }
 
+    /// Register a link and its listener, evicting any with the same ID.
     pub fn add_link(
         &mut self,
         obj_id: ObjectId,
@@ -113,6 +128,7 @@ impl ProxyRegistry {
         v.push(listener);
     }
 
+    /// Register metadata and its listener, evicting any with the same ID.
     pub fn add_metadata(
         &mut self,
         obj_id: ObjectId,
@@ -131,6 +147,7 @@ impl ProxyRegistry {
         v.push(listener);
     }
 
+    /// Register a listener, evicting any with the same ID.
     pub fn add_proxy_listener(
         &mut self,
         obj_id: ObjectId,
@@ -140,6 +157,8 @@ impl ProxyRegistry {
         v.push(Box::new(listener));
     }
 
+    /// Remove an object, defering deletion until [`Self::collect_garbage()`]
+    /// is called.
     pub fn remove(&mut self, obj_id: ObjectId) {
         if let Some(listeners) = self.listeners.get_mut(&obj_id) {
             if !listeners.is_empty() {

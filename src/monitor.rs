@@ -155,6 +155,9 @@ fn monitor_pipewire(
 
     // Proxies and their listeners need to stay alive so store them here
     let proxies = Rc::new(RefCell::new(ProxyRegistry::try_new()?));
+    // It's not safe to delete proxies and listeners during PipeWire callbacks,
+    // so registries defer cleanup and use an EventFd to signal that objects
+    // are pending deletion.
     let _proxy_gc_watch = main_loop.loop_().add_io(
         proxies.borrow().gc_fd().as_raw_fd(),
         libspa::support::system::IoFlags::IN,
@@ -166,7 +169,11 @@ fn monitor_pipewire(
         },
     );
 
+    // Proxies and their listeners need to stay alive so store them here
     let streams = Rc::new(RefCell::new(StreamRegistry::try_new()?));
+    // It's not safe to delete proxies and listeners during PipeWire callbacks,
+    // so registries defer cleanup and use an EventFd to signal that objects
+    // are pending deletion.
     let _streams_gc_watch = main_loop.loop_().add_io(
         streams.borrow().gc_fd().as_raw_fd(),
         libspa::support::system::IoFlags::IN,
