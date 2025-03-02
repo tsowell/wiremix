@@ -27,6 +27,7 @@ struct Opt {
     #[clap(short, long, help = "Disable audio capture for level monitoring")]
     no_capture: bool,
 
+    #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
     dump_events: bool,
 }
@@ -46,39 +47,28 @@ fn main() -> Result<()> {
         monitor::spawn(opt.remote, Arc::clone(&event_tx), command_rx)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
+    #[cfg(debug_assertions)]
     if opt.dump_events {
-        //stdout().execute(EnableMouseCapture)?;
-        crossterm::terminal::enable_raw_mode()?;
-        let _guard = scopeguard::guard((), |_| {
-            let _ = crossterm::terminal::disable_raw_mode();
-            //let _ = stdout().execute(DisableMouseCapture);
-        });
         // Event dumping mode for debugging the monitor code
         for received in event_rx {
-            use crossterm::event::{
-                Event as CrosstermEvent, KeyCode, KeyEvent,
-            };
             use pwmixer::event::Event;
             match received {
                 Event::Monitor(event) => print!("{:?}\r\n", event),
-                Event::Input(CrosstermEvent::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    ..
-                })) => break,
                 event => {
                     print!("{:?}\r\n", event);
                 }
             }
         }
 
-        Ok(())
-    } else {
-        stdout().execute(EnableMouseCapture)?;
-        let mut terminal = ratatui::init();
-        let app_result = app::App::new(command_tx, event_rx).run(&mut terminal);
-        ratatui::restore();
-        stdout().execute(DisableMouseCapture)?;
-
-        app_result
+        return Ok(());
     }
+
+    // Normal UI mode
+    stdout().execute(EnableMouseCapture)?;
+    let mut terminal = ratatui::init();
+    let app_result = app::App::new(command_tx, event_rx).run(&mut terminal);
+    ratatui::restore();
+    stdout().execute(DisableMouseCapture)?;
+
+    app_result
 }
