@@ -32,12 +32,16 @@ struct Opt {
 }
 
 fn main() -> Result<()> {
+    // Event channel for sending PipeWire and input events to the UI
     let (event_tx, event_rx) = mpsc::channel();
     let event_tx = Arc::new(event_tx);
 
+    // Command channel for the UI to send commands to control PipeWire
     let (command_tx, command_rx) = pipewire::channel::channel::<Command>();
 
     let opt = Opt::parse();
+
+    // Spawn the PipeWire monitor
     let _monitor_handle =
         monitor::spawn(opt.remote, Arc::clone(&event_tx), command_rx)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
@@ -49,6 +53,7 @@ fn main() -> Result<()> {
             let _ = crossterm::terminal::disable_raw_mode();
             //let _ = stdout().execute(DisableMouseCapture);
         });
+        // Event dumping mode for debugging the monitor code
         for received in event_rx {
             use crossterm::event::{
                 Event as CrosstermEvent, KeyCode, KeyEvent,
