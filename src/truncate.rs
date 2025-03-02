@@ -1,17 +1,26 @@
+use unicode_width::UnicodeWidthStr;
+
 pub fn with_ellipses(text: &str, len: usize) -> String {
-    if text.len() <= len {
+    if UnicodeWidthStr::width(text) <= len {
         return text.to_string();
     }
 
-    let left = len.saturating_sub(3);
+    let ellipses = "...";
 
-    let truncated = text
-        .char_indices()
-        .take_while(|(i, _)| *i < left)
-        .map(|(_, c)| c)
-        .collect::<String>();
+    let mut result = String::new();
+    let mut current_width = 0;
 
-    truncated + &".".repeat(std::cmp::min(len, 3))
+    for c in text.chars() {
+        let char_width = unicode_width::UnicodeWidthChar::width(c).unwrap_or(0);
+        if current_width + char_width + ellipses.len() > len {
+            break;
+        }
+
+        result.push(c);
+        current_width += char_width;
+    }
+
+    result + ellipses
 }
 
 #[cfg(test)]
