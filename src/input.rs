@@ -1,3 +1,7 @@
+//! Setup and teardown of terminal input.
+//!
+//! [`spawn()`] starts the input thead.
+
 use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
@@ -8,6 +12,11 @@ use futures_timer::Delay;
 
 use crate::event::Event;
 
+/// Spawns a thread to listen for terminal input events.
+///
+/// [`Event`](`crate::event::Event`)s are sent to tx.
+///
+/// Returns a [`InputHandle`] to automatically clean up the thread.
 pub fn spawn(tx: Arc<mpsc::Sender<Event>>) -> InputHandle {
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
@@ -23,6 +32,9 @@ pub fn spawn(tx: Arc<mpsc::Sender<Event>>) -> InputHandle {
     }
 }
 
+/// Handle for the input thread.
+///
+/// On cleanup, the thread will be notified to quit and will be joined.
 pub struct InputHandle {
     tx: Option<oneshot::Sender<()>>,
     handle: Option<thread::JoinHandle<()>>,
