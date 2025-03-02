@@ -24,7 +24,7 @@ pub struct StreamRegistry<D> {
     garbage_ids: HashSet<ObjectId>,
     /// EventFd for signalling to [`crate::monitor`] that objects are pending
     /// deletion and that [`Self::collect_garbage()`] needs to be called
-    gc_fd: EventFd,
+    pub gc_fd: EventFd,
 }
 
 impl<D> Drop for StreamRegistry<D> {
@@ -46,10 +46,6 @@ impl<D> StreamRegistry<D> {
             garbage_ids: Default::default(),
             gc_fd,
         })
-    }
-
-    pub fn gc_fd(&self) -> &EventFd {
-        &self.gc_fd
     }
 
     /// Clean up streams and listeners pending deletion. It is unsafe to call

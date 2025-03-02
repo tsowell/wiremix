@@ -159,7 +159,7 @@ fn monitor_pipewire(
     // so registries defer cleanup and use an EventFd to signal that objects
     // are pending deletion.
     let _proxy_gc_watch = main_loop.loop_().add_io(
-        proxies.borrow().gc_fd().as_raw_fd(),
+        proxies.borrow().gc_fd.as_raw_fd(),
         libspa::support::system::IoFlags::IN,
         {
             let proxies = Rc::clone(&proxies);
@@ -175,7 +175,7 @@ fn monitor_pipewire(
     // so registries defer cleanup and use an EventFd to signal that objects
     // are pending deletion.
     let _streams_gc_watch = main_loop.loop_().add_io(
-        streams.borrow().gc_fd().as_raw_fd(),
+        streams.borrow().gc_fd.as_raw_fd(),
         libspa::support::system::IoFlags::IN,
         {
             let streams = Rc::clone(&streams);

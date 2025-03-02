@@ -33,7 +33,7 @@ pub struct ProxyRegistry {
     garbage_listeners: Vec<Box<dyn Listener>>,
     /// EventFd for signalling to [`crate::monitor`] that objects are pending
     /// deletion and that [`Self::collect_garbage()`] needs to be called
-    gc_fd: EventFd,
+    pub gc_fd: EventFd,
 }
 
 impl Drop for ProxyRegistry {
@@ -57,10 +57,6 @@ impl ProxyRegistry {
             garbage_listeners: Default::default(),
             gc_fd,
         })
-    }
-
-    pub fn gc_fd(&self) -> &EventFd {
-        &self.gc_fd
     }
 
     /// Clean up proxies and listeners pending deletion. It is unsafe to call
