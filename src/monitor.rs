@@ -1,3 +1,7 @@
+//! Setup and teardown of PipeWire monitoring.
+//!
+//! [`spawn()`] starts a PipeWire monitoring thread.
+
 mod deserialize;
 mod device;
 mod event_sender;
@@ -32,6 +36,12 @@ use crate::monitor::{
 };
 use crate::object::ObjectId;
 
+/// Spawns a thread to monitor the PipeWire instance.
+///
+/// [`Event`](`crate::event::Event`)s from PipeWire are sent to `tx`.
+/// [`Command`](`crate::command::Command`)s sent to `rx` will be executed.
+///
+/// Returns a [`MonitorHandle`] to automatically clean up the thread.
 pub fn spawn(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Event>>,
@@ -53,6 +63,7 @@ pub fn spawn(
     })
 }
 
+/// Wrapper for handling PipeWire initialization/deinitialization.
 fn run(
     remote: Option<String>,
     tx: Arc<mpsc::Sender<Event>>,
@@ -77,6 +88,11 @@ fn run(
     Ok(())
 }
 
+/// Handle for a PipeWire monitoring thread.
+///
+/// On cleanup, the PipeWire [`MainLoop`](`pipewire::main_loop::MainLoop`) will
+/// be notified to [`quit()`](`pipewire::main_loop::MainLoop::quit()`), and the
+/// thread will be joined.
 pub struct MonitorHandle {
     fd: Option<Arc<EventFd>>,
     handle: Option<thread::JoinHandle<()>>,
@@ -93,6 +109,9 @@ impl Drop for MonitorHandle {
     }
 }
 
+/// Monitors PipeWire.
+///
+/// Sets up core listeners and runs the PipeWire main loop.
 fn monitor_pipewire(
     remote: Option<String>,
     main_loop: MainLoop,
