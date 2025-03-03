@@ -1,3 +1,5 @@
+//! Type for representing PipeWire object IDs.
+
 use libspa::utils::dict::DictRef;
 use pipewire::registry::GlobalObject;
 

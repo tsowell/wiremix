@@ -1,3 +1,5 @@
+//! PipeWire controls which can be executed by the monitor module.
+
 use crate::object::ObjectId;
 
 #[derive(Debug)]

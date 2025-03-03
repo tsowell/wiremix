@@ -1,3 +1,5 @@
+//! View representing PipeWire state in a convenient format for rendering.
+
 use itertools::Itertools;
 use std::collections::HashMap;
 

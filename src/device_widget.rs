@@ -1,3 +1,5 @@
+//! A Ratatui widget representing a single PipeWire node in an object list.
+
 use ratatui::{
     layout::Flex,
     prelude::{Buffer, Constraint, Direction, Layout, Rect},

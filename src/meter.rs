@@ -1,3 +1,5 @@
+//! Peak level meter rendering.
+
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect, Widget},
     style::{Color, Style},

@@ -1,3 +1,8 @@
+//! Input events for the application.
+//!
+//! These come from [`monitor`](`crate::monitor`) (PipeWire events) and from
+//! [`input`](`crate::input`) (terminal input events).
+
 use pipewire::link::LinkInfoRef;
 
 use crate::media_class::MediaClass;

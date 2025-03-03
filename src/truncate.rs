@@ -1,3 +1,5 @@
+//! String truncation tools.
+
 use unicode_width::UnicodeWidthStr;
 
 pub fn with_ellipses(text: &str, len: usize) -> String {

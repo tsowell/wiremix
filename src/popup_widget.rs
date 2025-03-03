@@ -1,3 +1,6 @@
+//! A Ratatui widget for a popup menu of options pertaining to a node or device
+//! widget.
+
 use ratatui::{
     prelude::{Alignment, Buffer, Rect, Widget},
     style::{Color, Modifier, Style},

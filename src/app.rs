@@ -1,3 +1,5 @@
+//! Main rendering and event processing for the application.
+
 use std::sync::mpsc;
 
 use anyhow::{anyhow, Result};

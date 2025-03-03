@@ -1,3 +1,5 @@
+//! A Ratatui widget for an interactable list of PipeWire objects.
+
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     style::{Color, Style},

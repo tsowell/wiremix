@@ -1,3 +1,5 @@
+//! Type representing PipeWire media classes.
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaClass(String);
 
