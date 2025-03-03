@@ -273,12 +273,15 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
             }
             libspa_sys::SPA_PARAM_PROFILE_classes => {
                 if let Value::Struct(classes_struct) = prop.value {
-                    if let Some(Value::Int(_)) = classes_struct.first() {
-                        classes = Some(Vec::new());
-                        for class in classes_struct.iter().skip(1) {
-                            if let Some(classes) = &mut classes {
-                                classes.extend(parse_class(class));
-                            }
+                    // Usually the first element is the size, which we skip.
+                    let skip = match classes_struct.first() {
+                        Some(Value::Int(_)) => 1,
+                        _ => 0
+                    };
+                    classes = Some(Vec::new());
+                    for class in classes_struct.iter().skip(skip) {
+                        if let Some(classes) = &mut classes {
+                            classes.extend(parse_class(class));
                         }
                     }
                 }
