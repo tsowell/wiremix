@@ -19,7 +19,9 @@ use crate::popup_widget::PopupWidget;
 use crate::view::{self, ListType, VolumeAdjustment};
 
 /// ObjectList stores information for filtering and displaying a subset of
-/// objects from the global STATE.
+/// objects from a [`View`](`crate::view::View`).
+///
+/// Control operations pertaining to individual objects are handled here.
 #[derive(Default)]
 pub struct ObjectList {
     /// Index of the first object in viewport
