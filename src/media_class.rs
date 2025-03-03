@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 //#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaClass(String);

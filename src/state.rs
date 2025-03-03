@@ -6,7 +6,6 @@ use crate::event::MonitorEvent;
 use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Profile {
     pub index: i32,
@@ -15,7 +14,6 @@ pub struct Profile {
     pub classes: Vec<(MediaClass, Vec<i32>)>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct EnumRoute {
     pub index: i32,
@@ -25,7 +23,6 @@ pub struct EnumRoute {
     pub devices: Vec<i32>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Route {
     pub index: i32,
@@ -37,7 +34,6 @@ pub struct Route {
     pub mute: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct Device {
     pub id: ObjectId,
@@ -52,7 +48,6 @@ pub struct Device {
     pub enum_routes: HashMap<i32, EnumRoute>,
 }
 
-#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct Node {
     pub id: ObjectId,
@@ -97,14 +92,12 @@ impl Node {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Link {
     pub output: ObjectId,
     pub input: ObjectId,
 }
 
-#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct Metadata {
     pub id: ObjectId,
@@ -121,7 +114,6 @@ pub enum StateDirty {
     Everything,
 }
 
-#[allow(dead_code)]
 #[derive(Default, Debug)]
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,

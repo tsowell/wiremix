@@ -1,6 +1,5 @@
 use crate::object::ObjectId;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Command {
     NodeMute(ObjectId, bool),

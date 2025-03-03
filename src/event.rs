@@ -3,7 +3,6 @@ use pipewire::link::LinkInfoRef;
 use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum MonitorEvent {
     DeviceDescription(ObjectId, String),
