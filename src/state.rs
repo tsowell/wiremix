@@ -104,7 +104,7 @@ pub struct Link {
 pub struct Metadata {
     pub id: ObjectId,
     pub metadata_name: Option<String>,
-    // Properties for each subject
+    /// Properties for each subject
     pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
@@ -117,19 +117,32 @@ pub enum StateDirty {
 }
 
 #[derive(Default, Debug)]
+/// PipeWire state, maintained from
+/// [`MonitorEvent`](`crate::event::MonitorEvent`)s from the
+/// [`monitor`](`crate::monitor`) module.
+///
+/// This is primarily for maintaining a representation of the PipeWire state,
+/// but [`Self::update()`] also returns [`Command`](`crate::command::Command`)s
+/// for starting and stopping streaming because the
+/// [`monitor`](`crate::monitor`) callbacks don't individually have enough
+/// information to determine when that should happen.
 pub struct State {
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
-    // Nodes waiting on object.serial before we can start capture
+    /// Nodes waiting on object.serial before we can start capture
     pub pending_capture: HashSet<ObjectId>,
-    // Used to optimize view rebuilding based on what has changed
+    /// Used to optimize view rebuilding based on what has changed
     pub dirty: StateDirty,
 }
 
 impl State {
+    /// Update the state based on the supplied event.
+    ///
+    /// Returns a list of [`Command`](`crate::command::Command`)s to be
+    /// executed based on the changes.
     pub fn update(&mut self, event: MonitorEvent) -> Vec<Command> {
         let mut commands = Vec::new();
 
@@ -351,6 +364,7 @@ impl State {
             .get(self.metadatas_by_name.get(metadata_name)?)
     }
 
+    /// Should we capture this node once we see it?
     fn is_node_auto_capturable(&self, id: ObjectId) -> bool {
         self.nodes
             .get(&id)
@@ -362,6 +376,7 @@ impl State {
             })
     }
 
+    /// Should we capture this node once it is linked to another node?
     fn is_node_capturable_on_link(&self, id: ObjectId) -> bool {
         self.nodes
             .get(&id)
@@ -395,6 +410,7 @@ impl State {
         })
     }
 
+    /// Returns the objects that the given object outputs to.
     pub fn outputs(&self, id: ObjectId) -> Vec<ObjectId> {
         self.links
             .iter()
@@ -403,6 +419,7 @@ impl State {
             .collect()
     }
 
+    /// Returns the objects that input to the given object.
     pub fn inputs(&self, id: ObjectId) -> Vec<ObjectId> {
         self.links
             .iter()
