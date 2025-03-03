@@ -428,30 +428,6 @@ impl State {
             .collect()
     }
 
-    pub fn node_volumes(&self, id: ObjectId) -> Option<Vec<f32>> {
-        let node = self.nodes.get(&id)?;
-        if let Some(device_id) = node.device_id {
-            let device = self.devices.get(&device_id)?;
-            let route_device = node.card_profile_device?;
-            let route = device.routes.get(&route_device)?;
-            Some(route.volumes.clone())
-        } else {
-            node.volumes.clone()
-        }
-    }
-
-    pub fn node_mute(&self, id: ObjectId) -> Option<bool> {
-        let node = self.nodes.get(&id)?;
-        if let Some(device_id) = node.device_id {
-            let device = self.devices.get(&device_id)?;
-            let route_device = node.card_profile_device?;
-            let route = device.routes.get(&route_device)?;
-            Some(route.mute)
-        } else {
-            node.mute
-        }
-    }
-
     pub fn start_capture_command(&self, input: &ObjectId) -> Option<Command> {
         let node = self.nodes.get(input)?;
         let object_serial = &node.object_serial?;
