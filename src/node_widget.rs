@@ -142,6 +142,7 @@ impl StatefulWidget for NodeWidget<'_> {
         let node_area = layout[1];
 
         if self.selected {
+            // Render and indication that this is the selected node.
             let rows = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
@@ -221,8 +222,11 @@ impl StatefulWidget for NodeWidget<'_> {
                 Constraint::Fill(1),   // _padding
             ])
             .split(bar_area);
+        // index 0 is _padding
         let volume_area = layout[1];
+        // index 2 is _padding
         let meter_area = layout[3];
+        // index 4 is _padding
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -267,6 +271,7 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![Action::SelectObject(self.node.id), Action::ToggleMute],
         ));
 
+        // Add mouse areas for setting volume
         for i in 0..=volume_bar.width {
             let volume_area = Rect::new(
                 volume_bar.x.saturating_add(i),
@@ -298,6 +303,7 @@ impl StatefulWidget for NodeWidget<'_> {
             ));
         }
 
+        // Render peaks
         match self.node.peaks.as_deref() {
             Some([left, right]) => {
                 meter::render_stereo(meter_area, buf, Some((*left, *right)))
