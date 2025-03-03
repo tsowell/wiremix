@@ -11,6 +11,23 @@ use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 use crate::state;
 
+/// A view for transforming [`State`](`crate::state::State`) into a better
+/// format for rendering.
+///
+/// This is done in only two ways:
+///
+/// 1. [`Self::from()`] creates a View from scratch from a provided State.
+///
+/// 2. [`Self::update_peaks()`] updates just the provided peaks in an existing
+///    View.
+///
+/// [`Self::from()`] is a bit expensive, but doesn't happen very often after we
+/// get the initial state from PipeWire. Peak updates happen very frequently
+/// though, hence the optimization.
+///
+/// There are also functions like [`Self::mute()`] for returning
+/// [`Command`](`crate::command::Command`)s which can be sent to the
+/// [`monitor`](`crate::monitor`).
 #[derive(Debug, Default)]
 pub struct View {
     pub nodes: HashMap<ObjectId, Node>,
@@ -379,6 +396,7 @@ fn has_target(state: &state::State, node_id: ObjectId) -> bool {
 }
 
 impl View {
+    /// Create a View from scratch from a provided State.
     pub fn from(state: &state::State) -> View {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
@@ -517,6 +535,7 @@ impl View {
         }
     }
 
+    /// Update just the peaks of an existing State.
     pub fn update_peaks(&mut self, state: &state::State) {
         for state_node in state.nodes.values() {
             if let Some(node) = self.nodes.get_mut(&state_node.id) {
@@ -525,6 +544,8 @@ impl View {
         }
     }
 
+    /// Returns a command for setting the provided node as the default
+    /// source/sink, depending on device_type.
     pub fn set_default(
         &self,
         node_id: ObjectId,
@@ -546,6 +567,8 @@ impl View {
         ))
     }
 
+    /// Returns a command for setting the provided node's target to the
+    /// provided target.
     pub fn set_target(
         &self,
         node_id: ObjectId,
@@ -605,6 +628,7 @@ impl View {
         }
     }
 
+    /// Returns a command for muting the provided node.
     pub fn mute(&self, node_id: ObjectId) -> Option<Command> {
         let node = self.nodes.get(&node_id)?;
         let mute = !node.mute;
@@ -621,6 +645,7 @@ impl View {
         }
     }
 
+    /// Returns a command for changing the volume of the provided node.
     pub fn volume(
         &self,
         node_id: ObjectId,
@@ -666,6 +691,7 @@ impl View {
         }
     }
 
+    /// Gets all the nodes without filtering.
     pub fn full_nodes(&self, node_type: NodeType) -> Vec<&Node> {
         let node_ids = self.ids(ListType::Node(node_type));
         node_ids
@@ -674,6 +700,7 @@ impl View {
             .collect()
     }
 
+    /// Gets all the devices without filtering.
     pub fn full_devices(&self) -> Vec<&Device> {
         let device_ids = self.ids(ListType::Device);
         device_ids
@@ -682,6 +709,7 @@ impl View {
             .collect()
     }
 
+    /// Returns the next node in the list_type after a provided node.
     pub fn next_id(
         &self,
         list_type: ListType,
@@ -698,6 +726,7 @@ impl View {
         objects.get(next_index).copied()
     }
 
+    /// Returns the previous node in the list_type before a provided node.
     pub fn previous_id(
         &self,
         list_type: ListType,
@@ -714,6 +743,7 @@ impl View {
         objects.get(next_index).copied()
     }
 
+    /// Returns the index in the list_type for the provided object.
     pub fn position(
         &self,
         list_type: ListType,
@@ -722,10 +752,12 @@ impl View {
         self.ids(list_type).iter().position(|&id| id == object_id)
     }
 
+    /// Returns length of the list_type.
     pub fn len(&self, list_type: ListType) -> usize {
         self.ids(list_type).len()
     }
 
+    /// Returns the possible targets for a node.
     pub fn node_targets(
         &self,
         node_id: ObjectId,
@@ -775,6 +807,7 @@ impl View {
         Some((targets, selected_position))
     }
 
+    /// Returns the possible targets for a device.
     pub fn device_targets(
         &self,
         device_id: ObjectId,
