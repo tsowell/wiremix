@@ -171,8 +171,8 @@ impl StatefulWidget for NodeWidget<'_> {
         let header_area = layout[0];
         let bar_area = layout[1];
 
-        let left = node_title(self.node, self.device_type);
-        let right = match self.node.target {
+        let node_title = node_title(self.node, self.device_type);
+        let target_title = match self.node.target {
             Some(view::Target::Default) => {
                 format!("◇ {}", self.node.target_title)
             }
@@ -182,8 +182,8 @@ impl StatefulWidget for NodeWidget<'_> {
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(0),                     // header_left
-                Constraint::Length(right.len() as u16), // header_right
+                Constraint::Min(0),                            // header_left
+                Constraint::Length(target_title.len() as u16), // header_right
             ])
             .horizontal_margin(1)
             .spacing(1)
@@ -191,7 +191,7 @@ impl StatefulWidget for NodeWidget<'_> {
         let header_left = layout[0];
         let header_right = layout[1];
 
-        Line::from(right)
+        Line::from(target_title)
             .alignment(Alignment::Right)
             .render(header_right, buf);
         mouse_areas.push((
@@ -205,11 +205,11 @@ impl StatefulWidget for NodeWidget<'_> {
         } else {
             "  "
         };
-        let left = truncate::with_ellipses(
-            &left,
+        let node_title = truncate::with_ellipses(
+            &node_title,
             (header_left.width.saturating_sub(2)) as usize,
         );
-        Line::from(vec![Span::from(default_string), Span::from(left)])
+        Line::from(vec![Span::from(default_string), Span::from(node_title)])
             .render(header_left, buf);
 
         let layout = Layout::default()
