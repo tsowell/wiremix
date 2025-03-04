@@ -2,7 +2,6 @@ use std::io::stdout;
 use std::sync::{mpsc, Arc};
 
 use anyhow::Result;
-use clap::Parser;
 
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
@@ -11,27 +10,11 @@ use crossterm::{
 
 use pwmixer::app;
 use pwmixer::command::Command;
+use pwmixer::config::Config;
 use pwmixer::input;
 use pwmixer::monitor;
+use pwmixer::opt::Opt;
 use pwmixer::vsync;
-
-#[derive(Parser)]
-#[clap(name = "pwmixer", about = "PipeWire mixer")]
-struct Opt {
-    #[clap(short, long, help = "The name of the remote to connect to")]
-    remote: Option<String>,
-
-    // TODO
-    #[clap(short, long, help = "Disable audio capture for level monitoring")]
-    no_capture: bool,
-
-    #[clap(short, long, help = "Target frames per second")]
-    fps: Option<f32>,
-
-    #[cfg(debug_assertions)]
-    #[clap(short, long, help = "Dump events without showing interface")]
-    dump_events: bool,
-}
 
 fn main() -> Result<()> {
     // Event channel for sending PipeWire and input events to the UI
@@ -41,14 +24,32 @@ fn main() -> Result<()> {
     // Command channel for the UI to send commands to control PipeWire
     let (command_tx, command_rx) = pipewire::channel::channel::<Command>();
 
+    // Parse command-line arguments
     let opt = Opt::parse();
+
+    let config_default_path = Config::default_path();
+    let config_path = opt.config.as_deref().or(config_default_path.as_deref());
+
+    let mut config = match config_path {
+        Some(path) => {
+            if path.exists() {
+                Config::try_from(path)?
+            } else {
+                Default::default()
+            }
+        }
+        None => Default::default(),
+    };
+    config.apply_opt(&opt);
+    let config = config;
 
     // Spawn the PipeWire monitor
     let _monitor_handle =
-        monitor::spawn(opt.remote, Arc::clone(&event_tx), command_rx)?;
+        monitor::spawn(config.remote, Arc::clone(&event_tx), command_rx)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
-    let _vsync_handle =
-        opt.fps.map(|fps| vsync::spawn(Arc::clone(&event_tx), fps));
+    let _vsync_handle = config
+        .fps
+        .map(|fps| vsync::spawn(Arc::clone(&event_tx), fps));
 
     #[cfg(debug_assertions)]
     if opt.dump_events {
@@ -69,7 +70,7 @@ fn main() -> Result<()> {
     // Normal UI mode
     stdout().execute(EnableMouseCapture)?;
     let mut terminal = ratatui::init();
-    let app_result = app::App::new(command_tx, event_rx, opt.fps.is_some())
+    let app_result = app::App::new(command_tx, event_rx, config.fps.is_some())
         .run(&mut terminal);
     ratatui::restore();
     stdout().execute(DisableMouseCapture)?;

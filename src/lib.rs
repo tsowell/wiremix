@@ -1,5 +1,6 @@
 pub mod app;
 pub mod command;
+pub mod config;
 pub mod device_type;
 pub mod device_widget;
 pub mod event;
@@ -10,6 +11,7 @@ pub mod monitor;
 pub mod node_widget;
 pub mod object;
 pub mod object_list;
+pub mod opt;
 pub mod popup_widget;
 pub mod state;
 pub mod truncate;
