@@ -181,7 +181,7 @@ fn active_route(
     device
         .routes
         .get(&card_device)
-        .filter(|route| route.profile == profile_index)
+        .filter(|route| route.profiles.contains(&profile_index))
 }
 
 impl Node {
