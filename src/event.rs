@@ -59,6 +59,7 @@ pub enum Event {
     Input(crossterm::event::Event),
     Monitor(MonitorEvent),
     Error(String),
+    Vsync,
     Ready,
 }
 

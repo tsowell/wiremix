@@ -276,7 +276,7 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
                     // Usually the first element is the size, which we skip.
                     let skip = match classes_struct.first() {
                         Some(Value::Int(_)) => 1,
-                        _ => 0
+                        _ => 0,
                     };
                     classes = Some(Vec::new());
                     for class in classes_struct.iter().skip(skip) {

@@ -76,6 +76,10 @@ pub struct App {
     rx: mpsc::Receiver<Event>,
     /// An error message to return to [`main`](`crate::main`) on exit
     error_message: Option<String>,
+    /// Only render on Vsync message
+    use_vsync: bool,
+    /// Indicates Vsync has been received since last render
+    is_render_pending: bool,
     /// The main tabs
     tabs: Vec<Tab>,
     /// The index of the currently-visible tab
@@ -95,6 +99,7 @@ impl App {
     pub fn new(
         tx: pipewire::channel::Sender<Command>,
         rx: mpsc::Receiver<Event>,
+        use_vsync: bool,
     ) -> Self {
         let tabs = vec![
             Tab::new(
@@ -132,6 +137,8 @@ impl App {
             tx,
             rx,
             error_message: Default::default(),
+            use_vsync,
+            is_render_pending: true,
             tabs,
             selected_tab_index: Default::default(),
             mouse_areas: Default::default(),
@@ -146,8 +153,6 @@ impl App {
         trace::initialize_logging()?;
 
         while !self.exit {
-            self.mouse_areas.clear();
-
             // Update view if needed
             match self.state.dirty {
                 StateDirty::Everything => {
@@ -169,13 +174,22 @@ impl App {
                 self.handle_action(Action::ScrollDown);
             }
 
-            terminal.draw(|frame| {
-                self.tabs[self.selected_tab_index]
-                    .list
-                    .update(frame.area(), &self.view);
+            if self.is_render_pending {
+                self.mouse_areas.clear();
 
-                self.draw(frame);
-            })?;
+                terminal.draw(|frame| {
+                    self.tabs[self.selected_tab_index]
+                        .list
+                        .update(frame.area(), &self.view);
+
+                    self.draw(frame);
+                })?;
+            }
+
+            if self.use_vsync {
+                self.is_render_pending = false;
+            } /* Otherwise just leave it set. */
+
             self.handle_events()?;
         }
 
@@ -237,6 +251,10 @@ impl App {
                 for command in self.state.update(event) {
                     let _ = self.tx.send(command);
                 }
+                Ok(())
+            }
+            Event::Vsync => {
+                self.is_render_pending = true;
                 Ok(())
             }
         }

@@ -16,6 +16,7 @@ use pwmixer::app;
 use pwmixer::command::Command;
 use pwmixer::input;
 use pwmixer::monitor;
+use pwmixer::vsync;
 
 #[derive(Parser)]
 #[clap(name = "pwmixer", about = "PipeWire mixer")]
@@ -26,6 +27,9 @@ struct Opt {
     // TODO
     #[clap(short, long, help = "Disable audio capture for level monitoring")]
     no_capture: bool,
+
+    #[clap(short, long, help = "Target frames per second")]
+    fps: Option<f32>,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
@@ -46,6 +50,8 @@ fn main() -> Result<()> {
     let _monitor_handle =
         monitor::spawn(opt.remote, Arc::clone(&event_tx), command_rx)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
+    let _vsync_handle =
+        opt.fps.map(|fps| vsync::spawn(Arc::clone(&event_tx), fps));
 
     #[cfg(debug_assertions)]
     if opt.dump_events {
@@ -66,7 +72,8 @@ fn main() -> Result<()> {
     // Normal UI mode
     stdout().execute(EnableMouseCapture)?;
     let mut terminal = ratatui::init();
-    let app_result = app::App::new(command_tx, event_rx).run(&mut terminal);
+    let app_result = app::App::new(command_tx, event_rx, opt.fps.is_some())
+        .run(&mut terminal);
     ratatui::restore();
     stdout().execute(DisableMouseCapture)?;
 
