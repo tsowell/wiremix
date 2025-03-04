@@ -215,30 +215,30 @@ impl App {
         #[cfg(feature = "trace")]
         trace_dbg!(&event);
 
-        if let Event::Input(event) = event {
-            self.handle_input_event(event)
-        } else if let Event::Error(error) = event {
-            match error {
-                // These happen when objects are removed while the monitor is
-                // still in the process of setting up listeners.
-                error if error.starts_with("no global ") => {}
-                error if error.starts_with("unknown resource ") => {}
-                // I see this one when disconnecting a Bluetooth sink.
-                error if error == "Received error event" => {}
-                _ => self.exit(Some(error)),
+        match event {
+            Event::Input(event) => self.handle_input_event(event),
+            Event::Error(error) => {
+                match error {
+                    // These happen when objects are removed while the monitor
+                    // is still in the process of setting up listeners.
+                    error if error.starts_with("no global ") => {}
+                    error if error.starts_with("unknown resource ") => {}
+                    // I see this one when disconnecting a Bluetooth sink.
+                    error if error == "Received error event" => {}
+                    _ => self.exit(Some(error)),
+                }
+                Ok(())
             }
-            Ok(())
-        } else if let Event::Ready = event {
-            self.is_ready = true;
-            Ok(())
-        } else if let Event::Monitor(event) = event {
-            for command in self.state.update(event) {
-                let _ = self.tx.send(command);
+            Event::Ready => {
+                self.is_ready = true;
+                Ok(())
             }
-
-            Ok(())
-        } else {
-            Ok(())
+            Event::Monitor(event) => {
+                for command in self.state.update(event) {
+                    let _ = self.tx.send(command);
+                }
+                Ok(())
+            }
         }
     }
 
