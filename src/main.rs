@@ -1,6 +1,3 @@
-// Copyright The pipewire-rs Contributors.
-// SPDX-License-Identifier: MIT
-
 use std::io::stdout;
 use std::sync::{mpsc, Arc};
 
