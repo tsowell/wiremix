@@ -8,12 +8,16 @@ use ratatui::{
 
 fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
     fn normalize(value: f32) -> f32 {
-        (value + 20.0) / 23.0
+        let amplitude = 10.0_f32.powf(value / 60.0);
+        let min = 10.0_f32.powf(-60.0 / 60.0);
+        let max = 10.0_f32.powf(6.0 / 60.0);
+
+        (amplitude - min) / (max - min)
     }
 
     // Convert to dB between -20 and +3
     let db = 20.0 * (peak + 1e-10).log10();
-    let vu_value = db.clamp(-20.0, 3.0);
+    let vu_value = db.clamp(-60.0, 6.0);
 
     let meter = normalize(vu_value);
 
