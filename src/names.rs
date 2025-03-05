@@ -5,11 +5,15 @@ use regex::{self, Regex};
 use crate::config;
 use crate::state;
 
+mod tag;
+
+use crate::names::tag::{Tag, NodeTag, DeviceTag};
+
 pub trait NameResolver {
     fn resolve_format_tag<'a>(
         &'a self,
         state: &'a state::State,
-        tag: &str,
+        tag: Tag,
     ) -> Option<&'a String>;
 
     fn fallback(&self) -> Option<&String>;
@@ -28,8 +32,10 @@ pub trait NameResolver {
     ) -> Option<&'a Vec<String>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
-                && self.resolve_format_tag(state, &name_override.property)
-                    == Some(&name_override.value))
+                && self.resolve_format_tag(
+                    state,
+                    name_override.property.parse().ok()?,
+                ) == Some(&name_override.value))
             .then_some(&name_override.formats)
         })
     }
@@ -40,13 +46,15 @@ impl NameResolver for state::Device {
     fn resolve_format_tag<'a>(
         &'a self,
         _state: &'a state::State,
-        tag: &str,
+        tag: Tag,
     ) -> Option<&'a String> {
         match tag {
-            "device:device.name" => self.name.as_ref(),
-            "device:device.nick" => self.nick.as_ref(),
-            "device:device.description" => self.description.as_ref(),
-            _ => None,
+            Tag::Device(DeviceTag::DeviceName) => self.name.as_ref(),
+            Tag::Device(DeviceTag::DeviceNick) => self.nick.as_ref(),
+            Tag::Device(DeviceTag::DeviceDescription) => {
+                self.description.as_ref()
+            }
+            Tag::Node(_) => None,
         }
     }
 
@@ -74,15 +82,14 @@ impl NameResolver for state::Node {
     fn resolve_format_tag<'a>(
         &'a self,
         state: &'a state::State,
-        tag: &str,
+        tag: Tag,
     ) -> Option<&'a String> {
         match tag {
-            "node:node.name" => self.name.as_ref(),
-            "node:node.nick" => self.nick.as_ref(),
-            "node:node.description" => self.description.as_ref(),
-            "node:media.name" => self.media_name.as_ref(),
-            _ => {
-                // Maybe it's for the linked device?
+            Tag::Node(NodeTag::NodeName) => self.name.as_ref(),
+            Tag::Node(NodeTag::NodeNick) => self.nick.as_ref(),
+            Tag::Node(NodeTag::NodeDescription) => self.description.as_ref(),
+            Tag::Node(NodeTag::MediaName) => self.media_name.as_ref(),
+            Tag::Device(_) => {
                 let device = state.devices.get(&self.device_id?)?;
                 device.resolve_format_tag(state, tag)
             }
@@ -133,7 +140,7 @@ fn try_resolve<T: NameResolver>(
     for cap in tags_regex.captures_iter(format) {
         let tag = cap.get(1)?.as_str();
 
-        let value = resolver.resolve_format_tag(state, tag)?;
+        let value = resolver.resolve_format_tag(state, tag.parse().ok()?)?;
 
         let pattern = format!(r"\{{{}\}}", regex::escape(tag));
         let replace_regex = Regex::new(&pattern).ok()?;
@@ -145,10 +152,14 @@ fn try_resolve<T: NameResolver>(
 
 /// Tries to resolve an object's name.
 ///
-/// Returns a formatted name using the first format string in formats which
-/// can successfully be resolved using the resolver.
+/// Returns a formatted name using the first format string that can be
+/// successfully resolved using the resolver.
 ///
-/// Otherwise returns a fallback name.
+/// Precedence is:
+///
+/// 1. Overrides
+/// 2. Stream/endpoint/device default formatters
+/// 3. Fallback
 pub fn resolve<T: NameResolver>(
     state: &state::State,
     resolver: &T,
