@@ -5,9 +5,9 @@ use regex::{self, Regex};
 use crate::config;
 use crate::state;
 
-mod tag;
+pub mod tag;
 
-use crate::names::tag::{Tag, NodeTag, DeviceTag};
+use crate::names::tag::{DeviceTag, NodeTag, Tag};
 
 pub trait NameResolver {
     fn resolve_format_tag<'a>(
@@ -32,10 +32,8 @@ pub trait NameResolver {
     ) -> Option<&'a Vec<String>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
-                && self.resolve_format_tag(
-                    state,
-                    name_override.property.parse().ok()?,
-                ) == Some(&name_override.value))
+                && self.resolve_format_tag(state, name_override.property)
+                    == Some(&name_override.value))
             .then_some(&name_override.formats)
         })
     }

@@ -1,16 +1,21 @@
 //! Represent valid name templating tags
 
+use serde::{de, Deserialize, Deserializer};
+
+#[derive(Debug, Copy, Clone)]
 pub enum Tag {
     Device(DeviceTag),
     Node(NodeTag),
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum DeviceTag {
     DeviceName,
     DeviceNick,
     DeviceDescription,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum NodeTag {
     NodeName,
     NodeNick,
@@ -41,11 +46,8 @@ impl ToString for Tag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ParseTagError;
-
 impl std::str::FromStr for Tag {
-    type Err = ParseTagError;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -58,7 +60,17 @@ impl std::str::FromStr for Tag {
             "node:node.nick" => Ok(Tag::Node(NodeTag::NodeNick)),
             "node:node.description" => Ok(Tag::Node(NodeTag::NodeDescription)),
             "node:media.name" => Ok(Tag::Node(NodeTag::MediaName)),
-            _ => Err(ParseTagError),
+            _ => Err("Tag doesn't exist".to_string()),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Tag {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(de::Error::custom)
     }
 }

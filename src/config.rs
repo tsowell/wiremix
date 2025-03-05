@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml;
 
+use crate::names;
 use crate::opt::Opt;
 
 #[derive(Default, Deserialize, Debug)]
@@ -65,7 +66,7 @@ pub enum OverrideType {
 #[derive(Deserialize, Debug)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
-    pub property: String,
+    pub property: names::tag::Tag,
     pub value: String,
     pub formats: Vec<String>,
 }
