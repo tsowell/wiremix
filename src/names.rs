@@ -1,13 +1,15 @@
 //! Format object names using templates from configuration.
 
+mod format_string;
+mod tag;
+
 use regex::{self, Regex};
 
 use crate::config;
 use crate::state;
 
-pub mod tag;
-
-use crate::names::tag::{DeviceTag, NodeTag, Tag};
+pub use crate::names::format_string::FormatString;
+pub use crate::names::tag::{DeviceTag, NodeTag, Tag};
 
 pub trait NameResolver {
     fn resolve_format_tag<'a>(
@@ -22,14 +24,14 @@ pub trait NameResolver {
         &self,
         state: &state::State,
         names: &'a config::Names,
-    ) -> &'a Vec<String>;
+    ) -> &'a Vec<FormatString>;
 
     fn name_override<'a>(
         &self,
         state: &state::State,
         overrides: &'a [config::NameOverride],
         override_type: config::OverrideType,
-    ) -> Option<&'a Vec<String>> {
+    ) -> Option<&'a Vec<FormatString>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
                 && self.resolve_format_tag(state, name_override.property)
@@ -64,7 +66,7 @@ impl NameResolver for state::Device {
         &self,
         state: &state::State,
         names: &'a config::Names,
-    ) -> &'a Vec<String> {
+    ) -> &'a Vec<FormatString> {
         self.name_override(
             state,
             &names.overrides,
@@ -102,7 +104,7 @@ impl NameResolver for state::Node {
         &self,
         state: &state::State,
         names: &'a config::Names,
-    ) -> &'a Vec<String> {
+    ) -> &'a Vec<FormatString> {
         match self.media_class.as_ref() {
             Some(media_class)
                 if media_class.is_sink() || media_class.is_source() =>
@@ -129,13 +131,15 @@ impl NameResolver for state::Node {
 fn try_resolve<T: NameResolver>(
     state: &state::State,
     resolver: &T,
-    format: &str,
+    format: &FormatString,
 ) -> Option<String> {
     let tags_regex = Regex::new(r"\{([a-z.-:]*)\}").ok()?;
 
-    let mut result = format.to_string();
+    let format = format.to_string();
 
-    for cap in tags_regex.captures_iter(format) {
+    let mut result = format.clone();
+
+    for cap in tags_regex.captures_iter(&format) {
         let tag = cap.get(1)?.as_str();
 
         let value = resolver.resolve_format_tag(state, tag.parse().ok()?)?;
@@ -166,6 +170,6 @@ pub fn resolve<T: NameResolver>(
     resolver
         .formats(state, names)
         .iter()
-        .find_map(|format| try_resolve(state, resolver, format.as_ref()))
+        .find_map(|format| try_resolve(state, resolver, format))
         .or(resolver.fallback().cloned())
 }

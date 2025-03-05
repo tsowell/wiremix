@@ -21,26 +21,28 @@ pub struct Config {
 #[derive(Deserialize, Debug)]
 pub struct Names {
     #[serde(default = "Names::default_stream")]
-    pub stream: Vec<String>,
+    pub stream: Vec<names::FormatString>,
     #[serde(default = "Names::default_endpoint")]
-    pub endpoint: Vec<String>,
+    pub endpoint: Vec<names::FormatString>,
     #[serde(default = "Names::default_device")]
-    pub device: Vec<String>,
+    pub device: Vec<names::FormatString>,
     #[serde(default)]
     pub overrides: Vec<NameOverride>,
 }
 
 impl Names {
-    fn default_stream() -> Vec<String> {
-        vec!["{node:node.name}: {node:media.name}".to_string()]
+    fn default_stream() -> Vec<names::FormatString> {
+        vec![names::FormatString::from_raw(
+            "{node:node.name}: {node:media.name}",
+        )]
     }
 
-    fn default_endpoint() -> Vec<String> {
-        vec!["{node:node.description}".to_string()]
+    fn default_endpoint() -> Vec<names::FormatString> {
+        vec![names::FormatString::from_raw("{node:node.description}")]
     }
 
-    fn default_device() -> Vec<String> {
-        vec!["{device:device.description}".to_string()]
+    fn default_device() -> Vec<names::FormatString> {
+        vec![names::FormatString::from_raw("{device:device.description}")]
     }
 }
 
@@ -66,9 +68,9 @@ pub enum OverrideType {
 #[derive(Deserialize, Debug)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
-    pub property: names::tag::Tag,
+    pub property: names::Tag,
     pub value: String,
-    pub formats: Vec<String>,
+    pub formats: Vec<names::FormatString>,
 }
 
 impl Config {

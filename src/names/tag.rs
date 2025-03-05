@@ -1,8 +1,8 @@
 //! Represent valid name templating tags
 
-use serde::{de, Deserialize, Deserializer};
+use serde_with::DeserializeFromStr;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, DeserializeFromStr)]
 pub enum Tag {
     Device(DeviceTag),
     Node(NodeTag),
@@ -60,17 +60,7 @@ impl std::str::FromStr for Tag {
             "node:node.nick" => Ok(Tag::Node(NodeTag::NodeNick)),
             "node:node.description" => Ok(Tag::Node(NodeTag::NodeDescription)),
             "node:media.name" => Ok(Tag::Node(NodeTag::MediaName)),
-            _ => Err("Tag doesn't exist".to_string()),
+            _ => Err(format!("\"{}\" is not implemented", s)),
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Tag {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        s.parse().map_err(de::Error::custom)
     }
 }
