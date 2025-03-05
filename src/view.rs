@@ -8,8 +8,8 @@ use serde_json::json;
 use crate::command::Command;
 use crate::config;
 use crate::device_type::DeviceType;
-use crate::names;
 use crate::media_class::MediaClass;
+use crate::names;
 use crate::object::ObjectId;
 use crate::state;
 
@@ -199,11 +199,7 @@ impl Node {
         let id = node.id;
 
         let media_class = node.media_class.as_ref()?.clone();
-        let title = if media_class.is_sink() || media_class.is_source() {
-            names::resolve(state, node, &names.endpoint)
-        } else {
-            names::resolve(state, node, &names.stream)
-        }?;
+        let title = names::resolve(state, node, names)?;
 
         let (volumes, mute, device_info) =
             if let Some(device_id) = node.device_id {
@@ -327,7 +323,7 @@ impl Device {
     ) -> Option<Device> {
         let id = device.id;
 
-        let title = names::resolve(state, device, &names.device)?;
+        let title = names::resolve(state, device, names)?;
 
         let mut profiles: Vec<_> = device
             .profiles
@@ -435,7 +431,7 @@ impl View {
                 if node.media_class.as_ref()?.is_sink() {
                     Some((
                         Target::Node(node.id),
-                        names::resolve(state, node, &names.endpoint)?,
+                        names::resolve(state, node, names)?,
                     ))
                 } else {
                     None
@@ -450,10 +446,10 @@ impl View {
             .values()
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_source() {
-                    let title = names::resolve(state, node, &names.endpoint)?;
+                    let title = names::resolve(state, node, names)?;
                     Some((Target::Node(node.id), title))
                 } else if node.media_class.as_ref()?.is_sink() {
-                    let title = names::resolve(state, node, &names.endpoint)?;
+                    let title = names::resolve(state, node, names)?;
                     Some((
                         Target::Node(node.id),
                         format!("Monitor of {}", title),

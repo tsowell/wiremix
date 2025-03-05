@@ -25,6 +25,8 @@ pub struct Names {
     pub endpoint: Vec<String>,
     #[serde(default = "Names::default_device")]
     pub device: Vec<String>,
+    #[serde(default)]
+    pub overrides: Vec<NameOverride>,
 }
 
 impl Names {
@@ -47,8 +49,17 @@ impl Default for Names {
             stream: Self::default_stream(),
             endpoint: Self::default_endpoint(),
             device: Self::default_device(),
+            overrides: Default::default(),
         }
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct NameOverride {
+    pub types: Vec<String>,
+    pub property: String,
+    pub value: String,
+    pub formats: Vec<String>,
 }
 
 impl Config {

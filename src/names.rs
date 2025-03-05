@@ -2,6 +2,7 @@
 
 use regex::{self, Regex};
 
+use crate::config;
 use crate::state;
 
 pub trait NameResolver {
@@ -12,6 +13,26 @@ pub trait NameResolver {
     ) -> Option<&'a String>;
 
     fn fallback(&self) -> Option<&String>;
+
+    fn formats<'a>(
+        &self,
+        state: &state::State,
+        names: &'a config::Names,
+    ) -> &'a Vec<String>;
+
+    fn name_override<'a>(
+        &self,
+        state: &state::State,
+        overrides: &'a [config::NameOverride],
+        override_type: &str,
+    ) -> Option<&'a Vec<String>> {
+        overrides.iter().find_map(|name_override| {
+            (name_override.types.contains(&override_type.to_string())
+                && self.resolve_format_tag(state, &name_override.property)
+                    == Some(&name_override.value))
+            .then_some(&name_override.formats)
+        })
+    }
 }
 
 impl NameResolver for state::Device {
@@ -31,6 +52,15 @@ impl NameResolver for state::Device {
 
     fn fallback(&self) -> Option<&String> {
         self.name.as_ref()
+    }
+
+    fn formats<'a>(
+        &self,
+        state: &state::State,
+        names: &'a config::Names,
+    ) -> &'a Vec<String> {
+        self.name_override(state, &names.overrides, "device")
+            .unwrap_or(&names.device)
     }
 }
 
@@ -57,6 +87,24 @@ impl NameResolver for state::Node {
 
     fn fallback(&self) -> Option<&String> {
         self.name.as_ref()
+    }
+
+    fn formats<'a>(
+        &self,
+        state: &state::State,
+        names: &'a config::Names,
+    ) -> &'a Vec<String> {
+        match self.media_class.as_ref() {
+            Some(media_class)
+                if media_class.is_sink() || media_class.is_source() =>
+            {
+                self.name_override(state, &names.overrides, "endpoint")
+                    .unwrap_or(&names.endpoint)
+            }
+            _ => self
+                .name_override(state, &names.overrides, "stream")
+                .unwrap_or(&names.stream),
+        }
     }
 }
 
@@ -89,12 +137,13 @@ fn try_resolve<T: NameResolver>(
 /// can successfully be resolved using the resolver.
 ///
 /// Otherwise returns a fallback name.
-pub fn resolve<T: NameResolver, S: AsRef<str>>(
+pub fn resolve<T: NameResolver>(
     state: &state::State,
     resolver: &T,
-    formats: &[S],
+    names: &config::Names,
 ) -> Option<String> {
-    formats
+    resolver
+        .formats(state, names)
         .iter()
         .find_map(|format| try_resolve(state, resolver, format.as_ref()))
         .or(resolver.fallback().cloned())
