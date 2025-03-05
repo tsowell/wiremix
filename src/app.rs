@@ -2,6 +2,8 @@
 
 use std::sync::mpsc;
 
+use crate::config::Config;
+
 use anyhow::{anyhow, Result};
 
 use ratatui::{
@@ -93,13 +95,15 @@ pub struct App {
     state: State,
     /// A rendering view based on the current PipeWire state
     view: View,
+    /// The application configuration
+    config: Config,
 }
 
 impl App {
     pub fn new(
         tx: pipewire::channel::Sender<Command>,
         rx: mpsc::Receiver<Event>,
-        use_vsync: bool,
+        config: Config,
     ) -> Self {
         let tabs = vec![
             Tab::new(
@@ -137,7 +141,7 @@ impl App {
             tx,
             rx,
             error_message: Default::default(),
-            use_vsync,
+            use_vsync: config.fps.is_some(),
             is_render_pending: true,
             tabs,
             selected_tab_index: Default::default(),
@@ -145,6 +149,7 @@ impl App {
             is_ready: Default::default(),
             state: Default::default(),
             view: Default::default(),
+            config,
         }
     }
 
@@ -156,7 +161,7 @@ impl App {
             // Update view if needed
             match self.state.dirty {
                 StateDirty::Everything => {
-                    self.view = View::from(&self.state);
+                    self.view = View::from(&self.state, &self.config.names);
                 }
                 StateDirty::PeaksOnly => {
                     self.view.update_peaks(&self.state);

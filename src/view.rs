@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use serde_json::json;
 
 use crate::command::Command;
+use crate::config;
 use crate::device_type::DeviceType;
+use crate::names;
 use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 use crate::state;
@@ -187,6 +189,7 @@ fn active_route(
 impl Node {
     pub fn from(
         state: &state::State,
+        names: &config::Names,
         sources: &[(Target, String)],
         sinks: &[(Target, String)],
         default_sink_name: &Option<String>,
@@ -195,12 +198,11 @@ impl Node {
     ) -> Option<Node> {
         let id = node.id;
 
-        let title = match (&node.description, &node.name, &node.media_name) {
-            (_, Some(name), Some(media_name)) => {
-                Some(format!("{name}: {media_name}"))
-            }
-            (Some(description), _, _) => Some(description.clone()),
-            _ => None,
+        let media_class = node.media_class.as_ref()?.clone();
+        let title = if media_class.is_sink() || media_class.is_source() {
+            names::resolve(state, node, &names.endpoint)
+        } else {
+            names::resolve(state, node, &names.stream)
         }?;
 
         let (volumes, mute, device_info) =
@@ -221,7 +223,6 @@ impl Node {
                 (node.volumes.as_ref()?.clone(), node.mute?, None)
             };
 
-        let media_class = node.media_class.as_ref()?.clone();
         let (routes, target, target_title) = if let Some(device_id) =
             node.device_id
         {
@@ -319,10 +320,14 @@ impl Node {
 }
 
 impl Device {
-    pub fn from(device: &state::Device) -> Option<Device> {
+    pub fn from(
+        state: &state::State,
+        device: &state::Device,
+        names: &config::Names,
+    ) -> Option<Device> {
         let id = device.id;
 
-        let title = device.description.as_ref()?.clone();
+        let title = names::resolve(state, device, &names.device)?;
 
         let mut profiles: Vec<_> = device
             .profiles
@@ -397,7 +402,7 @@ fn has_target(state: &state::State, node_id: ObjectId) -> bool {
 
 impl View {
     /// Create a View from scratch from a provided State.
-    pub fn from(state: &state::State) -> View {
+    pub fn from(state: &state::State, names: &config::Names) -> View {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
 
@@ -430,7 +435,7 @@ impl View {
                 if node.media_class.as_ref()?.is_sink() {
                     Some((
                         Target::Node(node.id),
-                        node.description.as_ref()?.clone(),
+                        names::resolve(state, node, &names.endpoint)?,
                     ))
                 } else {
                     None
@@ -445,13 +450,13 @@ impl View {
             .values()
             .filter_map(|node| {
                 if node.media_class.as_ref()?.is_source() {
-                    let description = node.description.as_ref()?.clone();
-                    Some((Target::Node(node.id), description))
+                    let title = names::resolve(state, node, &names.endpoint)?;
+                    Some((Target::Node(node.id), title))
                 } else if node.media_class.as_ref()?.is_sink() {
-                    let description = node.description.as_ref()?.clone();
+                    let title = names::resolve(state, node, &names.endpoint)?;
                     Some((
                         Target::Node(node.id),
-                        format!("Monitor of {}", description),
+                        format!("Monitor of {}", title),
                     ))
                 } else {
                     None
@@ -467,6 +472,7 @@ impl View {
             .filter_map(|node| {
                 Node::from(
                     state,
+                    names,
                     &sources,
                     &sinks,
                     &default_sink_name,
@@ -480,7 +486,7 @@ impl View {
         let devices: HashMap<ObjectId, Device> = state
             .devices
             .values()
-            .filter_map(Device::from)
+            .filter_map(|device| Device::from(state, device, names))
             .map(|device| (device.id, device))
             .collect();
 

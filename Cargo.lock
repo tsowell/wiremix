@@ -834,6 +834,7 @@ dependencies = [
  "nix 0.29.0",
  "pipewire",
  "ratatui",
+ "regex",
  "scopeguard",
  "serde",
  "serde_json",

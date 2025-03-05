@@ -13,6 +13,42 @@ use crate::opt::Opt;
 pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
+    #[serde(default)]
+    pub names: Names,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Names {
+    #[serde(default = "Names::default_stream")]
+    pub stream: Vec<String>,
+    #[serde(default = "Names::default_endpoint")]
+    pub endpoint: Vec<String>,
+    #[serde(default = "Names::default_device")]
+    pub device: Vec<String>,
+}
+
+impl Names {
+    fn default_stream() -> Vec<String> {
+        vec!["{node:node.name}: {node:media.name}".to_string()]
+    }
+
+    fn default_endpoint() -> Vec<String> {
+        vec!["{node:node.description}".to_string()]
+    }
+
+    fn default_device() -> Vec<String> {
+        vec!["{device:device.description}".to_string()]
+    }
+}
+
+impl Default for Names {
+    fn default() -> Self {
+        Self {
+            stream: Self::default_stream(),
+            endpoint: Self::default_endpoint(),
+            device: Self::default_device(),
+        }
+    }
 }
 
 impl Config {

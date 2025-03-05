@@ -44,8 +44,11 @@ fn main() -> Result<()> {
     let config = config;
 
     // Spawn the PipeWire monitor
-    let _monitor_handle =
-        monitor::spawn(config.remote, Arc::clone(&event_tx), command_rx)?;
+    let _monitor_handle = monitor::spawn(
+        config.remote.clone(),
+        Arc::clone(&event_tx),
+        command_rx,
+    )?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
     let _vsync_handle = config
         .fps
@@ -70,8 +73,8 @@ fn main() -> Result<()> {
     // Normal UI mode
     stdout().execute(EnableMouseCapture)?;
     let mut terminal = ratatui::init();
-    let app_result = app::App::new(command_tx, event_rx, config.fps.is_some())
-        .run(&mut terminal);
+    let app_result =
+        app::App::new(command_tx, event_rx, config).run(&mut terminal);
     ratatui::restore();
     stdout().execute(DisableMouseCapture)?;
 
