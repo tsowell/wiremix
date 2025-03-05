@@ -24,10 +24,10 @@ pub trait NameResolver {
         &self,
         state: &state::State,
         overrides: &'a [config::NameOverride],
-        override_type: &str,
+        override_type: config::OverrideType,
     ) -> Option<&'a Vec<String>> {
         overrides.iter().find_map(|name_override| {
-            (name_override.types.contains(&override_type.to_string())
+            (name_override.types.contains(&override_type)
                 && self.resolve_format_tag(state, &name_override.property)
                     == Some(&name_override.value))
             .then_some(&name_override.formats)
@@ -59,8 +59,12 @@ impl NameResolver for state::Device {
         state: &state::State,
         names: &'a config::Names,
     ) -> &'a Vec<String> {
-        self.name_override(state, &names.overrides, "device")
-            .unwrap_or(&names.device)
+        self.name_override(
+            state,
+            &names.overrides,
+            config::OverrideType::Device,
+        )
+        .unwrap_or(&names.device)
     }
 }
 
@@ -98,11 +102,19 @@ impl NameResolver for state::Node {
             Some(media_class)
                 if media_class.is_sink() || media_class.is_source() =>
             {
-                self.name_override(state, &names.overrides, "endpoint")
-                    .unwrap_or(&names.endpoint)
+                self.name_override(
+                    state,
+                    &names.overrides,
+                    config::OverrideType::Endpoint,
+                )
+                .unwrap_or(&names.endpoint)
             }
             _ => self
-                .name_override(state, &names.overrides, "stream")
+                .name_override(
+                    state,
+                    &names.overrides,
+                    config::OverrideType::Stream,
+                )
                 .unwrap_or(&names.stream),
         }
     }

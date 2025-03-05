@@ -54,9 +54,17 @@ impl Default for Names {
     }
 }
 
+#[derive(PartialEq, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum OverrideType {
+    Stream,
+    Endpoint,
+    Device,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct NameOverride {
-    pub types: Vec<String>,
+    pub types: Vec<OverrideType>,
     pub property: String,
     pub value: String,
     pub formats: Vec<String>,
