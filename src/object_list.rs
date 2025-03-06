@@ -30,7 +30,7 @@ pub struct ObjectList {
     pub selected: Option<ObjectId>,
     /// Which set of objects to use from the View
     list_type: ListType,
-    /// Default device type to use
+    /// Default device type to use for defaults and node rendering
     device_type: Option<DeviceType>,
     /// Target popup state
     pub list_state: ListState,
