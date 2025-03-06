@@ -310,11 +310,11 @@ impl State {
                     Some(metadata_name.clone());
                 self.metadatas_by_name.insert(metadata_name, id);
             }
-            MonitorEvent::MetadataProperty(id, _subject, key, value) => {
+            MonitorEvent::MetadataProperty(id, subject, key, value) => {
                 let properties = self
                     .metadata_entry(id)
                     .properties
-                    .entry(_subject)
+                    .entry(subject)
                     .or_default();
                 match key {
                     Some(key) => {
