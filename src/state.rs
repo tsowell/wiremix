@@ -488,6 +488,20 @@ mod tests {
         assert!(state.get_metadata_by_name(&metadata_name).is_none());
     }
 
+    fn get_metadata_properties<'a>(
+        state: &'a State,
+        obj_id: &ObjectId,
+        subject: u32,
+    ) -> &'a HashMap<String, String> {
+        state
+            .metadatas
+            .get(obj_id)
+            .unwrap()
+            .properties
+            .get(&subject)
+            .unwrap()
+    }
+
     #[test]
     fn state_metadata_clear_property() {
         let mut state: State = Default::default();
@@ -514,25 +528,11 @@ mod tests {
             Some(value.clone()),
         ));
         assert_eq!(
-            state
-                .metadatas
-                .get(&obj_id)
-                .unwrap()
-                .properties
-                .get(&0)
-                .unwrap()
-                .get(&key),
+            get_metadata_properties(&state, &obj_id, 0).get(&key),
             Some(&value)
         );
         assert_eq!(
-            state
-                .metadatas
-                .get(&obj_id)
-                .unwrap()
-                .properties
-                .get(&1)
-                .unwrap()
-                .get(&key),
+            get_metadata_properties(&state, &obj_id, 1).get(&key),
             Some(&value)
         );
 
@@ -542,26 +542,9 @@ mod tests {
             Some(key.clone()),
             None,
         ));
+        assert_eq!(get_metadata_properties(&state, &obj_id, 0).get(&key), None);
         assert_eq!(
-            state
-                .metadatas
-                .get(&obj_id)
-                .unwrap()
-                .properties
-                .get(&0)
-                .unwrap()
-                .get(&key),
-            None
-        );
-        assert_eq!(
-            state
-                .metadatas
-                .get(&obj_id)
-                .unwrap()
-                .properties
-                .get(&1)
-                .unwrap()
-                .get(&key),
+            get_metadata_properties(&state, &obj_id, 1).get(&key),
             Some(&value)
         );
     }
@@ -591,40 +574,12 @@ mod tests {
             Some(key.clone()),
             Some(value.clone()),
         ));
-        assert!(!state
-            .metadatas
-            .get(&obj_id)
-            .unwrap()
-            .properties
-            .get(&0)
-            .unwrap()
-            .is_empty());
-        assert!(!state
-            .metadatas
-            .get(&obj_id)
-            .unwrap()
-            .properties
-            .get(&1)
-            .unwrap()
-            .is_empty());
+        assert!(!get_metadata_properties(&state, &obj_id, 0).is_empty());
+        assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
 
         state.update(MonitorEvent::MetadataProperty(obj_id, 0, None, None));
 
-        assert!(state
-            .metadatas
-            .get(&obj_id)
-            .unwrap()
-            .properties
-            .get(&0)
-            .unwrap()
-            .is_empty());
-        assert!(!state
-            .metadatas
-            .get(&obj_id)
-            .unwrap()
-            .properties
-            .get(&1)
-            .unwrap()
-            .is_empty());
+        assert!(get_metadata_properties(&state, &obj_id, 0).is_empty());
+        assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
     }
 }
