@@ -1,5 +1,9 @@
 //! Mixer configuration.
 
+mod format_string;
+mod names;
+mod tag;
+
 use serde::Deserialize;
 use std::convert::TryFrom;
 use std::env;
@@ -7,8 +11,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use toml;
 
-use crate::names;
 use crate::opt::Opt;
+use crate::state;
 
 #[derive(Default, Deserialize, Debug)]
 pub struct Config {
@@ -43,6 +47,24 @@ impl Names {
 
     fn default_device() -> Vec<names::FormatString> {
         vec![names::FormatString::from_raw("{device:device.description}")]
+    }
+
+    /// Tries to resolve an object's name.
+    ///
+    /// Returns a formatted name using the first format string that can be
+    /// successfully resolved using the resolver.
+    ///
+    /// Precedence is:
+    ///
+    /// 1. Overrides
+    /// 2. Stream/endpoint/device default formatters
+    /// 3. Fallback
+    pub fn resolve<T: names::NameResolver>(
+        &self,
+        state: &state::State,
+        resolver: &T,
+    ) -> Option<String> {
+        names::resolve(state, resolver, self)
     }
 }
 

@@ -8,7 +8,6 @@ pub mod input;
 pub mod media_class;
 pub mod meter;
 pub mod monitor;
-pub mod names;
 pub mod node_widget;
 pub mod object;
 pub mod object_list;

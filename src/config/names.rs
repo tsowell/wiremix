@@ -1,15 +1,12 @@
 //! Format object names using templates from configuration.
 
-mod format_string;
-mod tag;
-
 use regex::{self, Regex};
 
 use crate::config;
 use crate::state;
 
-pub use crate::names::format_string::FormatString;
-pub use crate::names::tag::{DeviceTag, NodeTag, Tag};
+pub use crate::config::format_string::FormatString;
+pub use crate::config::tag::{DeviceTag, NodeTag, Tag};
 
 pub trait NameResolver {
     fn resolve_format_tag<'a>(
@@ -128,7 +125,7 @@ impl NameResolver for state::Node {
 }
 
 /// Tries to resolve a format string.
-fn try_resolve<T: NameResolver>(
+pub fn try_resolve<T: NameResolver>(
     state: &state::State,
     resolver: &T,
     format: &FormatString,
@@ -152,16 +149,9 @@ fn try_resolve<T: NameResolver>(
     Some(result.to_string())
 }
 
-/// Tries to resolve an object's name.
+/// Internal implementation for name resolution.
 ///
-/// Returns a formatted name using the first format string that can be
-/// successfully resolved using the resolver.
-///
-/// Precedence is:
-///
-/// 1. Overrides
-/// 2. Stream/endpoint/device default formatters
-/// 3. Fallback
+/// This implements the public [`config::Names::resolve()`] method.
 pub fn resolve<T: NameResolver>(
     state: &state::State,
     resolver: &T,

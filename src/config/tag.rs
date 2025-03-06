@@ -8,6 +8,8 @@ pub enum Tag {
     Node(NodeTag),
 }
 
+// These correspond to PipeWire property names.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Copy, Clone)]
 pub enum DeviceTag {
     DeviceName,

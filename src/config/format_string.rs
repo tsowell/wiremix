@@ -3,7 +3,7 @@
 use regex::{self, Regex};
 use serde_with::DeserializeFromStr;
 
-use crate::names::tag::Tag;
+use crate::config::tag::Tag;
 
 #[derive(Debug, DeserializeFromStr)]
 pub struct FormatString(String);
