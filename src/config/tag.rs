@@ -3,6 +3,7 @@
 use serde_with::DeserializeFromStr;
 
 #[derive(Debug, Copy, Clone, DeserializeFromStr)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Tag {
     Device(DeviceTag),
     Node(NodeTag),
@@ -11,6 +12,7 @@ pub enum Tag {
 // These correspond to PipeWire property names.
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(test, derive(PartialEq, strum::EnumIter))]
 pub enum DeviceTag {
     DeviceName,
     DeviceNick,
@@ -18,6 +20,7 @@ pub enum DeviceTag {
 }
 
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(test, derive(PartialEq, strum::EnumIter))]
 pub enum NodeTag {
     NodeName,
     NodeNick,
@@ -63,6 +66,34 @@ impl std::str::FromStr for Tag {
             "node:node.description" => Ok(Tag::Node(NodeTag::NodeDescription)),
             "node:media.name" => Ok(Tag::Node(NodeTag::MediaName)),
             _ => Err(format!("\"{}\" is not implemented", s)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn test_device_variants() {
+        for device_tag in DeviceTag::iter() {
+            // Do a round-trip conversion and compare results.
+            let tag = Tag::Device(device_tag);
+            let tag_str = tag.to_string();
+            let parsed_tag: Tag = tag_str.parse().unwrap();
+            assert_eq!(tag, parsed_tag);
+        }
+    }
+
+    #[test]
+    fn test_node_variants() {
+        for node_tag in NodeTag::iter() {
+            // Do a round-trip conversion and compare results.
+            let tag = Tag::Node(node_tag);
+            let tag_str = tag.to_string();
+            let parsed_tag: Tag = tag_str.parse().unwrap();
+            assert_eq!(tag, parsed_tag);
         }
     }
 }
