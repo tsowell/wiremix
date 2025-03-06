@@ -22,7 +22,8 @@ pub fn with_ellipses(text: &str, len: usize) -> String {
         current_width += char_width;
     }
 
-    result + ellipses
+    // Truncate ellipses if necessary
+    result + &ellipses[0..len.min(ellipses.len())]
 }
 
 #[cfg(test)]
