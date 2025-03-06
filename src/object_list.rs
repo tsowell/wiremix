@@ -487,81 +487,119 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
 mod tests {
     use super::*;
     use crate::event::MonitorEvent;
+    use crate::media_class::MediaClass;
+    use crate::state::State;
+    use crate::view::{ListType, NodeType, View};
 
-    fn init() {
-        STATE.with_borrow_mut(|state| {
-            for i in 0..10 {
-                let obj_id = ObjectId::from_raw_id(i);
-                state.update(MonitorEvent::NodeDescription(
+    fn init() -> State {
+        let mut state: State = Default::default();
+
+        for i in 0..10 {
+            let obj_id = ObjectId::from_raw_id(i);
+            let events = vec![
+                MonitorEvent::NodeDescription(obj_id, "Test node".to_string()),
+                MonitorEvent::NodeMediaClass(
                     obj_id,
-                    "Test node".to_string(),
-                ));
+                    MediaClass::from("Stream/Output/Audio"),
+                ),
+                MonitorEvent::NodeMediaName(obj_id, "Media name".to_string()),
+                MonitorEvent::NodeName(obj_id, "Node name".to_string()),
+                MonitorEvent::NodeObjectSerial(obj_id, i as i32),
+                MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
+                MonitorEvent::NodePositions(obj_id, vec![0, 1]),
+                MonitorEvent::NodeRate(obj_id, 44100),
+                MonitorEvent::NodeVolumes(obj_id, vec![0.0, 0.0]),
+                MonitorEvent::NodeMute(obj_id, false),
+            ];
+            for event in events {
+                state.update(event);
             }
-        });
+        }
+
+        state
     }
 
     #[test]
     fn object_list_up_overflow() {
-        init();
+        let state = init();
+        let view = View::from(&state, &Default::default());
 
+        let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut object_list = ObjectList::new(Box::new(|_node| true));
+        let rect = Rect::new(0, 0, 80, height * 3 + 2);
+        let mut object_list =
+            ObjectList::new(ListType::Node(NodeType::All), None);
+        // Select first object
+        object_list.down(&view);
+        assert_eq!(object_list.top, 0);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
 
-        object_list.up();
-        object_list.update(rect);
+        object_list.up(&view);
+        object_list.update(rect, &view);
         assert_eq!(object_list.top, 0);
         assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
     }
 
     #[test]
     fn object_list_down_overflow() {
-        init();
+        let state = init();
+        let view = View::from(&state, &Default::default());
 
+        let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut object_list = ObjectList::new(Box::new(|_node| true));
+        let rect = Rect::new(0, 0, 80, height * 3 + 2);
+        let mut object_list =
+            ObjectList::new(ListType::Node(NodeType::All), None);
+        // Select first object
+        object_list.down(&view);
+        assert_eq!(object_list.top, 0);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
 
-        let nodes_len =
-            STATE.with_borrow(|state| -> usize { state.nodes.len() });
+        let nodes_len = view.nodes.len();
 
         for _ in 0..(nodes_len * 2) {
-            object_list.down();
+            object_list.down(&view);
         }
 
-        object_list.update(rect);
+        object_list.update(rect, &view);
         assert_eq!(object_list.top, 7);
         assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
     }
 
     #[test]
     fn object_list_remove_last_nodes() {
-        init();
+        let mut state = init();
+        let view = View::from(&state, &Default::default());
 
+        let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
-        let rect = Rect::new(0, 0, 80, NodeWidget::height() * 3 + 2);
-        let mut object_list = ObjectList::new(Box::new(|_node| true));
+        let rect = Rect::new(0, 0, 80, height * 3 + 2);
+        let mut object_list =
+            ObjectList::new(ListType::Node(NodeType::All), None);
+        // Select first object
+        object_list.down(&view);
+        assert_eq!(object_list.top, 0);
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
 
-        let nodes_len =
-            STATE.with_borrow(|state| -> usize { state.nodes.len() });
+        let nodes_len = view.nodes.len();
 
         // Move to end of list
         for _ in 0..(nodes_len * 2) {
-            object_list.down();
+            object_list.down(&view);
         }
-        object_list.update(rect);
+        object_list.update(rect, &view);
         assert_eq!(object_list.top, 7);
         assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
 
         // Remove the visible nodes
-        STATE.with_borrow_mut(|state| {
-            state.nodes.remove(&ObjectId::from_raw_id(7));
-            state.nodes.remove(&ObjectId::from_raw_id(8));
-            state.nodes.remove(&ObjectId::from_raw_id(9));
-        });
+        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(7)));
+        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(8)));
+        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(9)));
+        let view = View::from(&state, &Default::default());
+
         // Viewport is now below end of list
 
-        object_list.update(rect);
+        object_list.update(rect, &view);
         assert_eq!(object_list.top, 4);
         assert_eq!(object_list.selected, None);
     }

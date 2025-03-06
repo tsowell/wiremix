@@ -507,8 +507,32 @@ mod tests {
             Some(key.clone()),
             Some(value.clone()),
         ));
+        state.update(MonitorEvent::MetadataProperty(
+            obj_id,
+            1,
+            Some(key.clone()),
+            Some(value.clone()),
+        ));
         assert_eq!(
-            state.metadatas.get(&obj_id).unwrap().properties.get(&key),
+            state
+                .metadatas
+                .get(&obj_id)
+                .unwrap()
+                .properties
+                .get(&0)
+                .unwrap()
+                .get(&key),
+            Some(&value)
+        );
+        assert_eq!(
+            state
+                .metadatas
+                .get(&obj_id)
+                .unwrap()
+                .properties
+                .get(&1)
+                .unwrap()
+                .get(&key),
             Some(&value)
         );
 
@@ -519,8 +543,26 @@ mod tests {
             None,
         ));
         assert_eq!(
-            state.metadatas.get(&obj_id).unwrap().properties.get(&key),
+            state
+                .metadatas
+                .get(&obj_id)
+                .unwrap()
+                .properties
+                .get(&0)
+                .unwrap()
+                .get(&key),
             None
+        );
+        assert_eq!(
+            state
+                .metadatas
+                .get(&obj_id)
+                .unwrap()
+                .properties
+                .get(&1)
+                .unwrap()
+                .get(&key),
+            Some(&value)
         );
     }
 
@@ -543,10 +585,46 @@ mod tests {
             Some(key.clone()),
             Some(value.clone()),
         ));
-        assert!(!state.metadatas.get(&obj_id).unwrap().properties.is_empty());
+        state.update(MonitorEvent::MetadataProperty(
+            obj_id,
+            1,
+            Some(key.clone()),
+            Some(value.clone()),
+        ));
+        assert!(!state
+            .metadatas
+            .get(&obj_id)
+            .unwrap()
+            .properties
+            .get(&0)
+            .unwrap()
+            .is_empty());
+        assert!(!state
+            .metadatas
+            .get(&obj_id)
+            .unwrap()
+            .properties
+            .get(&1)
+            .unwrap()
+            .is_empty());
 
         state.update(MonitorEvent::MetadataProperty(obj_id, 0, None, None));
 
-        assert!(state.metadatas.get(&obj_id).unwrap().properties.is_empty());
+        assert!(state
+            .metadatas
+            .get(&obj_id)
+            .unwrap()
+            .properties
+            .get(&0)
+            .unwrap()
+            .is_empty());
+        assert!(!state
+            .metadatas
+            .get(&obj_id)
+            .unwrap()
+            .properties
+            .get(&1)
+            .unwrap()
+            .is_empty());
     }
 }
