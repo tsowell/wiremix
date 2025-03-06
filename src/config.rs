@@ -1,6 +1,6 @@
 //! Mixer configuration.
 
-mod format_string;
+mod name_template;
 mod names;
 mod tag;
 
@@ -25,39 +25,37 @@ pub struct Config {
 #[derive(Deserialize, Debug)]
 pub struct Names {
     #[serde(default = "Names::default_stream")]
-    pub stream: Vec<names::FormatString>,
+    pub stream: Vec<names::NameTemplate>,
     #[serde(default = "Names::default_endpoint")]
-    pub endpoint: Vec<names::FormatString>,
+    pub endpoint: Vec<names::NameTemplate>,
     #[serde(default = "Names::default_device")]
-    pub device: Vec<names::FormatString>,
+    pub device: Vec<names::NameTemplate>,
     #[serde(default)]
     pub overrides: Vec<NameOverride>,
 }
 
 impl Names {
-    fn default_stream() -> Vec<names::FormatString> {
-        vec![names::FormatString::from_raw(
-            "{node:node.name}: {node:media.name}",
-        )]
+    fn default_stream() -> Vec<names::NameTemplate> {
+        vec!["{node:node.name}: {node:media.name}".parse().unwrap()]
     }
 
-    fn default_endpoint() -> Vec<names::FormatString> {
-        vec![names::FormatString::from_raw("{node:node.description}")]
+    fn default_endpoint() -> Vec<names::NameTemplate> {
+        vec!["{node:node.description}".parse().unwrap()]
     }
 
-    fn default_device() -> Vec<names::FormatString> {
-        vec![names::FormatString::from_raw("{device:device.description}")]
+    fn default_device() -> Vec<names::NameTemplate> {
+        vec!["{device:device.description}".parse().unwrap()]
     }
 
     /// Tries to resolve an object's name.
     ///
-    /// Returns a formatted name using the first format string that can be
-    /// successfully resolved using the resolver.
+    /// Returns a name using the first template string that can be successfully
+    /// resolved using the resolver.
     ///
     /// Precedence is:
     ///
     /// 1. Overrides
-    /// 2. Stream/endpoint/device default formatters
+    /// 2. Stream/endpoint/device default templates
     /// 3. Fallback
     pub fn resolve<T: names::NameResolver>(
         &self,
@@ -92,7 +90,7 @@ pub struct NameOverride {
     pub types: Vec<OverrideType>,
     pub property: names::Tag,
     pub value: String,
-    pub formats: Vec<names::FormatString>,
+    pub templates: Vec<names::NameTemplate>,
 }
 
 impl Config {
