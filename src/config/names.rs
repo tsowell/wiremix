@@ -138,3 +138,242 @@ pub fn resolve<T: NameResolver>(
         })
         .or(resolver.fallback().cloned())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{NameOverride, Names, OverrideType};
+    use crate::event::MonitorEvent;
+    use crate::media_class::MediaClass;
+    use crate::object::ObjectId;
+    use crate::state::State;
+
+    fn init() -> (State, ObjectId, ObjectId) {
+        let mut state: State = Default::default();
+
+        let device_id = ObjectId::from_raw_id(0);
+        let node_id = ObjectId::from_raw_id(1);
+
+        let events = vec![
+            MonitorEvent::DeviceName(device_id, String::from("Device name")),
+            MonitorEvent::DeviceNick(device_id, String::from("Device nick")),
+            MonitorEvent::NodeName(node_id, String::from("Node name")),
+            MonitorEvent::NodeNick(node_id, String::from("Node nick")),
+        ];
+
+        for event in events {
+            state.update(event);
+        }
+
+        (state, device_id, node_id)
+    }
+
+    #[test]
+    fn test_render_endpoint() {
+        let (mut state, _, node_id) = init();
+
+        state.update(MonitorEvent::NodeMediaClass(
+            node_id,
+            MediaClass::from("Audio/Sink"),
+        ));
+        let names = Names {
+            endpoint: vec!["{node:node.nick}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn test_render_endpoint_missing_tag() {
+        let (mut state, _, node_id) = init();
+
+        state.update(MonitorEvent::NodeMediaClass(
+            node_id,
+            MediaClass::from("Audio/Sink"),
+        ));
+
+        let names = Names {
+            endpoint: vec!["{node:node.description}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        // Should fall back to node name
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn test_render_endpoint_linked_device() {
+        let (mut state, device_id, node_id) = init();
+
+        state.update(MonitorEvent::NodeMediaClass(
+            node_id,
+            MediaClass::from("Audio/Sink"),
+        ));
+        state.update(MonitorEvent::NodeDeviceId(node_id, device_id));
+
+        let names = Names {
+            endpoint: vec!["{device:device.nick}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Device nick")))
+    }
+
+    #[test]
+    fn test_render_endpoint_linked_device_missing_tag() {
+        let (mut state, device_id, node_id) = init();
+
+        state.update(MonitorEvent::NodeMediaClass(
+            node_id,
+            MediaClass::from("Audio/Sink"),
+        ));
+        state.update(MonitorEvent::NodeDeviceId(node_id, device_id));
+
+        let names = Names {
+            endpoint: vec!["{device:device.description}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        // Should fall back to node name
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn test_render_endpoint_no_linked_device() {
+        let (mut state, _, node_id) = init();
+
+        state.update(MonitorEvent::NodeMediaClass(
+            node_id,
+            MediaClass::from("Audio/Sink"),
+        ));
+
+        let names = Names {
+            endpoint: vec!["{device:device.nick}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        // Should fall back to node name
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn test_render_stream() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            stream: vec!["{node:node.nick}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn test_render_precedence() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            stream: vec![
+                "{node:node.description}".parse().unwrap(),
+                "{node:node.nick}".parse().unwrap(),
+            ],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn test_render_override_match() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            overrides: vec![NameOverride {
+                types: vec![OverrideType::Device, OverrideType::Stream],
+                property: Tag::Node(NodeTag::NodeName),
+                value: String::from("Node name"),
+                templates: vec![
+                    "{node:node.description}".parse().unwrap(),
+                    "{node:node.nick}".parse().unwrap(),
+                ],
+            }],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn test_render_override_type_mismatch() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            overrides: vec![NameOverride {
+                types: vec![OverrideType::Device],
+                property: Tag::Node(NodeTag::NodeName),
+                value: String::from("Node name"),
+                templates: vec!["{node:node.nick}".parse().unwrap()],
+            }],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn test_render_override_value_mismatch() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            overrides: vec![NameOverride {
+                types: vec![OverrideType::Device],
+                property: Tag::Node(NodeTag::NodeDescription),
+                value: String::from("Node name"),
+                templates: vec!["{node:node.nick}".parse().unwrap()],
+            }],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn test_render_override_empty_templates() {
+        let (state, _, node_id) = init();
+
+        let names = Names {
+            overrides: vec![NameOverride {
+                types: vec![OverrideType::Device, OverrideType::Stream],
+                property: Tag::Node(NodeTag::NodeName),
+                value: String::from("Node name"),
+                templates: vec![],
+            }],
+            ..Default::default()
+        };
+
+        let node = state.nodes.get(&node_id).unwrap();
+        let result = resolve(&state, node, &names);
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+}
