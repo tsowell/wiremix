@@ -5,7 +5,7 @@ pub struct MediaClass(String);
 
 impl From<&str> for MediaClass {
     fn from(s: &str) -> Self {
-        MediaClass(s.to_string())
+        MediaClass(String::from(s))
     }
 }
 

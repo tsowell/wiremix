@@ -458,7 +458,7 @@ mod tests {
     fn state_metadata_insert() {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
-        let metadata_name = "metadata0".to_string();
+        let metadata_name = String::from("metadata0");
         state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
@@ -475,7 +475,7 @@ mod tests {
     fn state_metadata_remove() {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
-        let metadata_name = "metadata0".to_string();
+        let metadata_name = String::from("metadata0");
         state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
@@ -492,14 +492,14 @@ mod tests {
     fn state_metadata_clear_property() {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
-        let metadata_name = "metadata0".to_string();
+        let metadata_name = String::from("metadata0");
         state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
         ));
 
-        let key = "key".to_string();
-        let value = "value".to_string();
+        let key = String::from("key");
+        let value = String::from("value");
 
         state.update(MonitorEvent::MetadataProperty(
             obj_id,
@@ -570,14 +570,14 @@ mod tests {
     fn state_metadata_clear_all_properties() {
         let mut state: State = Default::default();
         let obj_id = ObjectId::from_raw_id(0);
-        let metadata_name = "metadata0".to_string();
+        let metadata_name = String::from("metadata0");
         state.update(MonitorEvent::MetadataMetadataName(
             obj_id,
             metadata_name.clone(),
         ));
 
-        let key = "key".to_string();
-        let value = "value".to_string();
+        let key = String::from("key");
+        let value = String::from("value");
 
         state.update(MonitorEvent::MetadataProperty(
             obj_id,

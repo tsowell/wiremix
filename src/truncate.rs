@@ -4,7 +4,7 @@ use unicode_width::UnicodeWidthStr;
 
 pub fn with_ellipses(text: &str, len: usize) -> String {
     if UnicodeWidthStr::width(text) <= len {
-        return text.to_string();
+        return String::from(text);
     }
 
     let ellipses = "...";

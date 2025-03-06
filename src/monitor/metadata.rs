@@ -26,7 +26,7 @@ pub fn monitor_metadata(
 
     sender.send(MonitorEvent::MetadataMetadataName(
         obj_id,
-        metadata_name.to_string(),
+        String::from(metadata_name),
     ));
 
     let metadata: Metadata = registry.bind(obj).ok()?;
@@ -44,8 +44,8 @@ pub fn monitor_metadata(
                 sender.send(MonitorEvent::MetadataProperty(
                     obj_id,
                     subject,
-                    key.map(str::to_string),
-                    value.map(str::to_string),
+                    key.map(String::from),
+                    value.map(String::from),
                 ));
 
                 0

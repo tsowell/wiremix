@@ -497,13 +497,16 @@ mod tests {
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
             let events = vec![
-                MonitorEvent::NodeDescription(obj_id, "Test node".to_string()),
+                MonitorEvent::NodeDescription(
+                    obj_id,
+                    String::from("Test node"),
+                ),
                 MonitorEvent::NodeMediaClass(
                     obj_id,
                     MediaClass::from("Stream/Output/Audio"),
                 ),
-                MonitorEvent::NodeMediaName(obj_id, "Media name".to_string()),
-                MonitorEvent::NodeName(obj_id, "Node name".to_string()),
+                MonitorEvent::NodeMediaName(obj_id, String::from("Media name")),
+                MonitorEvent::NodeName(obj_id, String::from("Node name")),
                 MonitorEvent::NodeObjectSerial(obj_id, i as i32),
                 MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
                 MonitorEvent::NodePositions(obj_id, vec![0, 1]),

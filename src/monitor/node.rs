@@ -101,22 +101,22 @@ fn node_info_props(
     };
 
     if let Some(node_name) = props.get("node.name") {
-        sender.send(MonitorEvent::NodeName(id, node_name.to_string()));
+        sender.send(MonitorEvent::NodeName(id, String::from(node_name)));
     }
 
     if let Some(node_nick) = props.get("node.nick") {
-        sender.send(MonitorEvent::NodeNick(id, node_nick.to_string()));
+        sender.send(MonitorEvent::NodeNick(id, String::from(node_nick)));
     }
 
     if let Some(node_description) = props.get("node.description") {
         sender.send(MonitorEvent::NodeDescription(
             id,
-            node_description.to_string(),
+            String::from(node_description),
         ));
     }
 
     if let Some(media_name) = props.get("media.name") {
-        sender.send(MonitorEvent::NodeMediaName(id, media_name.to_string()));
+        sender.send(MonitorEvent::NodeMediaName(id, String::from(media_name)));
     }
 
     if let Some(device_id) = props.get("device.id") {

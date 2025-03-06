@@ -90,7 +90,7 @@ pub fn render_stereo(
         Color::DarkGray
     };
     Line::from(Span::styled(
-        "■■".to_string(),
+        String::from("■■"),
         Style::default().fg(center_color),
     ))
     .render(meter_live, buf);
@@ -125,7 +125,7 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
         Color::DarkGray
     };
     Line::from(Span::styled(
-        "■".to_string(),
+        String::from("■"),
         Style::default().fg(live_color),
     ))
     .render(meter_live, buf);

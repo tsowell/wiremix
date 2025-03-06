@@ -309,17 +309,17 @@ fn device_info_props(
     };
 
     if let Some(device_name) = props.get("device.name") {
-        sender.send(MonitorEvent::DeviceName(id, device_name.to_string()));
+        sender.send(MonitorEvent::DeviceName(id, String::from(device_name)));
     }
 
     if let Some(device_nick) = props.get("device.nick") {
-        sender.send(MonitorEvent::DeviceNick(id, device_nick.to_string()));
+        sender.send(MonitorEvent::DeviceNick(id, String::from(device_nick)));
     }
 
     if let Some(device_description) = props.get("device.description") {
         sender.send(MonitorEvent::DeviceDescription(
             id,
-            device_description.to_string(),
+            String::from(device_description),
         ));
     }
 

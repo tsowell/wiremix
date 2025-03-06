@@ -246,7 +246,7 @@ impl Node {
                         target_title,
                     )
                 }
-                None => (None, "No route selected".to_string()),
+                None => (None, String::from("No route selected")),
             };
 
             Some((Some(routes), target, target_title))
@@ -260,7 +260,7 @@ impl Node {
                 (
                     Some(Target::Default),
                     sink.map(|(_, title)| title.clone())
-                        .unwrap_or("No default".to_string()),
+                        .unwrap_or(String::from("No default")),
                 )
             } else {
                 (
@@ -280,7 +280,7 @@ impl Node {
                     Some(Target::Default),
                     source
                         .map(|(_, title)| title.clone())
-                        .unwrap_or("No default".to_string()),
+                        .unwrap_or(String::from("No default")),
                 )
             } else {
                 (
@@ -366,7 +366,7 @@ fn default_for(state: &state::State, which: &str) -> Option<String> {
     let metadata = state.get_metadata_by_name("default")?;
     let json = metadata.properties.get(&0)?.get(which)?;
     let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
-    Some(obj["name"].as_str()?.to_string())
+    Some(String::from(obj["name"].as_str()?))
 }
 
 fn target_node(state: &state::State, node_id: ObjectId) -> Option<i64> {
@@ -582,16 +582,16 @@ impl View {
                     Command::MetadataSetProperty(
                         metadata_id,
                         node_id.into(),
-                        "target.object".to_string(),
-                        Some("Spa:Id".to_string()),
-                        Some("-1".to_string()),
+                        String::from("target.object"),
+                        Some(String::from("Spa:Id")),
+                        Some(String::from("-1")),
                     ),
                     Command::MetadataSetProperty(
                         metadata_id,
                         node_id.into(),
-                        "target.node".to_string(),
-                        Some("Spa:Id".to_string()),
-                        Some("-1".to_string()),
+                        String::from("target.node"),
+                        Some(String::from("Spa:Id")),
+                        Some(String::from("-1")),
                     ),
                 ]
             }
@@ -600,15 +600,15 @@ impl View {
                     Command::MetadataSetProperty(
                         metadata_id,
                         node_id.into(),
-                        "target.object".to_string(),
+                        String::from("target.object"),
                         None,
                         None,
                     ),
                     Command::MetadataSetProperty(
                         metadata_id,
                         node_id.into(),
-                        "target.node".to_string(),
-                        Some("Spa:Id".to_string()),
+                        String::from("target.node"),
+                        Some(String::from("Spa:Id")),
                         Some(target_id.to_string()),
                     ),
                 ]
@@ -780,7 +780,7 @@ impl View {
                     .find(|(target, _)| *target == default)
                     .map(|(_, name)| format!("Default: {}", name))
             })
-            .unwrap_or("Default: No default".to_string());
+            .unwrap_or(String::from("Default: No default"));
         // Sort targets by name
         targets.sort_by(|(_, a), (_, b)| a.cmp(b));
         // If the targets are nodes, add the default node to the top

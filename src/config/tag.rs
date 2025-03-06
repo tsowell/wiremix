@@ -33,20 +33,20 @@ impl ToString for Tag {
     fn to_string(&self) -> String {
         match self {
             Tag::Device(DeviceTag::DeviceName) => {
-                "device:device.name".to_string()
+                String::from("device:device.name")
             }
             Tag::Device(DeviceTag::DeviceNick) => {
-                "device:device.nick".to_string()
+                String::from("device:device.nick")
             }
             Tag::Device(DeviceTag::DeviceDescription) => {
-                "device:device.description".to_string()
+                String::from("device:device.description")
             }
-            Tag::Node(NodeTag::NodeName) => "node:node.name".to_string(),
-            Tag::Node(NodeTag::NodeNick) => "node:node.nick".to_string(),
+            Tag::Node(NodeTag::NodeName) => String::from("node:node.name"),
+            Tag::Node(NodeTag::NodeNick) => String::from("node:node.nick"),
             Tag::Node(NodeTag::NodeDescription) => {
-                "node:node.description".to_string()
+                String::from("node:node.description")
             }
-            Tag::Node(NodeTag::MediaName) => "node:media.name".to_string(),
+            Tag::Node(NodeTag::MediaName) => String::from("node:media.name"),
         }
     }
 }

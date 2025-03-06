@@ -32,7 +32,7 @@ pub fn capture_node(
     capture_sink: bool,
 ) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
     let mut props = properties! {
-        *pipewire::keys::TARGET_OBJECT => serial.to_string(),
+        *pipewire::keys::TARGET_OBJECT => String::from(serial),
         *pipewire::keys::STREAM_MONITOR => "true",
         *pipewire::keys::NODE_NAME => "pwmixer-capture",
     };
