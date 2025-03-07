@@ -49,6 +49,7 @@ pub enum Action {
     SetAbsoluteVolume(f32),
     SetRelativeVolume(f32),
     SetDefault,
+    Exit,
 }
 
 struct Tab {
@@ -308,7 +309,7 @@ impl App {
             KeyCode::Char('h') => {
                 self.handle_action(Action::SetRelativeVolume(-0.01));
             }
-            KeyCode::Char('q') => self.exit(None),
+            KeyCode::Char('q') => self.handle_action(Action::Exit),
             KeyCode::Char('c') => {
                 self.handle_action(Action::OpenDropdown);
             }
@@ -418,6 +419,9 @@ impl App {
                 for command in commands {
                     let _ = self.tx.send(command);
                 }
+            }
+            Action::Exit => {
+                self.exit(None);
             }
         }
     }
