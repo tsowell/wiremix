@@ -14,7 +14,6 @@ use pwmixer::config::Config;
 use pwmixer::input;
 use pwmixer::monitor;
 use pwmixer::opt::Opt;
-use pwmixer::vsync;
 
 fn main() -> Result<()> {
     // Event channel for sending PipeWire and input events to the UI
@@ -50,9 +49,6 @@ fn main() -> Result<()> {
         command_rx,
     )?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
-    let _vsync_handle = config
-        .fps
-        .map(|fps| vsync::spawn(Arc::clone(&event_tx), fps));
 
     #[cfg(debug_assertions)]
     if opt.dump_events {

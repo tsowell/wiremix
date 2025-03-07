@@ -16,7 +16,6 @@ pub mod popup_widget;
 pub mod state;
 pub mod truncate;
 pub mod view;
-pub mod vsync;
 
 #[cfg(feature = "trace")]
 pub mod trace;

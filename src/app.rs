@@ -1,6 +1,7 @@
 //! Main rendering and event processing for the application.
 
 use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use crate::config::Config;
 
@@ -78,10 +79,6 @@ pub struct App {
     rx: mpsc::Receiver<Event>,
     /// An error message to return to [`main`](`crate::main`) on exit
     error_message: Option<String>,
-    /// Only render on Vsync message
-    use_vsync: bool,
-    /// Indicates Vsync has been received since last render
-    is_render_pending: bool,
     /// The main tabs
     tabs: Vec<Tab>,
     /// The index of the currently-visible tab
@@ -141,8 +138,6 @@ impl App {
             tx,
             rx,
             error_message: Default::default(),
-            use_vsync: config.fps.is_some(),
-            is_render_pending: true,
             tabs,
             selected_tab_index: Default::default(),
             mouse_areas: Default::default(),
@@ -156,6 +151,15 @@ impl App {
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         #[cfg(feature = "trace")]
         trace::initialize_logging()?;
+
+        let frame_duration =
+            self.config.fps.map_or(Default::default(), |fps| {
+                Duration::from_secs_f32(1.0 / fps)
+            });
+        let mut next_frame_time = Instant::now();
+
+        // Did we handle any events and thus need to re-render?
+        let mut needs_render = true;
 
         while !self.exit {
             // Update view if needed
@@ -179,7 +183,11 @@ impl App {
                 self.handle_action(Action::ScrollDown);
             }
 
-            if self.is_render_pending {
+            let now = Instant::now();
+            if needs_render && now >= next_frame_time {
+                needs_render = false;
+                next_frame_time = now + frame_duration;
+
                 self.mouse_areas.clear();
 
                 terminal.draw(|frame| {
@@ -191,11 +199,11 @@ impl App {
                 })?;
             }
 
-            if self.use_vsync {
-                self.is_render_pending = false;
-            } /* Otherwise just leave it set. */
-
-            self.handle_events()?;
+            needs_render |= self.handle_events(
+                // If there's no fps limit, we definitely rendered in this
+                // iteration, so needs_render is false, and there is no timeout.
+                needs_render.then_some(next_frame_time - Instant::now()),
+            )?;
         }
 
         self.error_message.map_or(Ok(()), |s| Err(anyhow!(s)))
@@ -219,15 +227,24 @@ impl App {
         self.error_message = error_message;
     }
 
-    fn handle_events(&mut self) -> Result<()> {
-        // Block on getting the next event.
-        self.handle_event(self.rx.recv()?)?;
+    /// Handle events with optional timeout.
+    /// Returns true if events were handled.
+    fn handle_events(&mut self, timeout: Option<Duration>) -> Result<bool> {
+        match timeout {
+            Some(timeout) => match self.rx.recv_timeout(timeout) {
+                Ok(event) => self.handle_event(event)?,
+                Err(mpsc::RecvTimeoutError::Timeout) => return Ok(false),
+                Err(e) => return Err(e.into()),
+            },
+            // Block on the next event.
+            None => self.handle_event(self.rx.recv()?)?,
+        }
         // Then handle the rest that are available.
         while let Ok(event) = self.rx.try_recv() {
             self.handle_event(event)?;
         }
 
-        Ok(())
+        Ok(true)
     }
 
     fn handle_event(&mut self, event: Event) -> Result<()> {
@@ -256,10 +273,6 @@ impl App {
                 for command in self.state.update(event) {
                     let _ = self.tx.send(command);
                 }
-                Ok(())
-            }
-            Event::Vsync => {
-                self.is_render_pending = true;
                 Ok(())
             }
         }
