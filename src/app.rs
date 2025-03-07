@@ -39,8 +39,8 @@ use crate::{trace, trace_dbg};
 #[derive(Clone, Copy)]
 pub enum Action {
     SelectTab(usize),
-    ScrollUp,
-    ScrollDown,
+    MoveUp,
+    MoveDown,
     OpenDropdown,
     CloseDropdown,
     SelectObject(ObjectId),
@@ -180,7 +180,7 @@ impl App {
             if self.is_ready
                 && self.tabs[self.selected_tab_index].list.selected.is_none()
             {
-                self.handle_action(Action::ScrollDown);
+                self.handle_action(Action::MoveDown);
             }
 
             let now = Instant::now();
@@ -322,10 +322,10 @@ impl App {
                 }
             }
             KeyCode::Char('j') => {
-                self.handle_action(Action::ScrollDown);
+                self.handle_action(Action::MoveDown);
             }
             KeyCode::Char('k') => {
-                self.handle_action(Action::ScrollUp);
+                self.handle_action(Action::MoveUp);
             }
             KeyCode::Char('H') => {
                 self.selected_tab_index =
@@ -361,10 +361,10 @@ impl App {
     fn handle_action(&mut self, action: Action) {
         match action {
             Action::SelectTab(index) => self.selected_tab_index = index,
-            Action::ScrollDown => {
+            Action::MoveDown => {
                 self.tabs[self.selected_tab_index].list.down(&self.view);
             }
-            Action::ScrollUp => {
+            Action::MoveUp => {
                 self.tabs[self.selected_tab_index].list.up(&self.view);
             }
             Action::OpenDropdown => {

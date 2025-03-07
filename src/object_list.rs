@@ -375,25 +375,25 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         mouse_areas.push((
             header_area,
             vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::ScrollUp],
+            vec![Action::MoveUp],
         ));
 
         mouse_areas.push((
             footer_area,
             vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::ScrollDown],
+            vec![Action::MoveDown],
         ));
 
         mouse_areas.push((
             list_area,
             vec![MouseEventKind::ScrollUp],
-            vec![Action::ScrollUp],
+            vec![Action::MoveUp],
         ));
 
         mouse_areas.push((
             list_area,
             vec![MouseEventKind::ScrollDown],
-            vec![Action::ScrollDown],
+            vec![Action::MoveDown],
         ));
 
         let (spacing, height) = match self.object_list.list_type {

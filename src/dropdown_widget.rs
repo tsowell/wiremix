@@ -99,7 +99,7 @@ impl StatefulWidget for DropdownWidget<'_> {
             mouse_areas.push((
                 top_area,
                 vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::ScrollUp],
+                vec![Action::MoveUp],
             ));
         }
 
@@ -126,7 +126,7 @@ impl StatefulWidget for DropdownWidget<'_> {
             mouse_areas.push((
                 bottom_area,
                 vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::ScrollDown],
+                vec![Action::MoveDown],
             ));
         }
 
