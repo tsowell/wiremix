@@ -70,27 +70,29 @@ pub struct Node {
 
 impl Node {
     /// Update peaks with VU-meter-style ballistics
-    pub fn update_peaks(&mut self, peaks: Vec<f32>, samples: u32) {
+    pub fn update_peaks(&mut self, peaks: &Vec<f32>, samples: u32) {
         let Some(rate) = self.rate else {
             return;
         };
-        let current_peaks =
-            self.peaks.clone().unwrap_or(vec![0.0; peaks.len()]);
+
+        // Initialize or resize current peaks.
+        let peaks_ref = self.peaks.get_or_insert_default();
+        if peaks_ref.len() != peaks.len() {
+            // New length, clean slate.
+            peaks_ref.clear();
+        }
+        // Make sure it's the right size.
+        peaks_ref.resize(peaks.len(), 0.0);
 
         // Attack/release time of 300 ms
         let time_constant = 0.3;
         let coef =
             1.0 - (-(samples as f32) / (time_constant * rate as f32)).exp();
 
-        self.peaks = Some(
-            current_peaks
-                .into_iter()
-                .zip(peaks)
-                .map(|(current_peak, peak)| {
-                    current_peak + (peak - current_peak) * coef
-                })
-                .collect(),
-        );
+        // Update the peaks in-place.
+        for (current_peak, new_peak) in peaks_ref.iter_mut().zip(peaks) {
+            *current_peak += (new_peak - *current_peak) * coef
+        }
     }
 }
 
@@ -285,7 +287,7 @@ impl State {
                 }
             }
             MonitorEvent::NodePeaks(id, peaks, samples) => {
-                self.node_entry(id).update_peaks(peaks, samples);
+                self.node_entry(id).update_peaks(&peaks, samples);
             }
             MonitorEvent::NodeRate(id, rate) => {
                 self.node_entry(id).rate = Some(rate);

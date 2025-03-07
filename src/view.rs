@@ -537,7 +537,15 @@ impl View {
     pub fn update_peaks(&mut self, state: &state::State) {
         for state_node in state.nodes.values() {
             if let Some(node) = self.nodes.get_mut(&state_node.id) {
-                node.peaks = state_node.peaks.clone();
+                match &state_node.peaks {
+                    Some(peaks) => {
+                        let peaks_ref = node.peaks.get_or_insert_default();
+                        peaks_ref.clear();
+                        peaks_ref.extend(peaks);
+                        peaks_ref.shrink_to_fit();
+                    }
+                    _ => node.peaks = None,
+                }
             }
         }
     }
