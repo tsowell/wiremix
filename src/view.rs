@@ -186,7 +186,7 @@ fn active_route(
 }
 
 impl Node {
-    pub fn from(
+    fn from(
         state: &state::State,
         names: &config::Names,
         sources: &[(Target, String)],
@@ -315,7 +315,7 @@ impl Node {
 }
 
 impl Device {
-    pub fn from(
+    fn from(
         state: &state::State,
         device: &state::Device,
         names: &config::Names,
