@@ -13,9 +13,9 @@ use crate::app::{Action, MouseArea};
 use crate::command::Command;
 use crate::device_type::DeviceType;
 use crate::device_widget::DeviceWidget;
+use crate::dropdown_widget::DropdownWidget;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
-use crate::popup_widget::PopupWidget;
 use crate::view::{self, ListType, VolumeAdjustment};
 
 /// ObjectList stores information for filtering and displaying a subset of
@@ -32,7 +32,7 @@ pub struct ObjectList {
     list_type: ListType,
     /// Default device type to use for defaults and node rendering
     device_type: Option<DeviceType>,
-    /// Target popup state
+    /// Target dropdown state
     pub list_state: ListState,
     /// Targets
     pub targets: Vec<(view::Target, String)>,
@@ -72,7 +72,7 @@ impl ObjectList {
         }
     }
 
-    pub fn popup_open(&mut self, view: &view::View) {
+    pub fn dropdown_open(&mut self, view: &view::View) {
         let targets = match self.list_type {
             ListType::Node(_) => self
                 .selected
@@ -96,7 +96,7 @@ impl ObjectList {
             .map(|(target, _)| target)
     }
 
-    pub fn popup_select(&mut self, view: &view::View) -> Vec<Command> {
+    pub fn dropdown_select(&mut self, view: &view::View) -> Vec<Command> {
         let commands = self
             .selected
             .zip(self.selected_target())
@@ -108,7 +108,7 @@ impl ObjectList {
         commands
     }
 
-    pub fn popup_close(&mut self) {
+    pub fn dropdown_close(&mut self) {
         self.list_state.select(None);
     }
 
@@ -284,7 +284,7 @@ impl ObjectListWidget<'_> {
                 .render(object_area, buf, mouse_areas);
         }
 
-        // Show the target popup?
+        // Show the target dropdown?
         if self.object_list.list_state.selected().is_some() {
             // Get the area for the selected object
             if let Some((_, object_area)) =
@@ -295,9 +295,9 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                PopupWidget::new(
+                DropdownWidget::new(
                     self.object_list,
-                    &NodeWidget::popup_area(
+                    &NodeWidget::dropdown_area(
                         self.object_list,
                         &context.list_area,
                         object_area,
@@ -338,7 +338,7 @@ impl ObjectListWidget<'_> {
             );
         }
 
-        // Show the target popup?
+        // Show the target dropdown?
         if self.object_list.list_state.selected().is_some() {
             // Get the area for the selected object
             if let Some((_, object_area)) =
@@ -349,9 +349,9 @@ impl ObjectListWidget<'_> {
                         .unwrap_or_default()
                 })
             {
-                PopupWidget::new(
+                DropdownWidget::new(
                     self.object_list,
-                    &DeviceWidget::popup_area(
+                    &DeviceWidget::dropdown_area(
                         self.object_list,
                         &context.list_area,
                         object_area,

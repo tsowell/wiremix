@@ -41,8 +41,8 @@ pub enum Action {
     SelectTab(usize),
     ScrollUp,
     ScrollDown,
-    OpenPopup,
-    ClosePopup,
+    OpenDropdown,
+    CloseDropdown,
     SelectObject(ObjectId),
     SetTarget(view::Target),
     ToggleMute,
@@ -310,13 +310,13 @@ impl App {
             }
             KeyCode::Char('q') => self.exit(None),
             KeyCode::Char('c') => {
-                self.handle_action(Action::OpenPopup);
+                self.handle_action(Action::OpenDropdown);
             }
-            KeyCode::Esc => self.handle_action(Action::ClosePopup),
+            KeyCode::Esc => self.handle_action(Action::CloseDropdown),
             KeyCode::Enter => {
                 let commands = self.tabs[self.selected_tab_index]
                     .list
-                    .popup_select(&self.view);
+                    .dropdown_select(&self.view);
                 for command in commands {
                     let _ = self.tx.send(command);
                 }
@@ -367,13 +367,13 @@ impl App {
             Action::ScrollUp => {
                 self.tabs[self.selected_tab_index].list.up(&self.view);
             }
-            Action::OpenPopup => {
+            Action::OpenDropdown => {
                 self.tabs[self.selected_tab_index]
                     .list
-                    .popup_open(&self.view);
+                    .dropdown_open(&self.view);
             }
-            Action::ClosePopup => {
-                self.tabs[self.selected_tab_index].list.popup_close();
+            Action::CloseDropdown => {
+                self.tabs[self.selected_tab_index].list.dropdown_close();
             }
             Action::SetTarget(target) => {
                 let commands = self.tabs[self.selected_tab_index]

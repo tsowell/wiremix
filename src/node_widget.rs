@@ -65,8 +65,8 @@ impl<'a> NodeWidget<'a> {
         2
     }
 
-    /// Area for the target popup
-    pub fn popup_area(
+    /// Area for the target dropdown
+    pub fn dropdown_area(
         object_list: &ObjectList,
         list_area: &Rect,
         object_area: &Rect,
@@ -197,7 +197,7 @@ impl StatefulWidget for NodeWidget<'_> {
         mouse_areas.push((
             header_right,
             vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.node.id), Action::OpenPopup],
+            vec![Action::SelectObject(self.node.id), Action::OpenDropdown],
         ));
 
         let default_string = if is_default(self.node, self.device_type) {

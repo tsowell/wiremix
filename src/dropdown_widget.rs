@@ -1,4 +1,4 @@
-//! A Ratatui widget for a popup menu of options pertaining to a node or device
+//! A Ratatui widget for a dropdown menu of options pertaining to a node or device
 //! widget.
 
 use ratatui::{
@@ -13,21 +13,24 @@ use crossterm::event::{MouseButton, MouseEventKind};
 use crate::app::{Action, MouseArea};
 use crate::object_list::ObjectList;
 
-pub struct PopupWidget<'a> {
+pub struct DropdownWidget<'a> {
     object_list: &'a mut ObjectList,
-    popup_area: &'a Rect,
+    dropdown_area: &'a Rect,
 }
 
-impl<'a> PopupWidget<'a> {
-    pub fn new(object_list: &'a mut ObjectList, popup_area: &'a Rect) -> Self {
+impl<'a> DropdownWidget<'a> {
+    pub fn new(
+        object_list: &'a mut ObjectList,
+        dropdown_area: &'a Rect,
+    ) -> Self {
         Self {
             object_list,
-            popup_area,
+            dropdown_area,
         }
     }
 }
 
-impl StatefulWidget for PopupWidget<'_> {
+impl StatefulWidget for DropdownWidget<'_> {
     type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -40,23 +43,23 @@ impl StatefulWidget for PopupWidget<'_> {
             .map(|(_, title)| title.clone())
             .collect();
 
-        let popup_area = self.popup_area.clamp(area);
+        let dropdown_area = self.dropdown_area.clamp(area);
 
-        // Click anywhere else in the object list to close the popup.
+        // Click anywhere else in the object list to close the dropdown.
         mouse_areas.push((
             area,
             vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::ClosePopup],
+            vec![Action::CloseDropdown],
         ));
 
         // But clicking on the border does nothing.
         mouse_areas.push((
-            popup_area,
+            dropdown_area,
             vec![MouseEventKind::Down(MouseButton::Left)],
             vec![],
         ));
 
-        Clear.render(popup_area, buf);
+        Clear.render(dropdown_area, buf);
 
         let list = List::new(targets)
             .block(Block::default().borders(Borders::ALL))
@@ -69,7 +72,7 @@ impl StatefulWidget for PopupWidget<'_> {
 
         StatefulWidget::render(
             &list,
-            popup_area,
+            dropdown_area,
             buf,
             &mut self.object_list.list_state,
         );
@@ -79,8 +82,12 @@ impl StatefulWidget for PopupWidget<'_> {
         // Add a clickable indicator to the top border if there or more items
         // if scrolled up
         if first_index > 0 {
-            let top_area =
-                Rect::new(popup_area.x, popup_area.y, popup_area.width, 1);
+            let top_area = Rect::new(
+                dropdown_area.x,
+                dropdown_area.y,
+                dropdown_area.width,
+                1,
+            );
 
             Line::from(Span::styled(
                 "•••",
@@ -97,16 +104,17 @@ impl StatefulWidget for PopupWidget<'_> {
         }
 
         // Subtract 2 for vertical borders
-        let popup_area_inner_height =
-            (popup_area.height as usize).saturating_sub(2);
-        let last_index = first_index.saturating_add(popup_area_inner_height);
+        let dropdown_area_inner_height =
+            (dropdown_area.height as usize).saturating_sub(2);
+        let last_index = first_index.saturating_add(dropdown_area_inner_height);
         // Add a clickable indicator to the bottom border if there or more
         // items if scrolled down
         if last_index < self.object_list.targets.len() {
-            let y = popup_area
+            let y = dropdown_area
                 .y
-                .saturating_add(popup_area.height.saturating_sub(1));
-            let bottom_area = Rect::new(popup_area.x, y, popup_area.width, 1);
+                .saturating_add(dropdown_area.height.saturating_sub(1));
+            let bottom_area =
+                Rect::new(dropdown_area.x, y, dropdown_area.width, 1);
 
             Line::from(Span::styled(
                 "•••",
@@ -122,11 +130,11 @@ impl StatefulWidget for PopupWidget<'_> {
             ));
         }
 
-        for i in 0..(popup_area.height - 2) {
+        for i in 0..(dropdown_area.height - 2) {
             let target_area = Rect::new(
-                popup_area.x,
-                popup_area.y.saturating_add(1).saturating_add(i),
-                popup_area.width,
+                dropdown_area.x,
+                dropdown_area.y.saturating_add(1).saturating_add(i),
+                dropdown_area.width,
                 1,
             );
 

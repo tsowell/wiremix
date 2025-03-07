@@ -34,8 +34,8 @@ impl<'a> DeviceWidget<'a> {
         2
     }
 
-    /// Area for the target popup
-    pub fn popup_area(
+    /// Area for the target dropdown
+    pub fn dropdown_area(
         object_list: &ObjectList,
         list_area: &Rect,
         object_area: &Rect,
@@ -50,7 +50,7 @@ impl<'a> DeviceWidget<'a> {
             .max()
             .unwrap_or(0);
 
-        // Position the popup so that the first item is over the displayed item
+        // Position the dropdown so that the first item is over the displayed item
         let x = list_area.left().saturating_add(4);
         let y = object_area.top().saturating_add(1);
         // Add 2 for vertical borders and 2 for highlight symbol
@@ -120,7 +120,7 @@ impl StatefulWidget for DeviceWidget<'_> {
         mouse_areas.push((
             target_area,
             vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.device.id), Action::OpenPopup],
+            vec![Action::SelectObject(self.device.id), Action::OpenDropdown],
         ));
     }
 }
