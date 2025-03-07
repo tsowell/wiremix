@@ -249,7 +249,7 @@ impl Node {
                 None => (None, String::from("No route selected")),
             };
 
-            Some((Some(routes), target, target_title))
+            (Some(routes), target, target_title)
         } else if media_class.is_sink_input() {
             let outputs = state.outputs(id);
             let sink = sinks.iter().find(|(target, _)| {
@@ -268,7 +268,7 @@ impl Node {
                     sink.map(|(_, title)| title.clone()).unwrap_or_default(),
                 )
             };
-            Some((None, target, target_title))
+            (None, target, target_title)
         } else if media_class.is_source_output() {
             let inputs = state.inputs(id);
             let source = sources.iter().find(|(target, _)| {
@@ -288,10 +288,10 @@ impl Node {
                     source.map(|(_, title)| title.clone()).unwrap_or_default(),
                 )
             };
-            Some((None, target, target_title))
+            (None, target, target_title)
         } else {
-            None
-        }?;
+            (None, None, String::from("No route selected"))
+        };
 
         Some(Self {
             id,
