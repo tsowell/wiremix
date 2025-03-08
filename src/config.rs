@@ -4,13 +4,16 @@ mod name_template;
 mod names;
 mod tag;
 
+use crossterm::event::KeyCode;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use toml;
 
+use crate::app::Action;
 use crate::opt::Opt;
 use crate::state;
 
@@ -18,8 +21,19 @@ use crate::state;
 pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
+    #[serde(
+        default = "Keybinding::defaults",
+        deserialize_with = "Keybinding::merge"
+    )]
+    pub keybindings: HashMap<KeyCode, Action>,
     #[serde(default)]
     pub names: Names,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Keybinding {
+    pub key: KeyCode,
+    pub action: Action,
 }
 
 #[derive(Deserialize, Debug)]
@@ -74,6 +88,43 @@ impl Default for Names {
             device: Self::default_device(),
             overrides: Default::default(),
         }
+    }
+}
+
+impl Keybinding {
+    fn defaults() -> HashMap<KeyCode, Action> {
+        HashMap::from([
+            (KeyCode::Char('q'), Action::Exit),
+            (KeyCode::Char('m'), Action::ToggleMute),
+            (KeyCode::Char('d'), Action::SetDefault),
+            (KeyCode::Char('l'), Action::SetRelativeVolume(0.01)),
+            (KeyCode::Char('h'), Action::SetRelativeVolume(-0.01)),
+            (KeyCode::Char('c'), Action::OpenDropdown),
+            (KeyCode::Esc, Action::CloseDropdown),
+            (KeyCode::Enter, Action::SelectDropdown),
+            (KeyCode::Char('j'), Action::MoveDown),
+            (KeyCode::Char('k'), Action::MoveUp),
+            (KeyCode::Char('H'), Action::TabLeft),
+            (KeyCode::Char('L'), Action::TabRight),
+        ])
+    }
+
+    /// Merge deserialized keybindings with defaults
+    fn merge<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<KeyCode, Action>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let mut keybindings = Self::defaults();
+
+        let configured = Vec::<Keybinding>::deserialize(deserializer)?;
+
+        for keybinding in configured.into_iter() {
+            keybindings.insert(keybinding.key, keybinding.action);
+        }
+
+        Ok(keybindings)
     }
 }
 

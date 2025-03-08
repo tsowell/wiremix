@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.95"
 clap = { version = "4.5.26", features = ["derive"] }
-crossterm = { version = "0.28.1", features = ["event-stream"] }
+crossterm = { version = "0.28.1", features = ["event-stream", "serde"] }
 futures = "0.3.31"
 futures-timer = "3.0.3"
 itertools = "0.14.0"
