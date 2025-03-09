@@ -240,7 +240,7 @@ impl App {
     /// Handle events with optional timeout.
     /// Returns true if events were handled.
     fn handle_events(&mut self, timeout: Option<Duration>) -> Result<bool> {
-        match timeout {
+        let mut were_events_handled = match timeout {
             Some(timeout) => match self.rx.recv_timeout(timeout) {
                 Ok(event) => self.handle_event(event)?,
                 Err(mpsc::RecvTimeoutError::Timeout) => return Ok(false),
@@ -248,21 +248,21 @@ impl App {
             },
             // Block on the next event.
             None => self.handle_event(self.rx.recv()?)?,
-        }
+        };
         // Then handle the rest that are available.
         while let Ok(event) = self.rx.try_recv() {
-            self.handle_event(event)?;
+            were_events_handled |= self.handle_event(event)?;
         }
 
-        Ok(true)
+        Ok(were_events_handled)
     }
 
-    fn handle_event(&mut self, event: Event) -> Result<()> {
+    fn handle_event(&mut self, event: Event) -> Result<bool> {
         #[cfg(feature = "trace")]
         trace_dbg!(&event);
 
         match event {
-            Event::Input(event) => self.handle_input_event(event),
+            Event::Input(event) => Ok(self.handle_input_event(event)),
             Event::Error(error) => {
                 match error {
                     // These happen when objects are removed while the monitor
@@ -273,22 +273,22 @@ impl App {
                     error if error == "Received error event" => {}
                     _ => self.exit(Some(error)),
                 }
-                Ok(())
+                Ok(false) // This makes sense for now.
             }
             Event::Ready => {
                 self.is_ready = true;
-                Ok(())
+                Ok(true)
             }
             Event::Monitor(event) => {
                 for command in self.state.update(event) {
                     let _ = self.tx.send(command);
                 }
-                Ok(())
+                Ok(true)
             }
         }
     }
 
-    fn handle_input_event(&mut self, event: CrosstermEvent) -> Result<()> {
+    fn handle_input_event(&mut self, event: CrosstermEvent) -> bool {
         match event {
             CrosstermEvent::Key(key_event)
                 if key_event.kind == KeyEventKind::Press =>
@@ -298,19 +298,21 @@ impl App {
             CrosstermEvent::Mouse(mouse_event) => {
                 self.handle_mouse_event(mouse_event)
             }
-            _ => (),
-        };
-
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        if let Some(&action) = self.config.keybindings.get(&key_event.code) {
-            self.handle_action(action);
+            CrosstermEvent::Resize(..) => true,
+            _ => false,
         }
     }
 
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) {
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
+        if let Some(&action) = self.config.keybindings.get(&key_event.code) {
+            self.handle_action(action);
+            return true;
+        }
+
+        false
+    }
+
+    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
         let actions = self
             .mouse_areas
             .iter()
@@ -325,9 +327,13 @@ impl App {
             .into_iter()
             .flatten();
 
+        let mut handled_action = false;
         for action in actions {
+            handled_action = true;
             self.handle_action(action);
         }
+
+        handled_action
     }
 
     fn handle_action(&mut self, action: Action) {
