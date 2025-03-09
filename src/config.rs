@@ -4,7 +4,7 @@ mod name_template;
 mod names;
 mod tag;
 
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -25,7 +25,7 @@ pub struct Config {
         default = "Keybinding::defaults",
         deserialize_with = "Keybinding::merge"
     )]
-    pub keybindings: HashMap<KeyCode, Action>,
+    pub keybindings: HashMap<KeyEvent, Action>,
     #[serde(default)]
     pub names: Names,
 }
@@ -33,6 +33,8 @@ pub struct Config {
 #[derive(Deserialize, Debug)]
 pub struct Keybinding {
     pub key: KeyCode,
+    #[serde(default = "Keybinding::default_modifiers")]
+    pub modifiers: KeyModifiers,
     pub action: Action,
 }
 
@@ -92,27 +94,44 @@ impl Default for Names {
 }
 
 impl Keybinding {
-    fn defaults() -> HashMap<KeyCode, Action> {
+    fn key_event_from(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
+
+    fn defaults() -> HashMap<KeyEvent, Action> {
         HashMap::from([
-            (KeyCode::Char('q'), Action::Exit),
-            (KeyCode::Char('m'), Action::ToggleMute),
-            (KeyCode::Char('d'), Action::SetDefault),
-            (KeyCode::Char('l'), Action::SetRelativeVolume(0.01)),
-            (KeyCode::Char('h'), Action::SetRelativeVolume(-0.01)),
-            (KeyCode::Char('c'), Action::OpenDropdown),
-            (KeyCode::Esc, Action::CloseDropdown),
-            (KeyCode::Enter, Action::SelectDropdown),
-            (KeyCode::Char('j'), Action::MoveDown),
-            (KeyCode::Char('k'), Action::MoveUp),
-            (KeyCode::Char('H'), Action::TabLeft),
-            (KeyCode::Char('L'), Action::TabRight),
+            (Self::key_event_from(KeyCode::Char('q')), Action::Exit),
+            (Self::key_event_from(KeyCode::Char('m')), Action::ToggleMute),
+            (Self::key_event_from(KeyCode::Char('d')), Action::SetDefault),
+            (
+                Self::key_event_from(KeyCode::Char('l')),
+                Action::SetRelativeVolume(0.01),
+            ),
+            (
+                Self::key_event_from(KeyCode::Char('h')),
+                Action::SetRelativeVolume(-0.01),
+            ),
+            (
+                Self::key_event_from(KeyCode::Char('c')),
+                Action::OpenDropdown,
+            ),
+            (Self::key_event_from(KeyCode::Esc), Action::CloseDropdown),
+            (Self::key_event_from(KeyCode::Enter), Action::SelectDropdown),
+            (Self::key_event_from(KeyCode::Char('j')), Action::MoveDown),
+            (Self::key_event_from(KeyCode::Char('k')), Action::MoveUp),
+            (Self::key_event_from(KeyCode::Char('H')), Action::TabLeft),
+            (Self::key_event_from(KeyCode::Char('L')), Action::TabRight),
         ])
+    }
+
+    fn default_modifiers() -> KeyModifiers {
+        KeyModifiers::NONE
     }
 
     /// Merge deserialized keybindings with defaults
     fn merge<'de, D>(
         deserializer: D,
-    ) -> Result<HashMap<KeyCode, Action>, D::Error>
+    ) -> Result<HashMap<KeyEvent, Action>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -121,7 +140,10 @@ impl Keybinding {
         let configured = Vec::<Keybinding>::deserialize(deserializer)?;
 
         for keybinding in configured.into_iter() {
-            keybindings.insert(keybinding.key, keybinding.action);
+            keybindings.insert(
+                KeyEvent::new(keybinding.key, keybinding.modifiers),
+                keybinding.action,
+            );
         }
 
         Ok(keybindings)

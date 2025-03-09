@@ -304,7 +304,7 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
-        if let Some(&action) = self.config.keybindings.get(&key_event.code) {
+        if let Some(&action) = self.config.keybindings.get(&key_event) {
             self.handle_action(action);
             return true;
         }
