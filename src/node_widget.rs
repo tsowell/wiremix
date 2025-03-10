@@ -243,7 +243,7 @@ impl StatefulWidget for NodeWidget<'_> {
         if !volumes.is_empty() {
             let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
             let volume = mean.cbrt();
-            let percent = (volume * 100.0) as u32;
+            let percent = (volume * 100.0).round() as u32;
 
             Line::from(format!("{}%", percent))
                 .alignment(Alignment::Right)
