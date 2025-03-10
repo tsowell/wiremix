@@ -50,6 +50,22 @@ pub struct Names {
     pub overrides: Vec<NameOverride>,
 }
 
+#[derive(PartialEq, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum OverrideType {
+    Stream,
+    Endpoint,
+    Device,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct NameOverride {
+    pub types: Vec<OverrideType>,
+    pub property: names::Tag,
+    pub value: String,
+    pub templates: Vec<names::NameTemplate>,
+}
+
 impl Names {
     fn default_stream() -> Vec<names::NameTemplate> {
         vec!["{node:node.name}: {node:media.name}".parse().unwrap()]
@@ -192,22 +208,6 @@ impl Keybinding {
 
         Ok(keybindings)
     }
-}
-
-#[derive(PartialEq, Deserialize, Debug)]
-#[serde(rename_all = "lowercase")]
-pub enum OverrideType {
-    Stream,
-    Endpoint,
-    Device,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct NameOverride {
-    pub types: Vec<OverrideType>,
-    pub property: names::Tag,
-    pub value: String,
-    pub templates: Vec<names::NameTemplate>,
 }
 
 impl Config {
