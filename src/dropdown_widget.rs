@@ -11,21 +11,25 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
+use crate::config::Config;
 use crate::object_list::ObjectList;
 
 pub struct DropdownWidget<'a> {
     object_list: &'a mut ObjectList,
     dropdown_area: &'a Rect,
+    config: &'a Config,
 }
 
 impl<'a> DropdownWidget<'a> {
     pub fn new(
         object_list: &'a mut ObjectList,
         dropdown_area: &'a Rect,
+        config: &'a Config,
     ) -> Self {
         Self {
             object_list,
             dropdown_area,
+            config,
         }
     }
 }
@@ -61,9 +65,11 @@ impl StatefulWidget for DropdownWidget<'_> {
 
         Clear.render(dropdown_area, buf);
 
+        let highlight_symbol =
+            format!("{} ", self.config.char_set.dropdown_item_selected);
         let list = List::new(targets)
             .block(Block::default().borders(Borders::ALL))
-            .highlight_symbol("> ")
+            .highlight_symbol(&highlight_symbol)
             .highlight_style(
                 Style::default()
                     .fg(Color::LightCyan)
@@ -90,7 +96,7 @@ impl StatefulWidget for DropdownWidget<'_> {
             );
 
             Line::from(Span::styled(
-                "•••",
+                &self.config.char_set.dropdown_more,
                 Style::default().fg(Color::DarkGray),
             ))
             .alignment(Alignment::Center)
@@ -117,7 +123,7 @@ impl StatefulWidget for DropdownWidget<'_> {
                 Rect::new(dropdown_area.x, y, dropdown_area.width, 1);
 
             Line::from(Span::styled(
-                "•••",
+                &self.config.char_set.dropdown_more,
                 Style::default().fg(Color::DarkGray),
             ))
             .alignment(Alignment::Center)

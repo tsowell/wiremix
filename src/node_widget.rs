@@ -11,6 +11,7 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
+use crate::config::Config;
 use crate::device_type::DeviceType;
 use crate::meter;
 use crate::object_list::ObjectList;
@@ -40,6 +41,7 @@ pub struct NodeWidget<'a> {
     node: &'a view::Node,
     selected: bool,
     device_type: Option<DeviceType>,
+    config: &'a Config,
 }
 
 impl<'a> NodeWidget<'a> {
@@ -47,11 +49,13 @@ impl<'a> NodeWidget<'a> {
         node: &'a view::Node,
         selected: bool,
         device_type: Option<DeviceType>,
+        config: &'a Config,
     ) -> Self {
         Self {
             node,
             selected,
             device_type,
+            config,
         }
     }
 
@@ -154,9 +158,22 @@ impl StatefulWidget for NodeWidget<'_> {
 
             let style = Style::default().fg(Color::LightCyan);
 
-            Line::from(Span::styled("░", style)).render(rows[0], buf);
-            Line::from(Span::styled("▒", style)).render(rows[1], buf);
-            Line::from(Span::styled("░", style)).render(rows[2], buf);
+            // Render the selected node indicator
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_top,
+                style,
+            ))
+            .render(rows[0], buf);
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_center,
+                style,
+            ))
+            .render(rows[1], buf);
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_bottom,
+                style,
+            ))
+            .render(rows[2], buf);
         }
 
         let layout = Layout::default()
@@ -174,7 +191,11 @@ impl StatefulWidget for NodeWidget<'_> {
         let node_title = node_title(self.node, self.device_type);
         let target_title = match self.node.target {
             Some(view::Target::Default) => {
-                format!("◇ {}", self.node.target_title)
+                // Add the default target indicator
+                format!(
+                    "{} {}",
+                    self.config.char_set.default_target, self.node.target_title
+                )
             }
             _ => self.node.target_title.clone(),
         };
@@ -201,9 +222,9 @@ impl StatefulWidget for NodeWidget<'_> {
         ));
 
         let default_string = if is_default(self.node, self.device_type) {
-            "◇ "
+            format!("{} ", self.config.char_set.default_endpoint)
         } else {
-            "  "
+            String::from("  ")
         };
         let node_title = truncate::with_ellipses(
             &node_title,
@@ -252,9 +273,13 @@ impl StatefulWidget for NodeWidget<'_> {
             let count = ((volume.clamp(0.0, 1.5) / 1.5)
                 * volume_bar.width as f32) as usize;
 
-            let filled = "━".repeat(count);
-            let blank =
-                "╌".repeat((volume_bar.width as usize).saturating_sub(count));
+            let filled =
+                self.config.char_set.volume_bar_foreground.repeat(count);
+            let blank = self
+                .config
+                .char_set
+                .volume_bar_background
+                .repeat((volume_bar.width as usize).saturating_sub(count));
             Line::from(vec![
                 Span::styled(filled, Style::default().fg(Color::Blue)),
                 Span::styled(blank, Style::default().fg(Color::DarkGray)),
@@ -305,14 +330,18 @@ impl StatefulWidget for NodeWidget<'_> {
 
         // Render peaks
         match self.node.peaks.as_deref() {
-            Some([left, right]) => {
-                meter::render_stereo(meter_area, buf, Some((*left, *right)))
-            }
+            Some([left, right]) => meter::render_stereo(
+                meter_area,
+                buf,
+                Some((*left, *right)),
+                self.config,
+            ),
             Some(peaks @ [..]) => meter::render_mono(
                 meter_area,
                 buf,
                 (!peaks.is_empty())
                     .then_some(peaks.iter().sum::<f32>() / peaks.len() as f32),
+                self.config,
             ),
             _ => match self
                 .node
@@ -320,8 +349,10 @@ impl StatefulWidget for NodeWidget<'_> {
                 .as_ref()
                 .map(|positions| positions.len())
             {
-                Some(2) => meter::render_stereo(meter_area, buf, None),
-                _ => meter::render_mono(meter_area, buf, None),
+                Some(2) => {
+                    meter::render_stereo(meter_area, buf, None, self.config)
+                }
+                _ => meter::render_mono(meter_area, buf, None, self.config),
             },
         }
     }

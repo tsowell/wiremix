@@ -11,6 +11,7 @@ use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
 use crate::command::Command;
+use crate::config::Config;
 use crate::device_type::DeviceType;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
@@ -247,6 +248,7 @@ impl ObjectList {
 pub struct ObjectListWidget<'a> {
     pub object_list: &'a mut ObjectList,
     pub view: &'a view::View,
+    pub config: &'a Config,
 }
 
 struct ObjectListRenderContext<'a> {
@@ -280,8 +282,13 @@ impl ObjectListWidget<'_> {
                 .selected
                 .map(|id| id == object.id)
                 .unwrap_or_default();
-            NodeWidget::new(object, selected, self.object_list.device_type)
-                .render(object_area, buf, mouse_areas);
+            NodeWidget::new(
+                object,
+                selected,
+                self.object_list.device_type,
+                self.config,
+            )
+            .render(object_area, buf, mouse_areas);
         }
 
         // Show the target dropdown?
@@ -302,6 +309,7 @@ impl ObjectListWidget<'_> {
                         &context.list_area,
                         object_area,
                     ),
+                    self.config,
                 )
                 .render(area, buf, mouse_areas);
             }
@@ -331,7 +339,7 @@ impl ObjectListWidget<'_> {
                 .selected
                 .map(|id| id == object.id)
                 .unwrap_or_default();
-            DeviceWidget::new(object, selected).render(
+            DeviceWidget::new(object, selected, self.config).render(
                 object_area,
                 buf,
                 mouse_areas,
@@ -356,6 +364,7 @@ impl ObjectListWidget<'_> {
                         &context.list_area,
                         object_area,
                     ),
+                    self.config,
                 )
                 .render(area, buf, mouse_areas);
             }
@@ -411,7 +420,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         // Indicate we can scroll up if there are objects above the viewport.
         if self.object_list.top > 0 {
             Line::from(Span::styled(
-                "•••",
+                &self.config.char_set.objects_more,
                 Style::default().fg(Color::DarkGray),
             ))
             .alignment(Alignment::Center)
@@ -431,7 +440,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             && !(is_bottom_last && is_bottom_enough)
         {
             Line::from(Span::styled(
-                "•••",
+                &self.config.char_set.objects_more,
                 Style::default().fg(Color::DarkGray),
             ))
             .alignment(Alignment::Center)

@@ -11,17 +11,27 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
+use crate::config::Config;
 use crate::object_list::ObjectList;
 use crate::view;
 
 pub struct DeviceWidget<'a> {
     device: &'a view::Device,
     selected: bool,
+    config: &'a Config,
 }
 
 impl<'a> DeviceWidget<'a> {
-    pub fn new(device: &'a view::Device, selected: bool) -> Self {
-        Self { device, selected }
+    pub fn new(
+        device: &'a view::Device,
+        selected: bool,
+        config: &'a Config,
+    ) -> Self {
+        Self {
+            device,
+            selected,
+            config,
+        }
     }
 
     /// Height of a full device display.
@@ -96,9 +106,21 @@ impl StatefulWidget for DeviceWidget<'_> {
 
             let style = Style::default().fg(Color::LightCyan);
 
-            Line::from(Span::styled("░", style)).render(rows[0], buf);
-            Line::from(Span::styled("▒", style)).render(rows[1], buf);
-            Line::from(Span::styled("░", style)).render(rows[2], buf);
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_top,
+                style,
+            ))
+            .render(rows[0], buf);
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_center,
+                style,
+            ))
+            .render(rows[1], buf);
+            Line::from(Span::styled(
+                &self.config.char_set.object_selected_bottom,
+                style,
+            ))
+            .render(rows[2], buf);
         }
 
         let layout = Layout::default()
@@ -115,8 +137,11 @@ impl StatefulWidget for DeviceWidget<'_> {
 
         Line::from(format!("   {}", self.device.title)).render(title_area, buf);
 
-        Line::from(format!("    ▼ {}", self.device.target_title))
-            .render(target_area, buf);
+        Line::from(format!(
+            "    {} {}",
+            self.config.char_set.dropdown, self.device.target_title
+        ))
+        .render(target_area, buf);
         mouse_areas.push((
             target_area,
             vec![MouseEventKind::Down(MouseButton::Left)],

@@ -29,18 +29,7 @@ fn main() -> Result<()> {
     let config_default_path = Config::default_path();
     let config_path = opt.config.as_deref().or(config_default_path.as_deref());
 
-    let mut config = match config_path {
-        Some(path) => {
-            if path.exists() {
-                Config::try_from(path)?
-            } else {
-                Default::default()
-            }
-        }
-        None => Default::default(),
-    };
-    config.apply_opt(&opt);
-    let config = config;
+    let config = Config::try_new(config_path, &opt)?;
 
     // Spawn the PipeWire monitor
     let _monitor_handle = monitor::spawn(

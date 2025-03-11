@@ -223,6 +223,7 @@ impl App {
         let widget = AppWidget {
             selected_tab_index: self.selected_tab_index,
             view: &self.view,
+            config: &self.config,
         };
         let mut widget_state = AppWidgetState {
             mouse_areas: &mut self.mouse_areas,
@@ -423,6 +424,7 @@ impl App {
 pub struct AppWidget<'a> {
     selected_tab_index: usize,
     view: &'a View,
+    config: &'a Config,
 }
 
 pub struct AppWidgetState<'a> {
@@ -458,7 +460,12 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         for (i, tab) in state.tabs.iter().enumerate() {
             let (title, style) = if i == self.selected_tab_index {
                 (
-                    format!("[{}]", tab.title),
+                    format!(
+                        "{}{}{}",
+                        self.config.char_set.tab_selected_left,
+                        tab.title,
+                        self.config.char_set.tab_selected_right
+                    ),
                     Style::default().fg(Color::LightCyan),
                 )
             } else {
@@ -476,6 +483,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         let mut widget = ObjectListWidget {
             object_list: &mut state.tabs[self.selected_tab_index].list,
             view: self.view,
+            config: self.config,
         };
         widget.render(list_area, buf, state.mouse_areas);
     }

@@ -6,7 +6,13 @@ use ratatui::{
     text::{Line, Span},
 };
 
-fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
+use crate::config::Config;
+
+fn render_peak(
+    peak: f32,
+    area: Rect,
+    config: &Config,
+) -> (String, String, String) {
     fn normalize(value: f32) -> f32 {
         let amplitude = 10.0_f32.powf(value / 60.0);
         let min = 10.0_f32.powf(-60.0 / 60.0);
@@ -35,7 +41,7 @@ fn render_peak(peak: f32, area: Rect) -> (String, String, String) {
         .saturating_sub(normal_chars)
         .saturating_sub(overload_chars);
 
-    let ch = "▮";
+    let ch = &config.char_set.meter;
 
     (
         ch.repeat(normal_chars),
@@ -48,6 +54,7 @@ pub fn render_stereo(
     meter_area: Rect,
     buf: &mut Buffer,
     peaks: Option<(f32, f32)>,
+    config: &Config,
 ) {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
@@ -65,7 +72,8 @@ pub fn render_stereo(
     let (left_peak, right_peak) = peaks.unwrap_or_default();
 
     let area = meter_left;
-    let (normal_peak, overload_peak, unlit_peak) = render_peak(left_peak, area);
+    let (normal_peak, overload_peak, unlit_peak) =
+        render_peak(left_peak, area, config);
     Line::from(vec![
         Span::styled(unlit_peak, Style::default().fg(Color::DarkGray)),
         Span::styled(overload_peak, Style::default().fg(Color::Red)),
@@ -76,7 +84,7 @@ pub fn render_stereo(
 
     let area = meter_right;
     let (normal_peak, overload_peak, unlit_peak) =
-        render_peak(right_peak, area);
+        render_peak(right_peak, area, config);
     Line::from(vec![
         Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
         Span::styled(overload_peak, Style::default().fg(Color::Red)),
@@ -90,13 +98,18 @@ pub fn render_stereo(
         Color::DarkGray
     };
     Line::from(Span::styled(
-        String::from("■■"),
+        &config.char_set.meter_live_stereo,
         Style::default().fg(center_color),
     ))
     .render(meter_live, buf);
 }
 
-pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
+pub fn render_mono(
+    meter_area: Rect,
+    buf: &mut Buffer,
+    peak: Option<f32>,
+    config: &Config,
+) {
     let mono_peak = peak.unwrap_or_default();
 
     let layout = Layout::default()
@@ -111,7 +124,8 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
     let meter_mono = layout[1];
 
     let area = meter_mono;
-    let (normal_peak, overload_peak, unlit_peak) = render_peak(mono_peak, area);
+    let (normal_peak, overload_peak, unlit_peak) =
+        render_peak(mono_peak, area, config);
     Line::from(vec![
         Span::styled(normal_peak, Style::default().fg(Color::LightGreen)),
         Span::styled(overload_peak, Style::default().fg(Color::Red)),
@@ -125,7 +139,7 @@ pub fn render_mono(meter_area: Rect, buf: &mut Buffer, peak: Option<f32>) {
         Color::DarkGray
     };
     Line::from(Span::styled(
-        String::from("■"),
+        &config.char_set.meter_live_mono,
         Style::default().fg(live_color),
     ))
     .render(meter_live, buf);
