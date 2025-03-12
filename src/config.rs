@@ -16,7 +16,6 @@ use toml;
 
 use crate::app::Action;
 use crate::opt::Opt;
-use crate::state;
 
 #[derive(Debug)]
 pub struct Config {
@@ -161,49 +160,6 @@ struct CharSetOverlay {
     dropdown_more: Option<String>,
     tab_selected_left: Option<String>,
     tab_selected_right: Option<String>,
-}
-
-impl Names {
-    fn default_stream() -> Vec<names::NameTemplate> {
-        vec!["{node:node.name}: {node:media.name}".parse().unwrap()]
-    }
-
-    fn default_endpoint() -> Vec<names::NameTemplate> {
-        vec!["{node:node.description}".parse().unwrap()]
-    }
-
-    fn default_device() -> Vec<names::NameTemplate> {
-        vec!["{device:device.description}".parse().unwrap()]
-    }
-
-    /// Tries to resolve an object's name.
-    ///
-    /// Returns a name using the first template string that can be successfully
-    /// resolved using the resolver.
-    ///
-    /// Precedence is:
-    ///
-    /// 1. Overrides
-    /// 2. Stream/endpoint/device default templates
-    /// 3. Fallback
-    pub fn resolve<T: names::NameResolver>(
-        &self,
-        state: &state::State,
-        resolver: &T,
-    ) -> Option<String> {
-        names::resolve(state, resolver, self)
-    }
-}
-
-impl Default for Names {
-    fn default() -> Self {
-        Self {
-            stream: Self::default_stream(),
-            endpoint: Self::default_endpoint(),
-            device: Self::default_device(),
-            overrides: Default::default(),
-        }
-    }
 }
 
 impl Keybinding {

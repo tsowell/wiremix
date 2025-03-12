@@ -1,10 +1,63 @@
-//! Format object names using templates from configuration.
+//! Implementation for [`Names`](`crate::config::Names`). Defines default name
+//! templates and handles resolving templates into strings.
 
 use crate::config;
 use crate::state;
 
-pub use crate::config::name_template::NameTemplate;
-pub use crate::config::tag::{DeviceTag, NodeTag, Tag};
+pub use crate::config::{name_template::NameTemplate, tag::Tag};
+use crate::config::{
+    tag::{DeviceTag, NodeTag},
+    Names,
+};
+
+impl Names {
+    pub fn default_stream() -> Vec<NameTemplate> {
+        vec!["{node:node.name}: {node:media.name}".parse().unwrap()]
+    }
+
+    pub fn default_endpoint() -> Vec<NameTemplate> {
+        vec!["{node:node.description}".parse().unwrap()]
+    }
+
+    pub fn default_device() -> Vec<NameTemplate> {
+        vec!["{device:device.description}".parse().unwrap()]
+    }
+
+    /// Tries to resolve an object's name.
+    ///
+    /// Returns a name using the first template string that can be successfully
+    /// resolved using the resolver.
+    ///
+    /// Precedence is:
+    ///
+    /// 1. Overrides
+    /// 2. Stream/endpoint/device default templates
+    /// 3. Fallback
+    pub fn resolve<T: NameResolver>(
+        &self,
+        state: &state::State,
+        resolver: &T,
+    ) -> Option<String> {
+        resolver
+            .templates(state, self)
+            .iter()
+            .find_map(|template| {
+                template.render(|tag| resolver.resolve_tag(state, *tag))
+            })
+            .or(resolver.fallback().cloned())
+    }
+}
+
+impl Default for Names {
+    fn default() -> Self {
+        Self {
+            stream: Self::default_stream(),
+            endpoint: Self::default_endpoint(),
+            device: Self::default_device(),
+            overrides: Default::default(),
+        }
+    }
+}
 
 pub trait NameResolver {
     fn resolve_tag<'a>(
@@ -122,23 +175,6 @@ impl NameResolver for state::Node {
     }
 }
 
-/// Internal implementation for name resolution.
-///
-/// This implements the public [`config::Names::resolve()`] method.
-pub fn resolve<T: NameResolver>(
-    state: &state::State,
-    resolver: &T,
-    names: &config::Names,
-) -> Option<String> {
-    resolver
-        .templates(state, names)
-        .iter()
-        .find_map(|template| {
-            template.render(|tag| resolver.resolve_tag(state, *tag))
-        })
-        .or(resolver.fallback().cloned())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,7 +218,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
@@ -201,7 +237,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
@@ -222,7 +258,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Device nick")))
     }
 
@@ -242,7 +278,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
@@ -262,7 +298,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
@@ -277,7 +313,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
@@ -294,7 +330,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
@@ -316,7 +352,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
@@ -335,7 +371,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 
@@ -354,7 +390,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 
@@ -373,7 +409,7 @@ mod tests {
         };
 
         let node = state.nodes.get(&node_id).unwrap();
-        let result = resolve(&state, node, &names);
+        let result = names.resolve(&state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 }
