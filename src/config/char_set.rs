@@ -72,6 +72,8 @@ impl TryFrom<CharSetOverlay> for CharSet {
     fn try_from(overlay: CharSetOverlay) -> Result<Self, Self::Error> {
         let mut char_set: Self = match overlay.inherit.as_deref() {
             Some("default") => CharSet::default(),
+            Some("compat") => CharSet::compat(),
+            Some("extra_compat") => CharSet::extra_compat(),
             Some(inherit) => {
                 anyhow::bail!("'{}' is not a built-in character set", inherit)
             }
@@ -145,7 +147,67 @@ impl TryFrom<CharSetOverlay> for CharSet {
 
 impl CharSet {
     pub fn defaults() -> HashMap<String, CharSet> {
-        HashMap::from([(String::from("default"), Default::default())])
+        HashMap::from([
+            (String::from("default"), CharSet::default()),
+            (String::from("compat"), CharSet::compat()),
+            (String::from("extra_compat"), CharSet::extra_compat()),
+        ])
+    }
+
+    fn compat() -> CharSet {
+        Self {
+            default_endpoint: String::from("◊"),
+            default_target: String::from("◊"),
+            object_selected_top: String::from("░"),
+            object_selected_center: String::from("▒"),
+            object_selected_bottom: String::from("░"),
+            objects_more: String::from("•••"),
+            volume_bar_background: String::from("─"),
+            volume_bar_foreground: String::from("━"),
+            meter_left: String::from("┃"),
+            meter_left_overload: String::from("┃"),
+            meter_left_unlit: String::from("┃"),
+            meter_right: String::from("┃"),
+            meter_right_overload: String::from("┃"),
+            meter_right_unlit: String::from("┃"),
+            meter_live_left: String::from("█"),
+            meter_live_left_unlit: String::from("█"),
+            meter_live_right: String::from("█"),
+            meter_live_right_unlit: String::from("█"),
+            dropdown: String::from("▼"),
+            dropdown_item_selected: String::from(">"),
+            dropdown_more: String::from("•••"),
+            tab_selected_left: String::from("["),
+            tab_selected_right: String::from("]"),
+        }
+    }
+
+    fn extra_compat() -> CharSet {
+        Self {
+            default_endpoint: String::from("*"),
+            default_target: String::from("*"),
+            object_selected_top: String::from(":"),
+            object_selected_center: String::from("|"),
+            object_selected_bottom: String::from(":"),
+            objects_more: String::from("~~~"),
+            volume_bar_background: String::from("-"),
+            volume_bar_foreground: String::from("="),
+            meter_left: String::from("#"),
+            meter_left_overload: String::from("#"),
+            meter_left_unlit: String::from("#"),
+            meter_right: String::from("#"),
+            meter_right_overload: String::from("#"),
+            meter_right_unlit: String::from("#"),
+            meter_live_left: String::from("["),
+            meter_live_left_unlit: String::from("["),
+            meter_live_right: String::from("]"),
+            meter_live_right_unlit: String::from("]"),
+            dropdown: String::from("v"),
+            dropdown_item_selected: String::from(">"),
+            dropdown_more: String::from("~~~"),
+            tab_selected_left: String::from("["),
+            tab_selected_right: String::from("]"),
+        }
     }
 
     /// Merge deserialized charsets with defaults
@@ -166,7 +228,14 @@ impl CharSet {
             })
             .collect::<Result<HashMap<String, CharSet>, D::Error>>()?;
         if !merged.contains_key("default") {
-            merged.insert(String::from("default"), Default::default());
+            merged.insert(String::from("default"), CharSet::default());
+        }
+        if !merged.contains_key("compat") {
+            merged.insert(String::from("compat"), CharSet::compat());
+        }
+        if !merged.contains_key("extra_compat") {
+            merged
+                .insert(String::from("extra_compat"), CharSet::extra_compat());
         }
         Ok(merged)
     }
@@ -182,6 +251,21 @@ mod tests {
 
         let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
         CharSet::try_from(overlay).unwrap();
+    }
+
+    #[test]
+    fn test_builtins_present() {
+        #[derive(Deserialize)]
+        struct S {
+            #[serde(deserialize_with = "CharSet::merge")]
+            char_sets: HashMap<String, CharSet>,
+        }
+        let config = r#"[char_sets.test]"#;
+
+        let s = toml::from_str::<S>(&config).unwrap();
+        for name in CharSet::defaults().keys() {
+            assert!(s.char_sets.contains_key(name));
+        }
     }
 
     #[test]
@@ -296,15 +380,20 @@ mod tests {
     }
 
     #[test]
-    fn test_inherit_default() {
-        let config = r#"
-        inherit = "default"
-        meter_right = "$"
-        "#;
+    fn test_inherit() {
+        for (builtin_key, builtin) in CharSet::defaults().iter() {
+            let config = format!(
+                r#"
+            inherit = "{}"
+            meter_right = "$"
+            "#,
+                builtin_key
+            );
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
-        let char_set = CharSet::try_from(overlay).unwrap();
-        assert_eq!(char_set.meter_right, "$");
-        assert_eq!(char_set.meter_left, "▮");
+            let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+            let char_set = CharSet::try_from(overlay).unwrap();
+            assert_eq!(char_set.meter_right, "$");
+            assert_eq!(char_set.meter_left, builtin.meter_left);
+        }
     }
 }
