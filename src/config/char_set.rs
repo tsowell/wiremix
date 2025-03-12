@@ -9,7 +9,8 @@ use crate::config::CharSet;
 
 // This is what actually gets parsed from the config.
 #[derive(Deserialize, Debug)]
-struct CharSetOverlay {
+pub struct CharSetOverlay {
+    inherit: Option<String>,
     default_endpoint: Option<String>,
     default_target: Option<String>,
     object_selected_top: Option<String>,
@@ -69,7 +70,13 @@ impl TryFrom<CharSetOverlay> for CharSet {
     type Error = anyhow::Error;
 
     fn try_from(overlay: CharSetOverlay) -> Result<Self, Self::Error> {
-        let mut char_set: Self = Default::default();
+        let mut char_set: Self = match overlay.inherit.as_deref() {
+            Some("default") => CharSet::default(),
+            Some(inherit) => {
+                anyhow::bail!("'{}' is not a built-in character set", inherit)
+            }
+            None => CharSet::default(),
+        };
 
         macro_rules! validate_and_set {
             // Overwrite default char with char from overlay while validating
@@ -274,5 +281,30 @@ mod tests {
         let char_set = CharSet::try_from(overlay).unwrap();
         assert_eq!(char_set.objects_more, "");
         assert_eq!(char_set.dropdown_more, "$$$$$$$$$$$$$$$$$$$$$$$$");
+    }
+
+    #[test]
+    fn test_inherit_nonexistent() {
+        let config = r#"
+        inherit = "doesntexist"
+        meter_right = "$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay);
+        assert!(char_set.is_err());
+    }
+
+    #[test]
+    fn test_inherit_default() {
+        let config = r#"
+        inherit = "default"
+        meter_right = "$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+        assert_eq!(char_set.meter_right, "$");
+        assert_eq!(char_set.meter_left, "▮");
     }
 }
