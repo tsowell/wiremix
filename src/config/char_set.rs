@@ -164,3 +164,115 @@ impl CharSet {
         Ok(merged)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_overlay() {
+        let config = r#""#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        CharSet::try_from(overlay).unwrap();
+    }
+
+    #[test]
+    fn test_override_default() {
+        let config = r#"
+        dropdown = "$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+
+        assert_eq!(char_set.dropdown, "$")
+    }
+
+    #[test]
+    fn test_override_fallbacks_unset() {
+        let config = r#"
+        meter_right = "$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+
+        assert_eq!(char_set.meter_right, "$");
+        assert_eq!(char_set.meter_right_overload, "$");
+        assert_eq!(char_set.meter_right_unlit, "$");
+    }
+
+    #[test]
+    fn test_override_fallbacks_set() {
+        let config = r#"
+        meter_right = "$"
+        meter_right_overload = "%"
+        meter_right_unlit = "."
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+
+        assert_eq!(char_set.meter_right, "$");
+        assert_eq!(char_set.meter_right_overload, "%");
+        assert_eq!(char_set.meter_right_unlit, ".");
+    }
+
+    #[test]
+    fn test_width_too_narrow() {
+        let config = r#"
+        meter_right = ""
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay);
+        assert!(char_set.is_err());
+    }
+
+    #[test]
+    fn test_width_too_wide() {
+        let config = r#"
+        meter_right = "$$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay);
+        assert!(char_set.is_err());
+    }
+
+    #[test]
+    fn test_width_correct() {
+        let config = r#"
+        meter_right = "$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+        assert_eq!(char_set.meter_right, "$");
+    }
+
+    #[test]
+    fn test_width_grapheme_cluster() {
+        let config = r#"
+        meter_right = "⚓︎"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+        assert_eq!(char_set.meter_right, "⚓︎");
+    }
+
+    #[test]
+    fn test_width_unlimited() {
+        let config = r#"
+        objects_more = ""
+        dropdown_more = "$$$$$$$$$$$$$$$$$$$$$$$$"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay).unwrap();
+        assert_eq!(char_set.objects_more, "");
+        assert_eq!(char_set.dropdown_more, "$$$$$$$$$$$$$$$$$$$$$$$$");
+    }
+}
