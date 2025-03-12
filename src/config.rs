@@ -4,14 +4,15 @@ mod name_template;
 mod names;
 mod tag;
 
-use anyhow::Context;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use serde::{de::Error, Deserialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use anyhow::Context;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use serde::{de::Error, Deserialize};
 use toml;
 
 use crate::app::Action;
