@@ -103,12 +103,26 @@ pub struct CharSet {
     pub volume_bar_background: String,
     /// Filled part of volume bar
     pub volume_bar_foreground: String,
-    /// Peak meter
-    pub meter: String,
-    /// Peak meter live indicator (mono)
-    pub meter_live_mono: String,
-    /// Peak meter live indicator (stereo)
-    pub meter_live_stereo: String,
+    /// Peak meter left channel - default for _overload and _unlit
+    pub meter_left: String,
+    /// Peak meter left channel (overload)
+    pub meter_left_overload: String,
+    /// Peak meter left channel (unlit)
+    pub meter_left_unlit: String,
+    /// Peak meter right/mono channel - default for _overload and _unlit
+    pub meter_right: String,
+    /// Peak meter right/mono channel (overload)
+    pub meter_right_overload: String,
+    /// Peak meter right/mono channel (unlit)
+    pub meter_right_unlit: String,
+    /// Peak meter left channel live indicator
+    pub meter_live_left: String,
+    /// Peak meter left channel live indicator (unlit)
+    pub meter_live_left_unlit: String,
+    /// Peak meter right/mono channel live indicator
+    pub meter_live_right: String,
+    /// Peak meter right/mono channel live indicator (unlit)
+    pub meter_live_right_unlit: String,
     /// Dropdown icon on Configuration tab
     pub dropdown: String,
     /// Selected item in dropdowns
@@ -132,9 +146,16 @@ struct CharSetOverlay {
     objects_more: Option<String>,
     volume_bar_background: Option<String>,
     volume_bar_foreground: Option<String>,
-    meter: Option<String>,
-    meter_live_mono: Option<String>,
-    meter_live_stereo: Option<String>,
+    meter_left: Option<String>,
+    meter_left_overload: Option<String>,
+    meter_left_unlit: Option<String>,
+    meter_right: Option<String>,
+    meter_right_overload: Option<String>,
+    meter_right_unlit: Option<String>,
+    meter_live_left: Option<String>,
+    meter_live_left_unlit: Option<String>,
+    meter_live_right: Option<String>,
+    meter_live_right_unlit: Option<String>,
     dropdown: Option<String>,
     dropdown_item_selected: Option<String>,
     dropdown_more: Option<String>,
@@ -301,9 +322,16 @@ impl Default for CharSet {
             objects_more: String::from("•••"),
             volume_bar_background: String::from("╌"),
             volume_bar_foreground: String::from("━"),
-            meter: String::from("▮"),
-            meter_live_mono: String::from("■"),
-            meter_live_stereo: String::from("■■"),
+            meter_left: String::from("▮"),
+            meter_left_overload: String::from("▮"),
+            meter_left_unlit: String::from("▮"),
+            meter_right: String::from("▮"),
+            meter_right_overload: String::from("▮"),
+            meter_right_unlit: String::from("▮"),
+            meter_live_left: String::from("■"),
+            meter_live_left_unlit: String::from("■"),
+            meter_live_right: String::from("■"),
+            meter_live_right_unlit: String::from("■"),
             dropdown: String::from("▼"),
             dropdown_item_selected: String::from(">"),
             dropdown_more: String::from("•••"),
@@ -319,9 +347,9 @@ impl TryFrom<CharSetOverlay> for CharSet {
     fn try_from(overlay: CharSetOverlay) -> Result<Self, Self::Error> {
         let mut char_set: Self = Default::default();
 
-        // Overwrite default char with char from overlay while validating
-        // width. Length of 0 means don't check width.
         macro_rules! validate_and_set {
+            // Overwrite default char with char from overlay while validating
+            // width. Length of 0 means don't check width.
             ($field:ident, $length:expr) => {
                 if let Some(value) = overlay.$field {
                     if $length > 0
@@ -337,6 +365,21 @@ impl TryFrom<CharSetOverlay> for CharSet {
                     char_set.$field = value;
                 }
             };
+            ($field:ident, [$($fallback_field:ident),+], $length:expr) => {
+                // Do the same, but for multiple fields, using the first one
+                // as a default for the fallack fields.
+                $(
+                    if let (Some(value), None) =
+                        (&overlay.$field, &overlay.$fallback_field)
+                    {
+                        char_set.$fallback_field = value.clone();
+                    }
+                )+
+                validate_and_set!($field, $length);
+                $(
+                    validate_and_set!($fallback_field, $length);
+                )+
+            };
         }
 
         validate_and_set!(default_endpoint, 1);
@@ -347,9 +390,18 @@ impl TryFrom<CharSetOverlay> for CharSet {
         validate_and_set!(objects_more, 0);
         validate_and_set!(volume_bar_background, 1);
         validate_and_set!(volume_bar_foreground, 1);
-        validate_and_set!(meter, 1);
-        validate_and_set!(meter_live_mono, 1);
-        validate_and_set!(meter_live_stereo, 2);
+        validate_and_set!(
+            meter_left,
+            [meter_left_overload, meter_left_unlit],
+            1
+        );
+        validate_and_set!(
+            meter_right,
+            [meter_right_overload, meter_right_unlit],
+            1
+        );
+        validate_and_set!(meter_live_left, [meter_live_left_unlit], 1);
+        validate_and_set!(meter_live_right, [meter_live_right_unlit], 1);
         validate_and_set!(dropdown, 1);
         validate_and_set!(dropdown_item_selected, 1);
         validate_and_set!(dropdown_more, 0);
