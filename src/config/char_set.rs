@@ -80,11 +80,11 @@ impl TryFrom<CharSetOverlay> for CharSet {
                         && unicode_width::UnicodeWidthStr::width(value.as_str())
                             != $length
                     {
-                        anyhow::bail!(format!(
+                        anyhow::bail!(
                             "{} must be {} characters wide",
                             stringify!($field),
                             $length
-                        ));
+                        );
                     }
                     char_set.$field = value;
                 }
