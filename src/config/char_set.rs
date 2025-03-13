@@ -11,8 +11,8 @@ use crate::config::CharSet;
 #[derive(Deserialize, Debug)]
 pub struct CharSetOverlay {
     inherit: Option<String>,
-    default_endpoint: Option<String>,
-    default_target: Option<String>,
+    node_default: Option<String>,
+    target_default: Option<String>,
     object_selected_top: Option<String>,
     object_selected_center: Option<String>,
     object_selected_bottom: Option<String>,
@@ -39,8 +39,8 @@ pub struct CharSetOverlay {
 impl Default for CharSet {
     fn default() -> Self {
         Self {
-            default_endpoint: String::from("◇"),
-            default_target: String::from("◇"),
+            node_default: String::from("◇"),
+            target_default: String::from("◇"),
             object_selected_top: String::from("░"),
             object_selected_center: String::from("▒"),
             object_selected_bottom: String::from("░"),
@@ -115,8 +115,8 @@ impl TryFrom<CharSetOverlay> for CharSet {
             };
         }
 
-        validate_and_set!(default_endpoint, 1);
-        validate_and_set!(default_target, 1);
+        validate_and_set!(node_default, 1);
+        validate_and_set!(target_default, 1);
         validate_and_set!(object_selected_top, 1);
         validate_and_set!(object_selected_center, 1);
         validate_and_set!(object_selected_bottom, 1);
@@ -156,8 +156,8 @@ impl CharSet {
 
     fn compat() -> CharSet {
         Self {
-            default_endpoint: String::from("◊"),
-            default_target: String::from("◊"),
+            node_default: String::from("◊"),
+            target_default: String::from("◊"),
             object_selected_top: String::from("░"),
             object_selected_center: String::from("▒"),
             object_selected_bottom: String::from("░"),
@@ -184,8 +184,8 @@ impl CharSet {
 
     fn extra_compat() -> CharSet {
         Self {
-            default_endpoint: String::from("*"),
-            default_target: String::from("*"),
+            node_default: String::from("*"),
+            target_default: String::from("*"),
             object_selected_top: String::from(":"),
             object_selected_center: String::from("|"),
             object_selected_bottom: String::from(":"),

@@ -5,6 +5,7 @@ mod keybinding;
 mod name_template;
 mod names;
 mod tag;
+mod theme;
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -14,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::style::Style;
 use serde::Deserialize;
 use toml;
 
@@ -25,6 +27,7 @@ pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
     pub char_set: CharSet,
+    pub theme: Theme,
     pub keybindings: HashMap<KeyEvent, Action>,
     pub names: Names,
 }
@@ -37,6 +40,8 @@ struct ConfigFile {
     fps: Option<f32>,
     #[serde(default = "default_char_set_name")]
     char_set: String,
+    #[serde(default = "default_theme_name")]
+    theme: String,
     #[serde(
         default = "Keybinding::defaults",
         deserialize_with = "Keybinding::merge"
@@ -49,6 +54,8 @@ struct ConfigFile {
         deserialize_with = "CharSet::merge"
     )]
     char_sets: HashMap<String, CharSet>,
+    #[serde(default = "Theme::defaults", deserialize_with = "Theme::merge")]
+    themes: HashMap<String, Theme>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -90,9 +97,9 @@ pub struct NameOverride {
 #[derive(Deserialize, Debug)]
 pub struct CharSet {
     /// Default indicator on Input/Output Devices tabs
-    pub default_endpoint: String,
+    pub node_default: String,
     /// Default target on Playback/Recording tabs
-    pub default_target: String,
+    pub target_default: String,
     /// Top character of selected node indicator
     pub object_selected_top: String,
     /// Top character of selected node center
@@ -137,7 +144,39 @@ pub struct CharSet {
     pub tab_selected_right: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct Theme {
+    pub tab: Style,
+    pub tab_selected: Style,
+    pub tab_selected_symbols: Style,
+    pub object_selected_symbols: Style,
+    pub objects_more: Style,
+    pub node_name: Style,
+    pub node_default_symbol: Style,
+    pub volume: Style,
+    pub volume_bar_foreground: Style,
+    pub volume_bar_background: Style,
+    pub meter_unlit: Style,
+    pub meter: Style,
+    pub meter_overload: Style,
+    pub meter_live_unlit: Style,
+    pub meter_live: Style,
+    pub target: Style,
+    pub target_default_symbol: Style,
+    pub device_name: Style,
+    pub device_dropdown_symbol: Style,
+    pub device_profile: Style,
+    pub dropdown_border: Style,
+    pub dropdown_item: Style,
+    pub dropdown_item_selected: Style,
+    pub dropdown_more: Style,
+}
+
 fn default_char_set_name() -> String {
+    String::from("default")
+}
+
+fn default_theme_name() -> String {
     String::from("default")
 }
 
@@ -155,6 +194,10 @@ impl ConfigFile {
         if let Some(char_set) = &opt.char_set {
             self.char_set = char_set.clone();
         }
+
+        if let Some(theme) = &opt.theme {
+            self.theme = theme.clone();
+        }
     }
 }
 
@@ -171,10 +214,15 @@ impl TryFrom<ConfigFile> for Config {
             );
         };
 
+        let Some(theme) = config_file.themes.remove(&config_file.theme) else {
+            anyhow::bail!("theme '{}' does not exist", &config_file.theme);
+        };
+
         Ok(Self {
             remote: config_file.remote,
             fps: config_file.fps,
             char_set,
+            theme,
             keybindings: config_file.keybindings,
             names: config_file.names,
         })

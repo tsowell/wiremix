@@ -3,7 +3,6 @@
 use ratatui::{
     layout::Flex,
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
@@ -156,7 +155,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 ])
                 .split(selected_area);
 
-            let style = Style::default().fg(Color::LightCyan);
+            let style = self.config.theme.object_selected_symbols;
 
             // Render the selected node indicator
             Line::from(Span::styled(
@@ -189,22 +188,32 @@ impl StatefulWidget for NodeWidget<'_> {
         let bar_area = layout[1];
 
         let node_title = node_title(self.node, self.device_type);
-        let target_title = match self.node.target {
+        let target_line = match self.node.target {
             Some(view::Target::Default) => {
                 // Add the default target indicator
-                format!(
-                    "{} {}",
-                    self.config.char_set.default_target, self.node.target_title
-                )
+                Line::from(vec![
+                    Span::styled(
+                        &self.config.char_set.target_default,
+                        self.config.theme.target_default_symbol,
+                    ),
+                    Span::from(" "),
+                    Span::styled(
+                        &self.node.target_title,
+                        self.config.theme.target,
+                    ),
+                ])
             }
-            _ => self.node.target_title.clone(),
+            _ => Line::from(Span::styled(
+                &self.node.target_title,
+                self.config.theme.target,
+            )),
         };
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(0),                            // header_left
-                Constraint::Length(target_title.len() as u16), // header_right
+                Constraint::Min(0),                             // header_left
+                Constraint::Length(target_line.width() as u16), // header_right
             ])
             .horizontal_margin(1)
             .spacing(1)
@@ -212,7 +221,7 @@ impl StatefulWidget for NodeWidget<'_> {
         let header_left = layout[0];
         let header_right = layout[1];
 
-        Line::from(target_title)
+        target_line
             .alignment(Alignment::Right)
             .render(header_right, buf);
         mouse_areas.push((
@@ -221,17 +230,24 @@ impl StatefulWidget for NodeWidget<'_> {
             vec![Action::SelectObject(self.node.id), Action::OpenDropdown],
         ));
 
-        let default_string = if is_default(self.node, self.device_type) {
-            format!("{} ", self.config.char_set.default_endpoint)
+        let default_span = if is_default(self.node, self.device_type) {
+            Span::styled(
+                &self.config.char_set.node_default,
+                self.config.theme.node_default_symbol,
+            )
         } else {
-            String::from("  ")
+            Span::from(" ")
         };
         let node_title = truncate::with_ellipses(
             &node_title,
             (header_left.width.saturating_sub(2)) as usize,
         );
-        Line::from(vec![Span::from(default_string), Span::from(node_title)])
-            .render(header_left, buf);
+        Line::from(vec![
+            default_span,
+            Span::from(" "),
+            Span::styled(node_title, self.config.theme.node_name),
+        ])
+        .render(header_left, buf);
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -266,9 +282,12 @@ impl StatefulWidget for NodeWidget<'_> {
             let volume = mean.cbrt();
             let percent = (volume * 100.0).round() as u32;
 
-            Line::from(format!("{}%", percent))
-                .alignment(Alignment::Right)
-                .render(volume_label, buf);
+            Line::from(Span::styled(
+                format!("{}%", percent),
+                self.config.theme.volume,
+            ))
+            .alignment(Alignment::Right)
+            .render(volume_label, buf);
 
             let count = ((volume.clamp(0.0, 1.5) / 1.5)
                 * volume_bar.width as f32) as usize;
@@ -281,8 +300,8 @@ impl StatefulWidget for NodeWidget<'_> {
                 .volume_bar_background
                 .repeat((volume_bar.width as usize).saturating_sub(count));
             Line::from(vec![
-                Span::styled(filled, Style::default().fg(Color::Blue)),
-                Span::styled(blank, Style::default().fg(Color::DarkGray)),
+                Span::styled(filled, self.config.theme.volume_bar_foreground),
+                Span::styled(blank, self.config.theme.volume_bar_background),
             ])
             .render(volume_bar, buf);
         }

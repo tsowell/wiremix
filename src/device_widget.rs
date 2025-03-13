@@ -3,7 +3,6 @@
 use ratatui::{
     layout::Flex,
     prelude::{Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
@@ -104,7 +103,7 @@ impl StatefulWidget for DeviceWidget<'_> {
                 ])
                 .split(selected_area);
 
-            let style = Style::default().fg(Color::LightCyan);
+            let style = self.config.theme.object_selected_symbols;
 
             Line::from(Span::styled(
                 &self.config.char_set.object_selected_top,
@@ -135,13 +134,26 @@ impl StatefulWidget for DeviceWidget<'_> {
         let title_area = layout[0];
         let target_area = layout[1];
 
-        Line::from(format!("   {}", self.device.title)).render(title_area, buf);
+        Line::from(vec![
+            Span::from("   "),
+            Span::styled(&self.device.title, self.config.theme.device_name),
+        ])
+        .render(title_area, buf);
 
-        Line::from(format!(
-            "    {} {}",
-            self.config.char_set.dropdown, self.device.target_title
-        ))
+        Line::from(vec![
+            Span::from("    "),
+            Span::styled(
+                &self.config.char_set.dropdown,
+                self.config.theme.device_dropdown_symbol,
+            ),
+            Span::from(" "),
+            Span::styled(
+                &self.device.target_title,
+                self.config.theme.device_profile,
+            ),
+        ])
         .render(target_area, buf);
+
         mouse_areas.push((
             target_area,
             vec![MouseEventKind::Down(MouseButton::Left)],

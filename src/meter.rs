@@ -2,7 +2,6 @@
 
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect, Widget},
-    style::{Color, Style},
     text::{Line, Span},
 };
 
@@ -66,15 +65,15 @@ pub fn render_stereo(
     Line::from(vec![
         Span::styled(
             config.char_set.meter_left_unlit.repeat(unlit_peak),
-            Style::default().fg(Color::DarkGray),
+            config.theme.meter_unlit,
         ),
         Span::styled(
             config.char_set.meter_left.repeat(overload_peak),
-            Style::default().fg(Color::Red),
+            config.theme.meter_overload,
         ),
         Span::styled(
             config.char_set.meter_left.repeat(normal_peak),
-            Style::default().fg(Color::LightGreen),
+            config.theme.meter,
         ),
     ])
     .alignment(Alignment::Right)
@@ -86,40 +85,39 @@ pub fn render_stereo(
     Line::from(vec![
         Span::styled(
             config.char_set.meter_right.repeat(normal_peak),
-            Style::default().fg(Color::LightGreen),
+            config.theme.meter,
         ),
         Span::styled(
             config.char_set.meter_right.repeat(overload_peak),
-            Style::default().fg(Color::Red),
+            config.theme.meter_overload,
         ),
         Span::styled(
             config.char_set.meter_right_unlit.repeat(unlit_peak),
-            Style::default().fg(Color::DarkGray),
+            config.theme.meter_unlit,
         ),
     ])
     .render(area, buf);
 
-    let (live, center_color) = if peaks.is_some() {
-        (
+    let live_line = if peaks.is_some() {
+        Line::from(Span::styled(
             format!(
                 "{}{}",
                 &config.char_set.meter_live_left,
                 &config.char_set.meter_live_right
             ),
-            Color::LightGreen,
-        )
+            config.theme.meter_live,
+        ))
     } else {
-        (
+        Line::from(Span::styled(
             format!(
                 "{}{}",
                 &config.char_set.meter_live_left_unlit,
                 &config.char_set.meter_live_right_unlit
             ),
-            Color::DarkGray,
-        )
+            config.theme.meter_live_unlit,
+        ))
     };
-    Line::from(Span::styled(live, Style::default().fg(center_color)))
-        .render(meter_live, buf);
+    live_line.render(meter_live, buf);
 }
 
 pub fn render_mono(
@@ -146,24 +144,29 @@ pub fn render_mono(
     Line::from(vec![
         Span::styled(
             config.char_set.meter_right.repeat(normal_peak),
-            Style::default().fg(Color::LightGreen),
+            config.theme.meter,
         ),
         Span::styled(
             config.char_set.meter_right.repeat(overload_peak),
-            Style::default().fg(Color::Red),
+            config.theme.meter_overload,
         ),
         Span::styled(
             config.char_set.meter_right_unlit.repeat(unlit_peak),
-            Style::default().fg(Color::DarkGray),
+            config.theme.meter_unlit,
         ),
     ])
     .render(area, buf);
 
-    let (live, live_color) = if peak.is_some() {
-        (&config.char_set.meter_live_right, Color::LightGreen)
+    let live_line = if peak.is_some() {
+        Line::from(Span::styled(
+            &config.char_set.meter_live_right,
+            config.theme.meter_live,
+        ))
     } else {
-        (&config.char_set.meter_live_right_unlit, Color::DarkGray)
+        Line::from(Span::styled(
+            &config.char_set.meter_live_right_unlit,
+            config.theme.meter_unlit,
+        ))
     };
-    Line::from(Span::styled(live, Style::default().fg(live_color)))
-        .render(meter_live, buf);
+    live_line.render(meter_live, buf);
 }

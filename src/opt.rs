@@ -41,6 +41,14 @@ pub struct Opt {
         help = "Character set to use\n[built-in sets: default, compat, extra_compat]"
     )]
     pub char_set: Option<String>,
+
+    #[clap(
+        short,
+        long,
+        value_name = "NAME",
+        help = "Theme to use\n[built-in themes: default]"
+    )]
+    pub theme: Option<String>,
 }
 
 impl Opt {

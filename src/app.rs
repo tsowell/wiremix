@@ -9,7 +9,6 @@ use anyhow::{anyhow, Result};
 
 use ratatui::{
     prelude::{Buffer, Constraint, Direction, Layout, Position, Rect},
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
     DefaultTerminal, Frame,
@@ -458,20 +457,25 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             .split(menu_area);
 
         for (i, tab) in state.tabs.iter().enumerate() {
-            let (title, style) = if i == self.selected_tab_index {
-                (
-                    format!(
-                        "{}{}{}",
-                        self.config.char_set.tab_selected_left,
-                        tab.title,
-                        self.config.char_set.tab_selected_right
+            let title_line = if i == self.selected_tab_index {
+                Line::from(vec![
+                    Span::styled(
+                        &self.config.char_set.tab_selected_left,
+                        self.config.theme.tab_selected_symbols,
                     ),
-                    Style::default().fg(Color::LightCyan),
-                )
+                    Span::styled(&tab.title, self.config.theme.tab_selected),
+                    Span::styled(
+                        &self.config.char_set.tab_selected_right,
+                        self.config.theme.tab_selected_symbols,
+                    ),
+                ])
             } else {
-                (format!(" {} ", tab.title), Style::default())
+                Line::from(Span::styled(
+                    format!(" {} ", tab.title),
+                    self.config.theme.tab,
+                ))
             };
-            Line::from(Span::styled(title, style)).render(menu_areas[i], buf);
+            title_line.render(menu_areas[i], buf);
 
             state.mouse_areas.push((
                 menu_areas[i],

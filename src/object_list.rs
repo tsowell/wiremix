@@ -2,7 +2,6 @@
 
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
     text::{Line, Span},
     widgets::{ListState, StatefulWidget, Widget},
 };
@@ -421,7 +420,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         if self.object_list.top > 0 {
             Line::from(Span::styled(
                 &self.config.char_set.objects_more,
-                Style::default().fg(Color::DarkGray),
+                self.config.theme.objects_more,
             ))
             .alignment(Alignment::Center)
             .render(header_area, buf);
@@ -441,7 +440,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         {
             Line::from(Span::styled(
                 &self.config.char_set.objects_more,
-                Style::default().fg(Color::DarkGray),
+                self.config.theme.objects_more,
             ))
             .alignment(Alignment::Center)
             .render(footer_area, buf);

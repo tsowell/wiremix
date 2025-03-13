@@ -3,7 +3,6 @@
 
 use ratatui::{
     prelude::{Alignment, Buffer, Rect, Widget},
-    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, StatefulWidget},
 };
@@ -68,13 +67,14 @@ impl StatefulWidget for DropdownWidget<'_> {
         let highlight_symbol =
             format!("{} ", self.config.char_set.dropdown_item_selected);
         let list = List::new(targets)
-            .block(Block::default().borders(Borders::ALL))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(self.config.theme.dropdown_border),
+            )
+            .style(self.config.theme.dropdown_item)
             .highlight_symbol(&highlight_symbol)
-            .highlight_style(
-                Style::default()
-                    .fg(Color::LightCyan)
-                    .add_modifier(Modifier::REVERSED),
-            );
+            .highlight_style(self.config.theme.dropdown_item_selected);
 
         StatefulWidget::render(
             &list,
@@ -97,7 +97,7 @@ impl StatefulWidget for DropdownWidget<'_> {
 
             Line::from(Span::styled(
                 &self.config.char_set.dropdown_more,
-                Style::default().fg(Color::DarkGray),
+                self.config.theme.dropdown_more,
             ))
             .alignment(Alignment::Center)
             .render(top_area, buf);
@@ -124,7 +124,7 @@ impl StatefulWidget for DropdownWidget<'_> {
 
             Line::from(Span::styled(
                 &self.config.char_set.dropdown_more,
-                Style::default().fg(Color::DarkGray),
+                self.config.theme.dropdown_more,
             ))
             .alignment(Alignment::Center)
             .render(bottom_area, buf);
