@@ -23,20 +23,19 @@ fn render_peak(peak: f32, area: Rect) -> (usize, usize, usize) {
     let meter = normalize(vu_value);
 
     let total_chars = area.width as usize;
-    let lit_chars =
-        ((meter * total_chars as f32).round() as usize).min(total_chars);
+    let lit = ((meter * total_chars as f32).round() as usize).min(total_chars);
 
     // Values above 0.0 will be colored differently
     let zero_char = (normalize(0.0) * total_chars as f32).round() as usize;
 
     // Assign colors
-    let normal_chars = lit_chars.min(zero_char);
-    let overload_chars = lit_chars.saturating_sub(zero_char);
-    let unlit_chars = total_chars
-        .saturating_sub(normal_chars)
-        .saturating_sub(overload_chars);
+    let active_size = lit.min(zero_char);
+    let overload_size = lit.saturating_sub(zero_char);
+    let inactive_size = total_chars
+        .saturating_sub(active_size)
+        .saturating_sub(overload_size);
 
-    (normal_chars, overload_chars, unlit_chars)
+    (active_size, overload_size, inactive_size)
 }
 
 pub fn render_stereo(
@@ -61,39 +60,40 @@ pub fn render_stereo(
     let (left_peak, right_peak) = peaks.unwrap_or_default();
 
     let area = meter_left;
-    let (normal_peak, overload_peak, unlit_peak) = render_peak(left_peak, area);
+    let (active_peak, overload_peak, inactive_peak) =
+        render_peak(left_peak, area);
     Line::from(vec![
         Span::styled(
-            config.char_set.meter_left_unlit.repeat(unlit_peak),
-            config.theme.meter_unlit,
+            config.char_set.meter_left_inactive.repeat(inactive_peak),
+            config.theme.meter_inactive,
         ),
         Span::styled(
-            config.char_set.meter_left.repeat(overload_peak),
+            config.char_set.meter_left_overload.repeat(overload_peak),
             config.theme.meter_overload,
         ),
         Span::styled(
-            config.char_set.meter_left.repeat(normal_peak),
-            config.theme.meter,
+            config.char_set.meter_left_active.repeat(active_peak),
+            config.theme.meter_active,
         ),
     ])
     .alignment(Alignment::Right)
     .render(area, buf);
 
     let area = meter_right;
-    let (normal_peak, overload_peak, unlit_peak) =
+    let (active_peak, overload_peak, inactive_peak) =
         render_peak(right_peak, area);
     Line::from(vec![
         Span::styled(
-            config.char_set.meter_right.repeat(normal_peak),
-            config.theme.meter,
+            config.char_set.meter_right_active.repeat(active_peak),
+            config.theme.meter_active,
         ),
         Span::styled(
-            config.char_set.meter_right.repeat(overload_peak),
+            config.char_set.meter_right_overload.repeat(overload_peak),
             config.theme.meter_overload,
         ),
         Span::styled(
-            config.char_set.meter_right_unlit.repeat(unlit_peak),
-            config.theme.meter_unlit,
+            config.char_set.meter_right_inactive.repeat(inactive_peak),
+            config.theme.meter_inactive,
         ),
     ])
     .render(area, buf);
@@ -102,19 +102,19 @@ pub fn render_stereo(
         Line::from(Span::styled(
             format!(
                 "{}{}",
-                &config.char_set.meter_live_left,
-                &config.char_set.meter_live_right
+                &config.char_set.meter_center_left_active,
+                &config.char_set.meter_center_right_active,
             ),
-            config.theme.meter_live,
+            config.theme.meter_center_active,
         ))
     } else {
         Line::from(Span::styled(
             format!(
                 "{}{}",
-                &config.char_set.meter_live_left_unlit,
-                &config.char_set.meter_live_right_unlit
+                &config.char_set.meter_center_left_inactive,
+                &config.char_set.meter_center_right_inactive
             ),
-            config.theme.meter_live_unlit,
+            config.theme.meter_center_inactive,
         ))
     };
     live_line.render(meter_live, buf);
@@ -140,32 +140,33 @@ pub fn render_mono(
     let meter_mono = layout[1];
 
     let area = meter_mono;
-    let (normal_peak, overload_peak, unlit_peak) = render_peak(mono_peak, area);
+    let (active_peak, overload_peak, inactive_peak) =
+        render_peak(mono_peak, area);
     Line::from(vec![
         Span::styled(
-            config.char_set.meter_right.repeat(normal_peak),
-            config.theme.meter,
+            config.char_set.meter_right_active.repeat(active_peak),
+            config.theme.meter_active,
         ),
         Span::styled(
-            config.char_set.meter_right.repeat(overload_peak),
+            config.char_set.meter_right_overload.repeat(overload_peak),
             config.theme.meter_overload,
         ),
         Span::styled(
-            config.char_set.meter_right_unlit.repeat(unlit_peak),
-            config.theme.meter_unlit,
+            config.char_set.meter_right_inactive.repeat(inactive_peak),
+            config.theme.meter_inactive,
         ),
     ])
     .render(area, buf);
 
     let live_line = if peak.is_some() {
         Line::from(Span::styled(
-            &config.char_set.meter_live_right,
-            config.theme.meter_live,
+            &config.char_set.meter_center_right_active,
+            config.theme.meter_center_active,
         ))
     } else {
         Line::from(Span::styled(
-            &config.char_set.meter_live_right_unlit,
-            config.theme.meter_unlit,
+            &config.char_set.meter_center_right_inactive,
+            config.theme.meter_center_inactive,
         ))
     };
     live_line.render(meter_live, buf);

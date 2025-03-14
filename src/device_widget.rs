@@ -103,20 +103,17 @@ impl StatefulWidget for DeviceWidget<'_> {
                 ])
                 .split(selected_area);
 
-            let style = self.config.theme.object_selected_symbols;
+            let style = self.config.theme.selector;
 
+            Line::from(Span::styled(&self.config.char_set.selector_top, style))
+                .render(rows[0], buf);
             Line::from(Span::styled(
-                &self.config.char_set.object_selected_top,
-                style,
-            ))
-            .render(rows[0], buf);
-            Line::from(Span::styled(
-                &self.config.char_set.object_selected_center,
+                &self.config.char_set.selector_middle,
                 style,
             ))
             .render(rows[1], buf);
             Line::from(Span::styled(
-                &self.config.char_set.object_selected_bottom,
+                &self.config.char_set.selector_bottom,
                 style,
             ))
             .render(rows[2], buf);
@@ -136,20 +133,20 @@ impl StatefulWidget for DeviceWidget<'_> {
 
         Line::from(vec![
             Span::from("   "),
-            Span::styled(&self.device.title, self.config.theme.device_name),
+            Span::styled(&self.device.title, self.config.theme.config_device),
         ])
         .render(title_area, buf);
 
         Line::from(vec![
             Span::from("    "),
             Span::styled(
-                &self.config.char_set.dropdown,
-                self.config.theme.device_dropdown_symbol,
+                &self.config.char_set.dropdown_icon,
+                self.config.theme.dropdown_icon,
             ),
             Span::from(" "),
             Span::styled(
                 &self.device.target_title,
-                self.config.theme.device_profile,
+                self.config.theme.config_profile,
             ),
         ])
         .render(target_area, buf);

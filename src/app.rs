@@ -460,13 +460,13 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             let title_line = if i == self.selected_tab_index {
                 Line::from(vec![
                     Span::styled(
-                        &self.config.char_set.tab_selected_left,
-                        self.config.theme.tab_selected_symbols,
+                        &self.config.char_set.tab_marker_left,
+                        self.config.theme.tab_marker,
                     ),
                     Span::styled(&tab.title, self.config.theme.tab_selected),
                     Span::styled(
-                        &self.config.char_set.tab_selected_right,
-                        self.config.theme.tab_selected_symbols,
+                        &self.config.char_set.tab_marker_right,
+                        self.config.theme.tab_marker,
                     ),
                 ])
             } else {

@@ -419,8 +419,8 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         // Indicate we can scroll up if there are objects above the viewport.
         if self.object_list.top > 0 {
             Line::from(Span::styled(
-                &self.config.char_set.objects_more,
-                self.config.theme.objects_more,
+                &self.config.char_set.list_more,
+                self.config.theme.list_more,
             ))
             .alignment(Alignment::Center)
             .render(header_area, buf);
@@ -439,8 +439,8 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             && !(is_bottom_last && is_bottom_enough)
         {
             Line::from(Span::styled(
-                &self.config.char_set.objects_more,
-                self.config.theme.objects_more,
+                &self.config.char_set.list_more,
+                self.config.theme.list_more,
             ))
             .alignment(Alignment::Center)
             .render(footer_area, buf);

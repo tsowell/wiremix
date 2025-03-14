@@ -96,81 +96,57 @@ pub struct NameOverride {
 
 #[derive(Debug)]
 pub struct CharSet {
-    /// Default indicator on Input/Output Devices tabs
-    pub node_default: String,
-    /// Default target on Playback/Recording tabs
-    pub target_default: String,
-    /// Top character of selected node indicator
-    pub object_selected_top: String,
-    /// Top character of selected node center
-    pub object_selected_center: String,
-    /// Top character of selected node bottom
-    pub object_selected_bottom: String,
-    /// Indicator for more objects off screen
-    pub objects_more: String,
-    /// Unfilled part of volume bar
-    pub volume_bar_background: String,
-    /// Filled part of volume bar
-    pub volume_bar_foreground: String,
-    /// Peak meter left channel - default for _overload and _unlit
-    pub meter_left: String,
-    /// Peak meter left channel (overload)
+    pub default_device: String,
+    pub default_stream: String,
+    pub selector_top: String,
+    pub selector_middle: String,
+    pub selector_bottom: String,
+    pub tab_marker_left: String,
+    pub tab_marker_right: String,
+    pub list_more: String,
+    pub volume_empty: String,
+    pub volume_filled: String,
+    pub meter_left_inactive: String,
+    pub meter_left_active: String,
     pub meter_left_overload: String,
-    /// Peak meter left channel (unlit)
-    pub meter_left_unlit: String,
-    /// Peak meter right/mono channel - default for _overload and _unlit
-    pub meter_right: String,
-    /// Peak meter right/mono channel (overload)
+    pub meter_right_inactive: String,
+    pub meter_right_active: String,
     pub meter_right_overload: String,
-    /// Peak meter right/mono channel (unlit)
-    pub meter_right_unlit: String,
-    /// Peak meter left channel live indicator
-    pub meter_live_left: String,
-    /// Peak meter left channel live indicator (unlit)
-    pub meter_live_left_unlit: String,
-    /// Peak meter right/mono channel live indicator
-    pub meter_live_right: String,
-    /// Peak meter right/mono channel live indicator (unlit)
-    pub meter_live_right_unlit: String,
-    /// Dropdown icon on Configuration tab
-    pub dropdown: String,
-    /// Selected item in dropdowns
-    pub dropdown_item_selected: String,
-    /// Indicator for more dropdown items off screen
+    pub meter_center_left_inactive: String,
+    pub meter_center_left_active: String,
+    pub meter_center_right_inactive: String,
+    pub meter_center_right_active: String,
+    pub dropdown_icon: String,
+    pub dropdown_selector: String,
     pub dropdown_more: String,
-    /// Dropdown border type
     pub dropdown_border: BorderType,
-    /// Surrounds (left) selected tab in tab menu
-    pub tab_selected_left: String,
-    /// Surrounds (right) selected tab in tab menu
-    pub tab_selected_right: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Theme {
+    pub default_device: Style,
+    pub default_stream: Style,
+    pub selector: Style,
     pub tab: Style,
     pub tab_selected: Style,
-    pub tab_selected_symbols: Style,
-    pub object_selected_symbols: Style,
-    pub objects_more: Style,
-    pub node_name: Style,
-    pub node_default_symbol: Style,
+    pub tab_marker: Style,
+    pub list_more: Style,
+    pub node_title: Style,
+    pub node_target: Style,
     pub volume: Style,
-    pub volume_bar_foreground: Style,
-    pub volume_bar_background: Style,
-    pub meter_unlit: Style,
-    pub meter: Style,
+    pub volume_empty: Style,
+    pub volume_filled: Style,
+    pub meter_inactive: Style,
+    pub meter_active: Style,
     pub meter_overload: Style,
-    pub meter_live_unlit: Style,
-    pub meter_live: Style,
-    pub target: Style,
-    pub target_default_symbol: Style,
-    pub device_name: Style,
-    pub device_dropdown_symbol: Style,
-    pub device_profile: Style,
+    pub meter_center_inactive: Style,
+    pub meter_center_active: Style,
+    pub config_device: Style,
+    pub config_profile: Style,
+    pub dropdown_icon: Style,
     pub dropdown_border: Style,
     pub dropdown_item: Style,
-    pub dropdown_item_selected: Style,
+    pub dropdown_selected: Style,
     pub dropdown_more: Style,
 }
 

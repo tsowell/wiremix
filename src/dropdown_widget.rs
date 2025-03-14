@@ -65,7 +65,7 @@ impl StatefulWidget for DropdownWidget<'_> {
         Clear.render(dropdown_area, buf);
 
         let highlight_symbol =
-            format!("{} ", self.config.char_set.dropdown_item_selected);
+            format!("{} ", self.config.char_set.dropdown_selector);
         let list = List::new(targets)
             .block(
                 Block::default()
@@ -75,7 +75,7 @@ impl StatefulWidget for DropdownWidget<'_> {
             )
             .style(self.config.theme.dropdown_item)
             .highlight_symbol(&highlight_symbol)
-            .highlight_style(self.config.theme.dropdown_item_selected);
+            .highlight_style(self.config.theme.dropdown_selected);
 
         StatefulWidget::render(
             &list,

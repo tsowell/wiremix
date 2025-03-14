@@ -8,29 +8,29 @@ use crate::config::Theme;
 // This is what actually gets parsed from the config.
 #[derive(Deserialize, Debug)]
 pub struct ThemeOverlay {
+    default_device: Option<StyleDef>,
+    default_stream: Option<StyleDef>,
+    selector: Option<StyleDef>,
     tab: Option<StyleDef>,
     tab_selected: Option<StyleDef>,
-    tab_selected_symbols: Option<StyleDef>,
-    object_selected_symbols: Option<StyleDef>,
-    objects_more: Option<StyleDef>,
-    node_name: Option<StyleDef>,
-    node_default_symbol: Option<StyleDef>,
+    tab_marker: Option<StyleDef>,
+    list_more: Option<StyleDef>,
+    node_title: Option<StyleDef>,
+    node_target: Option<StyleDef>,
     volume: Option<StyleDef>,
-    volume_bar_foreground: Option<StyleDef>,
-    volume_bar_background: Option<StyleDef>,
-    meter_unlit: Option<StyleDef>,
-    meter: Option<StyleDef>,
+    volume_empty: Option<StyleDef>,
+    volume_filled: Option<StyleDef>,
+    meter_inactive: Option<StyleDef>,
+    meter_active: Option<StyleDef>,
     meter_overload: Option<StyleDef>,
-    meter_live_unlit: Option<StyleDef>,
-    meter_live: Option<StyleDef>,
-    target: Option<StyleDef>,
-    target_default_symbol: Option<StyleDef>,
-    device_name: Option<StyleDef>,
-    device_dropdown_symbol: Option<StyleDef>,
-    device_profile: Option<StyleDef>,
+    meter_center_inactive: Option<StyleDef>,
+    meter_center_active: Option<StyleDef>,
+    config_device: Option<StyleDef>,
+    config_profile: Option<StyleDef>,
+    dropdown_icon: Option<StyleDef>,
     dropdown_border: Option<StyleDef>,
     dropdown_item: Option<StyleDef>,
-    dropdown_item_selected: Option<StyleDef>,
+    dropdown_selected: Option<StyleDef>,
     dropdown_more: Option<StyleDef>,
 }
 
@@ -52,29 +52,29 @@ fn default_modifier() -> Modifier {
 impl Default for Theme {
     fn default() -> Self {
         Self {
+            default_device: Style::default(),
+            default_stream: Style::default(),
+            selector: Style::default().fg(Color::LightCyan),
             tab: Style::default(),
             tab_selected: Style::default().fg(Color::LightCyan),
-            tab_selected_symbols: Style::default().fg(Color::LightCyan),
-            object_selected_symbols: Style::default().fg(Color::LightCyan),
-            objects_more: Style::default().fg(Color::DarkGray),
-            node_name: Style::default(),
-            node_default_symbol: Style::default(),
+            tab_marker: Style::default().fg(Color::LightCyan),
+            list_more: Style::default().fg(Color::DarkGray),
+            node_title: Style::default(),
+            node_target: Style::default(),
             volume: Style::default(),
-            volume_bar_foreground: Style::default().fg(Color::Blue),
-            volume_bar_background: Style::default().fg(Color::DarkGray),
-            meter_unlit: Style::default().fg(Color::DarkGray),
-            meter: Style::default().fg(Color::LightGreen),
+            volume_empty: Style::default().fg(Color::DarkGray),
+            volume_filled: Style::default().fg(Color::Blue),
+            meter_inactive: Style::default().fg(Color::DarkGray),
+            meter_active: Style::default().fg(Color::LightGreen),
             meter_overload: Style::default().fg(Color::Red),
-            meter_live_unlit: Style::default().fg(Color::DarkGray),
-            meter_live: Style::default().fg(Color::LightGreen),
-            target: Style::default(),
-            target_default_symbol: Style::default(),
-            device_name: Style::default(),
-            device_dropdown_symbol: Style::default(),
-            device_profile: Style::default(),
+            meter_center_inactive: Style::default().fg(Color::DarkGray),
+            meter_center_active: Style::default().fg(Color::LightGreen),
+            config_device: Style::default(),
+            config_profile: Style::default(),
+            dropdown_icon: Style::default(),
             dropdown_border: Style::default(),
             dropdown_item: Style::default(),
-            dropdown_item_selected: Style::default()
+            dropdown_selected: Style::default()
                 .fg(Color::LightCyan)
                 .add_modifier(Modifier::REVERSED),
             dropdown_more: Style::default().fg(Color::DarkGray),
@@ -108,29 +108,29 @@ impl TryFrom<ThemeOverlay> for Theme {
             };
         }
 
+        set!(default_device);
+        set!(default_stream);
+        set!(selector);
         set!(tab);
         set!(tab_selected);
-        set!(tab_selected_symbols);
-        set!(object_selected_symbols);
-        set!(objects_more);
-        set!(node_name);
-        set!(node_default_symbol);
+        set!(tab_marker);
+        set!(list_more);
+        set!(node_title);
+        set!(node_target);
         set!(volume);
-        set!(volume_bar_foreground);
-        set!(volume_bar_background);
-        set!(meter_unlit);
-        set!(meter);
+        set!(volume_empty);
+        set!(volume_filled);
+        set!(meter_inactive);
+        set!(meter_active);
         set!(meter_overload);
-        set!(meter_live_unlit);
-        set!(meter_live);
-        set!(target);
-        set!(target_default_symbol);
-        set!(device_name);
-        set!(device_dropdown_symbol);
-        set!(device_profile);
+        set!(meter_center_inactive);
+        set!(meter_center_active);
+        set!(config_device);
+        set!(config_profile);
+        set!(dropdown_icon);
         set!(dropdown_border);
         set!(dropdown_item);
-        set!(dropdown_item_selected);
+        set!(dropdown_selected);
         set!(dropdown_more);
 
         Ok(theme)

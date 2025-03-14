@@ -155,21 +155,18 @@ impl StatefulWidget for NodeWidget<'_> {
                 ])
                 .split(selected_area);
 
-            let style = self.config.theme.object_selected_symbols;
+            let style = self.config.theme.selector;
 
             // Render the selected node indicator
+            Line::from(Span::styled(&self.config.char_set.selector_top, style))
+                .render(rows[0], buf);
             Line::from(Span::styled(
-                &self.config.char_set.object_selected_top,
-                style,
-            ))
-            .render(rows[0], buf);
-            Line::from(Span::styled(
-                &self.config.char_set.object_selected_center,
+                &self.config.char_set.selector_middle,
                 style,
             ))
             .render(rows[1], buf);
             Line::from(Span::styled(
-                &self.config.char_set.object_selected_bottom,
+                &self.config.char_set.selector_bottom,
                 style,
             ))
             .render(rows[2], buf);
@@ -193,19 +190,19 @@ impl StatefulWidget for NodeWidget<'_> {
                 // Add the default target indicator
                 Line::from(vec![
                     Span::styled(
-                        &self.config.char_set.target_default,
-                        self.config.theme.target_default_symbol,
+                        &self.config.char_set.default_stream,
+                        self.config.theme.default_stream,
                     ),
                     Span::from(" "),
                     Span::styled(
                         &self.node.target_title,
-                        self.config.theme.target,
+                        self.config.theme.node_target,
                     ),
                 ])
             }
             _ => Line::from(Span::styled(
                 &self.node.target_title,
-                self.config.theme.target,
+                self.config.theme.node_target,
             )),
         };
 
@@ -232,8 +229,8 @@ impl StatefulWidget for NodeWidget<'_> {
 
         let default_span = if is_default(self.node, self.device_type) {
             Span::styled(
-                &self.config.char_set.node_default,
-                self.config.theme.node_default_symbol,
+                &self.config.char_set.default_device,
+                self.config.theme.default_device,
             )
         } else {
             Span::from(" ")
@@ -245,7 +242,7 @@ impl StatefulWidget for NodeWidget<'_> {
         Line::from(vec![
             default_span,
             Span::from(" "),
-            Span::styled(node_title, self.config.theme.node_name),
+            Span::styled(node_title, self.config.theme.node_title),
         ])
         .render(header_left, buf);
 
@@ -292,16 +289,15 @@ impl StatefulWidget for NodeWidget<'_> {
             let count = ((volume.clamp(0.0, 1.5) / 1.5)
                 * volume_bar.width as f32) as usize;
 
-            let filled =
-                self.config.char_set.volume_bar_foreground.repeat(count);
+            let filled = self.config.char_set.volume_filled.repeat(count);
             let blank = self
                 .config
                 .char_set
-                .volume_bar_background
+                .volume_empty
                 .repeat((volume_bar.width as usize).saturating_sub(count));
             Line::from(vec![
-                Span::styled(filled, self.config.theme.volume_bar_foreground),
-                Span::styled(blank, self.config.theme.volume_bar_background),
+                Span::styled(filled, self.config.theme.volume_filled),
+                Span::styled(blank, self.config.theme.volume_empty),
             ])
             .render(volume_bar, buf);
         }
