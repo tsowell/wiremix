@@ -56,12 +56,17 @@ fn main() -> Result<()> {
     }
 
     // Normal UI mode
-    stdout().execute(EnableMouseCapture)?;
+    let support_mouse = config.mouse;
+    if support_mouse {
+        stdout().execute(EnableMouseCapture)?;
+    }
     let mut terminal = ratatui::init();
     let app_result =
         app::App::new(command_tx, event_rx, config).run(&mut terminal);
     ratatui::restore();
-    stdout().execute(DisableMouseCapture)?;
+    if support_mouse {
+        stdout().execute(DisableMouseCapture)?;
+    }
 
     app_result
 }

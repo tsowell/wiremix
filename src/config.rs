@@ -26,6 +26,7 @@ use crate::opt::Opt;
 pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
+    pub mouse: bool,
     pub char_set: CharSet,
     pub theme: Theme,
     pub keybindings: HashMap<KeyEvent, Action>,
@@ -38,6 +39,8 @@ pub struct Config {
 struct ConfigFile {
     remote: Option<String>,
     fps: Option<f32>,
+    #[serde(default = "default_mouse")]
+    mouse: bool,
     #[serde(default = "default_char_set_name")]
     char_set: String,
     #[serde(default = "default_theme_name")]
@@ -150,6 +153,10 @@ pub struct Theme {
     pub dropdown_more: Style,
 }
 
+fn default_mouse() -> bool {
+    true
+}
+
 fn default_char_set_name() -> String {
     String::from("default")
 }
@@ -167,6 +174,10 @@ impl ConfigFile {
 
         if let Some(fps) = &opt.fps {
             self.fps = Some(*fps);
+        }
+
+        if opt.no_mouse {
+            self.mouse = false;
         }
 
         if let Some(char_set) = &opt.char_set {
@@ -199,6 +210,7 @@ impl TryFrom<ConfigFile> for Config {
         Ok(Self {
             remote: config_file.remote,
             fps: config_file.fps,
+            mouse: config_file.mouse,
             char_set,
             theme,
             keybindings: config_file.keybindings,

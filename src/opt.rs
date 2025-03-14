@@ -22,6 +22,9 @@ pub struct Opt {
     #[clap(short, long, help = "Target frames per second")]
     pub fps: Option<f32>,
 
+    #[clap(short, long, help = "Disable mouse support")]
+    pub no_mouse: bool,
+
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
     pub dump_events: bool,
