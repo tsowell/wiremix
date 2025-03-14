@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::style::Style;
+use ratatui::{style::Style, widgets::block::BorderType};
 use serde::Deserialize;
 use toml;
 
@@ -94,7 +94,7 @@ pub struct NameOverride {
     pub templates: Vec<names::NameTemplate>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct CharSet {
     /// Default indicator on Input/Output Devices tabs
     pub node_default: String,
@@ -138,6 +138,8 @@ pub struct CharSet {
     pub dropdown_item_selected: String,
     /// Indicator for more dropdown items off screen
     pub dropdown_more: String,
+    /// Dropdown border type
+    pub dropdown_border: BorderType,
     /// Surrounds (left) selected tab in tab menu
     pub tab_selected_left: String,
     /// Surrounds (right) selected tab in tab menu

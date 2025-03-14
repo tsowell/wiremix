@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use ratatui::widgets::block::BorderType;
 use serde::{de::Error, Deserialize};
 
 use crate::config::CharSet;
@@ -32,8 +33,32 @@ pub struct CharSetOverlay {
     dropdown: Option<String>,
     dropdown_item_selected: Option<String>,
     dropdown_more: Option<String>,
+    dropdown_border: Option<BorderTypeDef>,
     tab_selected_left: Option<String>,
     tab_selected_right: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+enum BorderTypeDef {
+    Plain,
+    Rounded,
+    Double,
+    Thick,
+    QuadrantInside,
+    QuadrantOutside,
+}
+
+impl From<BorderTypeDef> for BorderType {
+    fn from(def: BorderTypeDef) -> Self {
+        match def {
+            BorderTypeDef::Plain => Self::Plain,
+            BorderTypeDef::Rounded => Self::Rounded,
+            BorderTypeDef::Double => Self::Double,
+            BorderTypeDef::Thick => Self::Thick,
+            BorderTypeDef::QuadrantInside => Self::QuadrantInside,
+            BorderTypeDef::QuadrantOutside => Self::QuadrantOutside,
+        }
+    }
 }
 
 impl Default for CharSet {
@@ -60,6 +85,7 @@ impl Default for CharSet {
             dropdown: String::from("▼"),
             dropdown_item_selected: String::from(">"),
             dropdown_more: String::from("•••"),
+            dropdown_border: BorderType::Rounded,
             tab_selected_left: String::from("["),
             tab_selected_right: String::from("]"),
         }
@@ -141,6 +167,10 @@ impl TryFrom<CharSetOverlay> for CharSet {
         validate_and_set!(tab_selected_left, 1);
         validate_and_set!(tab_selected_right, 1);
 
+        if let Some(dropdown_border) = overlay.dropdown_border {
+            char_set.dropdown_border = dropdown_border.into();
+        }
+
         Ok(char_set)
     }
 }
@@ -177,6 +207,7 @@ impl CharSet {
             dropdown: String::from("▼"),
             dropdown_item_selected: String::from(">"),
             dropdown_more: String::from("•••"),
+            dropdown_border: BorderType::Plain,
             tab_selected_left: String::from("["),
             tab_selected_right: String::from("]"),
         }
@@ -205,6 +236,7 @@ impl CharSet {
             dropdown: String::from("v"),
             dropdown_item_selected: String::from(">"),
             dropdown_more: String::from("~~~"),
+            dropdown_border: BorderType::Plain,
             tab_selected_left: String::from("["),
             tab_selected_right: String::from("]"),
         }

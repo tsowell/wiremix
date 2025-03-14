@@ -70,7 +70,8 @@ impl StatefulWidget for DropdownWidget<'_> {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(self.config.theme.dropdown_border),
+                    .border_style(self.config.theme.dropdown_border)
+                    .border_type(self.config.char_set.dropdown_border),
             )
             .style(self.config.theme.dropdown_item)
             .highlight_symbol(&highlight_symbol)
