@@ -23,7 +23,15 @@ impl Keybinding {
                 Action::SetRelativeVolume(0.01),
             ),
             (
+                Self::key_event_from(KeyCode::Right),
+                Action::SetRelativeVolume(0.01),
+            ),
+            (
                 Self::key_event_from(KeyCode::Char('h')),
+                Action::SetRelativeVolume(-0.01),
+            ),
+            (
+                Self::key_event_from(KeyCode::Left),
                 Action::SetRelativeVolume(-0.01),
             ),
             (
@@ -33,9 +41,12 @@ impl Keybinding {
             (Self::key_event_from(KeyCode::Esc), Action::CloseDropdown),
             (Self::key_event_from(KeyCode::Enter), Action::SelectDropdown),
             (Self::key_event_from(KeyCode::Char('j')), Action::MoveDown),
+            (Self::key_event_from(KeyCode::Down), Action::MoveDown),
             (Self::key_event_from(KeyCode::Char('k')), Action::MoveUp),
+            (Self::key_event_from(KeyCode::Up), Action::MoveUp),
             (Self::key_event_from(KeyCode::Char('H')), Action::TabLeft),
             (Self::key_event_from(KeyCode::Char('L')), Action::TabRight),
+            (Self::key_event_from(KeyCode::Tab), Action::TabRight),
             (
                 Self::key_event_from(KeyCode::Char('`')),
                 Action::SetAbsoluteVolume(0.00),
