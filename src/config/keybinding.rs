@@ -9,88 +9,38 @@ use serde::Deserialize;
 use crate::config::{Action, Keybinding};
 
 impl Keybinding {
-    fn key_event_from(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
-    }
-
     pub fn defaults() -> HashMap<KeyEvent, Action> {
+        let event = |code| KeyEvent::new(code, KeyModifiers::NONE);
+
         HashMap::from([
-            (Self::key_event_from(KeyCode::Char('q')), Action::Exit),
-            (Self::key_event_from(KeyCode::Char('m')), Action::ToggleMute),
-            (Self::key_event_from(KeyCode::Char('d')), Action::SetDefault),
-            (
-                Self::key_event_from(KeyCode::Char('l')),
-                Action::SetRelativeVolume(0.01),
-            ),
-            (
-                Self::key_event_from(KeyCode::Right),
-                Action::SetRelativeVolume(0.01),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('h')),
-                Action::SetRelativeVolume(-0.01),
-            ),
-            (
-                Self::key_event_from(KeyCode::Left),
-                Action::SetRelativeVolume(-0.01),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('c')),
-                Action::OpenDropdown,
-            ),
-            (Self::key_event_from(KeyCode::Esc), Action::CloseDropdown),
-            (Self::key_event_from(KeyCode::Enter), Action::SelectDropdown),
-            (Self::key_event_from(KeyCode::Char('j')), Action::MoveDown),
-            (Self::key_event_from(KeyCode::Down), Action::MoveDown),
-            (Self::key_event_from(KeyCode::Char('k')), Action::MoveUp),
-            (Self::key_event_from(KeyCode::Up), Action::MoveUp),
-            (Self::key_event_from(KeyCode::Char('H')), Action::TabLeft),
-            (Self::key_event_from(KeyCode::Char('L')), Action::TabRight),
-            (Self::key_event_from(KeyCode::Tab), Action::TabRight),
-            (
-                Self::key_event_from(KeyCode::Char('`')),
-                Action::SetAbsoluteVolume(0.00),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('1')),
-                Action::SetAbsoluteVolume(0.10),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('2')),
-                Action::SetAbsoluteVolume(0.20),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('3')),
-                Action::SetAbsoluteVolume(0.30),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('4')),
-                Action::SetAbsoluteVolume(0.40),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('5')),
-                Action::SetAbsoluteVolume(0.50),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('6')),
-                Action::SetAbsoluteVolume(0.60),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('7')),
-                Action::SetAbsoluteVolume(0.70),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('8')),
-                Action::SetAbsoluteVolume(0.80),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('9')),
-                Action::SetAbsoluteVolume(0.90),
-            ),
-            (
-                Self::key_event_from(KeyCode::Char('0')),
-                Action::SetAbsoluteVolume(1.00),
-            ),
+            (event(KeyCode::Char('q')), Action::Exit),
+            (event(KeyCode::Char('m')), Action::ToggleMute),
+            (event(KeyCode::Char('d')), Action::SetDefault),
+            (event(KeyCode::Char('l')), Action::SetRelativeVolume(0.01)),
+            (event(KeyCode::Right), Action::SetRelativeVolume(0.01)),
+            (event(KeyCode::Char('h')), Action::SetRelativeVolume(-0.01)),
+            (event(KeyCode::Left), Action::SetRelativeVolume(-0.01)),
+            (event(KeyCode::Char('c')), Action::OpenDropdown),
+            (event(KeyCode::Esc), Action::CloseDropdown),
+            (event(KeyCode::Enter), Action::SelectDropdown),
+            (event(KeyCode::Char('j')), Action::MoveDown),
+            (event(KeyCode::Down), Action::MoveDown),
+            (event(KeyCode::Char('k')), Action::MoveUp),
+            (event(KeyCode::Up), Action::MoveUp),
+            (event(KeyCode::Char('H')), Action::TabLeft),
+            (event(KeyCode::Char('L')), Action::TabRight),
+            (event(KeyCode::Tab), Action::TabRight),
+            (event(KeyCode::Char('`')), Action::SetAbsoluteVolume(0.00)),
+            (event(KeyCode::Char('1')), Action::SetAbsoluteVolume(0.10)),
+            (event(KeyCode::Char('2')), Action::SetAbsoluteVolume(0.20)),
+            (event(KeyCode::Char('3')), Action::SetAbsoluteVolume(0.30)),
+            (event(KeyCode::Char('4')), Action::SetAbsoluteVolume(0.40)),
+            (event(KeyCode::Char('5')), Action::SetAbsoluteVolume(0.50)),
+            (event(KeyCode::Char('6')), Action::SetAbsoluteVolume(0.60)),
+            (event(KeyCode::Char('7')), Action::SetAbsoluteVolume(0.70)),
+            (event(KeyCode::Char('8')), Action::SetAbsoluteVolume(0.80)),
+            (event(KeyCode::Char('9')), Action::SetAbsoluteVolume(0.90)),
+            (event(KeyCode::Char('0')), Action::SetAbsoluteVolume(1.00)),
         ])
     }
 
