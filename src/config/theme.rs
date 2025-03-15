@@ -65,7 +65,7 @@ impl Default for Theme {
             node_target: Style::default(),
             volume: Style::default(),
             volume_empty: Style::default().fg(Color::DarkGray),
-            volume_filled: Style::default().fg(Color::Blue),
+            volume_filled: Style::default().fg(Color::LightBlue),
             meter_inactive: Style::default().fg(Color::DarkGray),
             meter_active: Style::default().fg(Color::LightGreen),
             meter_overload: Style::default().fg(Color::Red),
