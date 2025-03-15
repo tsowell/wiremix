@@ -36,6 +36,7 @@ pub struct Config {
 /// Represents a configuration deserialized from a file. This gets baked into a
 /// Config, which, for example, has a single char_set and theme.
 #[derive(Default, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 struct ConfigFile {
     remote: Option<String>,
     fps: Option<f32>,
@@ -62,6 +63,7 @@ struct ConfigFile {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Keybinding {
     pub key: KeyCode,
     #[serde(default = "Keybinding::default_modifiers")]
@@ -70,6 +72,7 @@ pub struct Keybinding {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Names {
     #[serde(default = "Names::default_stream")]
     pub stream: Vec<names::NameTemplate>,
@@ -90,6 +93,7 @@ pub enum OverrideType {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
     pub property: names::Tag,
@@ -282,5 +286,43 @@ mod tests {
     fn test_default_device() {
         // Just make sure this doesn't panic.
         let _ = Names::default_device();
+    }
+
+    #[test]
+    fn test_unknown_field_config_file() {
+        let config = r#"
+        unknown = "unknown"
+        "#;
+        assert!(toml::from_str::<ConfigFile>(&config).is_err());
+    }
+
+    #[test]
+    fn test_unknown_field_keybinding() {
+        let config = r#"
+        key = { Char = "x" }
+        action = "Nothing"
+        unknown = "unknown"
+        "#;
+        assert!(toml::from_str::<Keybinding>(&config).is_err());
+    }
+
+    #[test]
+    fn test_unknown_field_names() {
+        let config = r#"
+        unknown = "unknown"
+        "#;
+        assert!(toml::from_str::<Names>(&config).is_err());
+    }
+
+    #[test]
+    fn test_unknown_field_name_override() {
+        let config = r#"
+        types = [ "stream" ]
+        property = "node:node.name"
+        value = "value"
+        templates = [ "template" ]
+        unknown = "unknown"
+        "#;
+        assert!(toml::from_str::<NameOverride>(&config).is_err());
     }
 }
