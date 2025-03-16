@@ -385,7 +385,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_grapheme_cluster() {
+    fn test_width_1_column_grapheme_cluster() {
         let config = r#"
         meter_right_active = "⚓︎"
         "#;
@@ -393,6 +393,17 @@ mod tests {
         let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
         let char_set = CharSet::try_from(overlay).unwrap();
         assert_eq!(char_set.meter_right_active, "⚓︎");
+    }
+
+    #[test]
+    fn test_width_2_column_grapheme_cluster() {
+        let config = r#"
+        meter_right_active = "🏳️‍🌈"
+        "#;
+
+        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let char_set = CharSet::try_from(overlay);
+        assert!(char_set.is_err());
     }
 
     #[test]
