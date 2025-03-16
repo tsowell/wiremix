@@ -62,37 +62,6 @@ impl From<BorderTypeDef> for BorderType {
     }
 }
 
-impl Default for CharSet {
-    fn default() -> Self {
-        Self {
-            default_device: String::from("◇"),
-            default_stream: String::from("◇"),
-            selector_top: String::from("░"),
-            selector_middle: String::from("▒"),
-            selector_bottom: String::from("░"),
-            tab_marker_left: String::from("["),
-            tab_marker_right: String::from("]"),
-            list_more: String::from("•••"),
-            volume_empty: String::from("╌"),
-            volume_filled: String::from("━"),
-            meter_left_inactive: String::from("▮"),
-            meter_left_active: String::from("▮"),
-            meter_left_overload: String::from("▮"),
-            meter_right_inactive: String::from("▮"),
-            meter_right_active: String::from("▮"),
-            meter_right_overload: String::from("▮"),
-            meter_center_left_inactive: String::from("■"),
-            meter_center_left_active: String::from("■"),
-            meter_center_right_inactive: String::from("■"),
-            meter_center_right_active: String::from("■"),
-            dropdown_icon: String::from("▼"),
-            dropdown_selector: String::from(">"),
-            dropdown_more: String::from("•••"),
-            dropdown_border: BorderType::Rounded,
-        }
-    }
-}
-
 impl TryFrom<CharSetOverlay> for CharSet {
     type Error = anyhow::Error;
 
@@ -181,6 +150,37 @@ impl TryFrom<CharSetOverlay> for CharSet {
         }
 
         Ok(char_set)
+    }
+}
+
+impl Default for CharSet {
+    fn default() -> Self {
+        Self {
+            default_device: String::from("◇"),
+            default_stream: String::from("◇"),
+            selector_top: String::from("░"),
+            selector_middle: String::from("▒"),
+            selector_bottom: String::from("░"),
+            tab_marker_left: String::from("["),
+            tab_marker_right: String::from("]"),
+            list_more: String::from("•••"),
+            volume_empty: String::from("╌"),
+            volume_filled: String::from("━"),
+            meter_left_inactive: String::from("▮"),
+            meter_left_active: String::from("▮"),
+            meter_left_overload: String::from("▮"),
+            meter_right_inactive: String::from("▮"),
+            meter_right_active: String::from("▮"),
+            meter_right_overload: String::from("▮"),
+            meter_center_left_inactive: String::from("■"),
+            meter_center_left_active: String::from("■"),
+            meter_center_right_inactive: String::from("■"),
+            meter_center_right_active: String::from("■"),
+            dropdown_icon: String::from("▼"),
+            dropdown_selector: String::from(">"),
+            dropdown_more: String::from("•••"),
+            dropdown_border: BorderType::Rounded,
+        }
     }
 }
 
