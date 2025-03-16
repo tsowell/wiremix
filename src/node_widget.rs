@@ -246,21 +246,29 @@ impl StatefulWidget for NodeWidget<'_> {
         ])
         .render(header_left, buf);
 
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
+        let constraints = if self.config.peaks {
+            vec![
                 Constraint::Length(2), // _padding
                 Constraint::Fill(4),   // volume_area
                 Constraint::Fill(1),   // _padding
                 Constraint::Fill(4),   // meter_area
                 Constraint::Fill(1),   // _padding
-            ])
+            ]
+        } else {
+            vec![
+                Constraint::Length(2), // _padding
+                Constraint::Fill(9),   // volume_area
+                Constraint::Fill(1),   // _padding
+            ]
+        };
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(constraints)
             .split(bar_area);
         // index 0 is _padding
         let volume_area = layout[1];
         // index 2 is _padding
-        let meter_area = layout[3];
-        // index 4 is _padding
+        let meter_area = self.config.peaks.then(|| layout[3]);
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -344,31 +352,34 @@ impl StatefulWidget for NodeWidget<'_> {
         }
 
         // Render peaks
-        match self.node.peaks.as_deref() {
-            Some([left, right]) => meter::render_stereo(
-                meter_area,
-                buf,
-                Some((*left, *right)),
-                self.config,
-            ),
-            Some(peaks @ [..]) => meter::render_mono(
-                meter_area,
-                buf,
-                (!peaks.is_empty())
-                    .then_some(peaks.iter().sum::<f32>() / peaks.len() as f32),
-                self.config,
-            ),
-            _ => match self
-                .node
-                .positions
-                .as_ref()
-                .map(|positions| positions.len())
-            {
-                Some(2) => {
-                    meter::render_stereo(meter_area, buf, None, self.config)
-                }
-                _ => meter::render_mono(meter_area, buf, None, self.config),
-            },
+        if let Some(meter_area) = meter_area {
+            match self.node.peaks.as_deref() {
+                Some([left, right]) => meter::render_stereo(
+                    meter_area,
+                    buf,
+                    Some((*left, *right)),
+                    self.config,
+                ),
+                Some(peaks @ [..]) => meter::render_mono(
+                    meter_area,
+                    buf,
+                    (!peaks.is_empty()).then_some(
+                        peaks.iter().sum::<f32>() / peaks.len() as f32,
+                    ),
+                    self.config,
+                ),
+                _ => match self
+                    .node
+                    .positions
+                    .as_ref()
+                    .map(|positions| positions.len())
+                {
+                    Some(2) => {
+                        meter::render_stereo(meter_area, buf, None, self.config)
+                    }
+                    _ => meter::render_mono(meter_area, buf, None, self.config),
+                },
+            }
         }
     }
 }

@@ -281,7 +281,15 @@ impl App {
             }
             Event::Monitor(event) => {
                 for command in self.state.update(event) {
-                    let _ = self.tx.send(command);
+                    // Filter out capture commands if capture is disabled
+                    match command {
+                        Command::NodeCaptureStart(..)
+                        | Command::NodeCaptureStop(..)
+                            if !self.config.peaks => {}
+                        command => {
+                            let _ = self.tx.send(command);
+                        }
+                    }
                 }
                 Ok(true)
             }

@@ -15,12 +15,11 @@ pub struct Opt {
     )]
     pub remote: Option<String>,
 
-    // TODO
-    #[clap(short = 'C', long, help = "Disable audio capture for level monitoring")]
-    pub no_capture: bool,
-
     #[clap(short, long, help = "Target frames per second")]
     pub fps: Option<f32>,
+
+    #[clap(short = 'P', long, help = "Disable audio peak meters")]
+    pub no_peaks: bool,
 
     #[clap(short = 'M', long, help = "Disable mouse support")]
     pub no_mouse: bool,
