@@ -581,7 +581,7 @@ impl View {
         target: Target,
     ) -> Vec<Command> {
         let Some(metadata_id) = self.metadata_id else {
-            return Default::default();
+            return Vec::new();
         };
 
         match target {
@@ -778,7 +778,7 @@ impl View {
         } else if node.media_class.is_source_output() {
             (self.sources.clone(), self.default_source)
         } else {
-            (Default::default(), None)
+            (Vec::new(), None)
         };
         // Get and format the name of the default target
         let default_name = default

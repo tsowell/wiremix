@@ -127,7 +127,7 @@ impl ObjectList {
 
     pub fn toggle_mute(&mut self, view: &view::View) -> Vec<Command> {
         if matches!(self.list_type, ListType::Device) {
-            return Default::default();
+            return Vec::new();
         }
         self.selected
             .and_then(|node_id| view.mute(node_id))
@@ -141,7 +141,7 @@ impl ObjectList {
         volume: f32,
     ) -> Vec<Command> {
         if matches!(self.list_type, ListType::Device) {
-            return Default::default();
+            return Vec::new();
         }
         self.selected
             .and_then(|node_id| {
@@ -157,7 +157,7 @@ impl ObjectList {
         volume: f32,
     ) -> Vec<Command> {
         if matches!(self.list_type, ListType::Device) {
-            return Default::default();
+            return Vec::new();
         }
         self.selected
             .and_then(|node_id| {
@@ -169,7 +169,7 @@ impl ObjectList {
 
     pub fn set_default(&mut self, view: &view::View) -> Vec<Command> {
         if matches!(self.list_type, ListType::Device) {
-            return Default::default();
+            return Vec::new();
         }
         self.selected
             .zip(self.device_type)
@@ -494,6 +494,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config;
     use crate::event::MonitorEvent;
     use crate::media_class::MediaClass;
     use crate::state::State;
@@ -533,7 +534,7 @@ mod tests {
     #[test]
     fn object_list_up_overflow() {
         let state = init();
-        let view = View::from(&state, &Default::default());
+        let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -554,7 +555,7 @@ mod tests {
     #[test]
     fn object_list_down_overflow() {
         let state = init();
-        let view = View::from(&state, &Default::default());
+        let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -580,7 +581,7 @@ mod tests {
     #[test]
     fn object_list_remove_last_nodes() {
         let mut state = init();
-        let view = View::from(&state, &Default::default());
+        let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -606,7 +607,7 @@ mod tests {
         state.update(MonitorEvent::Removed(ObjectId::from_raw_id(7)));
         state.update(MonitorEvent::Removed(ObjectId::from_raw_id(8)));
         state.update(MonitorEvent::Removed(ObjectId::from_raw_id(9)));
-        let view = View::from(&state, &Default::default());
+        let view = View::from(&state, &config::Names::default());
 
         // Viewport is now below end of list
 

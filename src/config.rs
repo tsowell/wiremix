@@ -276,7 +276,7 @@ impl Config {
 
                 toml::from_str(&toml_str).with_context(context)?
             }
-            None => Default::default(),
+            None => ConfigFile::default(),
         };
 
         config_file.apply_opt(opt);

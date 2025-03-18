@@ -143,16 +143,16 @@ impl App {
             ),
         ];
         App {
-            exit: Default::default(),
+            exit: false,
             tx,
             rx,
-            error_message: Default::default(),
+            error_message: None,
             tabs,
-            selected_tab_index: Default::default(),
-            mouse_areas: Default::default(),
-            is_ready: Default::default(),
-            state: Default::default(),
-            view: Default::default(),
+            selected_tab_index: 0,
+            mouse_areas: Vec::new(),
+            is_ready: false,
+            state: State::default(),
+            view: View::default(),
             config,
         }
     }

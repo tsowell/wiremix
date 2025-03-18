@@ -54,7 +54,7 @@ impl Default for Names {
             stream: Self::default_stream(),
             endpoint: Self::default_endpoint(),
             device: Self::default_device(),
-            overrides: Default::default(),
+            overrides: Vec::new(),
         }
     }
 }

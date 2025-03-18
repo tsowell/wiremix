@@ -41,9 +41,9 @@ impl<D> StreamRegistry<D> {
         Ok(Self {
             streams: HashMap::new(),
             listeners: HashMap::new(),
-            garbage_streams: Default::default(),
-            garbage_listeners: Default::default(),
-            garbage_ids: Default::default(),
+            garbage_streams: Vec::new(),
+            garbage_listeners: Vec::new(),
+            garbage_ids: HashSet::new(),
             gc_fd,
         })
     }

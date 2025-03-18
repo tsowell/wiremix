@@ -53,8 +53,8 @@ impl ProxyRegistry {
             links: HashMap::new(),
             metadatas: HashMap::new(),
             listeners: HashMap::new(),
-            garbage_proxies_t: Default::default(),
-            garbage_listeners: Default::default(),
+            garbage_proxies_t: Vec::new(),
+            garbage_listeners: Vec::new(),
             gc_fd,
         })
     }
