@@ -3,7 +3,7 @@
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use crate::config::Config;
+use crate::config::{Config, Peaks};
 
 use anyhow::{anyhow, Result};
 
@@ -285,7 +285,7 @@ impl App {
                     match command {
                         Command::NodeCaptureStart(..)
                         | Command::NodeCaptureStop(..)
-                            if !self.config.peaks => {}
+                            if self.config.peaks == Peaks::Off => {}
                         command => {
                             let _ = self.tx.send(command);
                         }

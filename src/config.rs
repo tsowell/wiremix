@@ -27,7 +27,7 @@ pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
     pub mouse: bool,
-    pub peaks: bool,
+    pub peaks: Peaks,
     pub char_set: CharSet,
     pub theme: Theme,
     pub keybindings: HashMap<KeyEvent, Action>,
@@ -43,8 +43,7 @@ struct ConfigFile {
     fps: Option<f32>,
     #[serde(default = "default_mouse")]
     mouse: bool,
-    #[serde(default = "default_peaks")]
-    peaks: bool,
+    peaks: Option<Peaks>,
     #[serde(default = "default_char_set_name")]
     char_set: String,
     #[serde(default = "default_theme_name")]
@@ -63,6 +62,15 @@ struct ConfigFile {
     char_sets: HashMap<String, CharSet>,
     #[serde(default = "Theme::defaults", deserialize_with = "Theme::merge")]
     themes: HashMap<String, Theme>,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, PartialEq, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum Peaks {
+    Off,
+    Mono,
+    #[default]
+    Auto,
 }
 
 #[derive(Deserialize, Debug)]
@@ -164,10 +172,6 @@ fn default_mouse() -> bool {
     true
 }
 
-fn default_peaks() -> bool {
-    true
-}
-
 fn default_char_set_name() -> String {
     String::from("default")
 }
@@ -195,12 +199,8 @@ impl ConfigFile {
             self.mouse = true;
         }
 
-        if opt.no_peaks {
-            self.peaks = false;
-        }
-
-        if opt.peaks {
-            self.peaks = true;
+        if let Some(peaks) = &opt.peaks {
+            self.peaks = Some(peaks.clone());
         }
 
         if let Some(char_set) = &opt.char_set {
@@ -234,7 +234,7 @@ impl TryFrom<ConfigFile> for Config {
             remote: config_file.remote,
             fps: config_file.fps,
             mouse: config_file.mouse,
-            peaks: config_file.peaks,
+            peaks: config_file.peaks.unwrap_or_default(),
             char_set,
             theme,
             keybindings: config_file.keybindings,

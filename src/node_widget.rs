@@ -10,7 +10,7 @@ use ratatui::{
 use crossterm::event::{MouseButton, MouseEventKind};
 
 use crate::app::{Action, MouseArea};
-use crate::config::Config;
+use crate::config::{Config, Peaks};
 use crate::device_type::DeviceType;
 use crate::meter;
 use crate::object_list::ObjectList;
@@ -246,7 +246,7 @@ impl StatefulWidget for NodeWidget<'_> {
         ])
         .render(header_left, buf);
 
-        let constraints = if self.config.peaks {
+        let constraints = if self.config.peaks != Peaks::Off {
             vec![
                 Constraint::Length(2), // _padding
                 Constraint::Fill(4),   // volume_area
@@ -268,7 +268,7 @@ impl StatefulWidget for NodeWidget<'_> {
         // index 0 is _padding
         let volume_area = layout[1];
         // index 2 is _padding
-        let meter_area = self.config.peaks.then(|| layout[3]);
+        let meter_area = (self.config.peaks != Peaks::Off).then(|| layout[3]);
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -354,12 +354,14 @@ impl StatefulWidget for NodeWidget<'_> {
         // Render peaks
         if let Some(meter_area) = meter_area {
             match self.node.peaks.as_deref() {
-                Some([left, right]) => meter::render_stereo(
-                    meter_area,
-                    buf,
-                    Some((*left, *right)),
-                    self.config,
-                ),
+                Some([left, right]) if self.config.peaks != Peaks::Mono => {
+                    meter::render_stereo(
+                        meter_area,
+                        buf,
+                        Some((*left, *right)),
+                        self.config,
+                    )
+                }
                 Some(peaks @ [..]) => meter::render_mono(
                     meter_area,
                     buf,

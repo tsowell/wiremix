@@ -4,6 +4,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+use crate::config;
+
 #[derive(Parser)]
 #[clap(name = "pwmixer", about = "PipeWire mixer")]
 pub struct Opt {
@@ -42,11 +44,8 @@ pub struct Opt {
     )]
     pub theme: Option<String>,
 
-    #[clap(long, help = "Disable audio peak meters")]
-    pub no_peaks: bool,
-
-    #[clap(long, help = "Enable audio peak meters")]
-    pub peaks: bool,
+    #[clap(long, value_parser = clap::value_parser!(config::Peaks), help = "Audio peak meters")]
+    pub peaks: Option<config::Peaks>,
 
     #[clap(long, conflicts_with = "mouse", help = "Disable mouse support")]
     pub no_mouse: bool,
