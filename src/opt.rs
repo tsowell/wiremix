@@ -8,6 +8,14 @@ use clap::Parser;
 #[clap(name = "pwmixer", about = "PipeWire mixer")]
 pub struct Opt {
     #[clap(
+        short = 'c',
+        long,
+        value_name = "FILE",
+        help = "Override default config file path"
+    )]
+    pub config: Option<PathBuf>,
+
+    #[clap(
         short,
         long,
         value_name = "NAME",
@@ -17,30 +25,6 @@ pub struct Opt {
 
     #[clap(short, long, help = "Target frames per second")]
     pub fps: Option<f32>,
-
-    #[clap(long, help = "Disable audio peak meters")]
-    pub no_peaks: bool,
-
-    #[clap(long, help = "Enable audio peak meters")]
-    pub peaks: bool,
-
-    #[clap(long, conflicts_with = "mouse", help = "Disable mouse support")]
-    pub no_mouse: bool,
-
-    #[clap(long, conflicts_with = "no_mouse", help = "Enable mouse support")]
-    pub mouse: bool,
-
-    #[cfg(debug_assertions)]
-    #[clap(short, long, help = "Dump events without showing interface")]
-    pub dump_events: bool,
-
-    #[clap(
-        short = 'c',
-        long,
-        value_name = "FILE",
-        help = "Override default config file path"
-    )]
-    pub config: Option<PathBuf>,
 
     #[clap(
         short = 's',
@@ -57,6 +41,22 @@ pub struct Opt {
         help = "Theme to use\n[built-in themes: default]"
     )]
     pub theme: Option<String>,
+
+    #[clap(long, help = "Disable audio peak meters")]
+    pub no_peaks: bool,
+
+    #[clap(long, help = "Enable audio peak meters")]
+    pub peaks: bool,
+
+    #[clap(long, conflicts_with = "mouse", help = "Disable mouse support")]
+    pub no_mouse: bool,
+
+    #[clap(long, conflicts_with = "no_mouse", help = "Enable mouse support")]
+    pub mouse: bool,
+
+    #[cfg(debug_assertions)]
+    #[clap(short, long, help = "Dump events without showing interface")]
+    pub dump_events: bool,
 }
 
 impl Opt {
