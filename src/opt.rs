@@ -18,11 +18,17 @@ pub struct Opt {
     #[clap(short, long, help = "Target frames per second")]
     pub fps: Option<f32>,
 
-    #[clap(short = 'P', long, help = "Disable audio peak meters")]
+    #[clap(long, help = "Disable audio peak meters")]
     pub no_peaks: bool,
 
-    #[clap(short = 'M', long, help = "Disable mouse support")]
+    #[clap(long, help = "Enable audio peak meters")]
+    pub peaks: bool,
+
+    #[clap(long, conflicts_with = "mouse", help = "Disable mouse support")]
     pub no_mouse: bool,
+
+    #[clap(long, conflicts_with = "no_mouse", help = "Enable mouse support")]
+    pub mouse: bool,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]

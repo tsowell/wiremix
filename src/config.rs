@@ -191,8 +191,16 @@ impl ConfigFile {
             self.mouse = false;
         }
 
+        if opt.mouse {
+            self.mouse = true;
+        }
+
         if opt.no_peaks {
             self.peaks = false;
+        }
+
+        if opt.peaks {
+            self.peaks = true;
         }
 
         if let Some(char_set) = &opt.char_set {
