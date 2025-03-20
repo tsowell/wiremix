@@ -52,39 +52,6 @@ fn default_modifier() -> Modifier {
     Modifier::empty()
 }
 
-impl Default for Theme {
-    fn default() -> Self {
-        Self {
-            default_device: Style::default(),
-            default_stream: Style::default(),
-            selector: Style::default().fg(Color::LightCyan),
-            tab: Style::default(),
-            tab_selected: Style::default().fg(Color::LightCyan),
-            tab_marker: Style::default().fg(Color::LightCyan),
-            list_more: Style::default().fg(Color::DarkGray),
-            node_title: Style::default(),
-            node_target: Style::default(),
-            volume: Style::default(),
-            volume_empty: Style::default().fg(Color::DarkGray),
-            volume_filled: Style::default().fg(Color::LightBlue),
-            meter_inactive: Style::default().fg(Color::DarkGray),
-            meter_active: Style::default().fg(Color::LightGreen),
-            meter_overload: Style::default().fg(Color::Red),
-            meter_center_inactive: Style::default().fg(Color::DarkGray),
-            meter_center_active: Style::default().fg(Color::LightGreen),
-            config_device: Style::default(),
-            config_profile: Style::default(),
-            dropdown_icon: Style::default(),
-            dropdown_border: Style::default(),
-            dropdown_item: Style::default(),
-            dropdown_selected: Style::default()
-                .fg(Color::LightCyan)
-                .add_modifier(Modifier::REVERSED),
-            dropdown_more: Style::default().fg(Color::DarkGray),
-        }
-    }
-}
-
 impl From<StyleDef> for Style {
     fn from(def: StyleDef) -> Self {
         Self {
@@ -103,6 +70,7 @@ impl TryFrom<ThemeOverlay> for Theme {
     fn try_from(overlay: ThemeOverlay) -> Result<Self, Self::Error> {
         let mut theme: Self = match overlay.inherit.as_deref() {
             Some("default") => Theme::default(),
+            Some("nocolor") => Theme::nocolor(),
             Some(inherit) => {
                 anyhow::bail!("'{}' is not a built-in theme", inherit)
             }
@@ -146,9 +114,75 @@ impl TryFrom<ThemeOverlay> for Theme {
     }
 }
 
+impl Default for Theme {
+    fn default() -> Self {
+        Self {
+            default_device: Style::default(),
+            default_stream: Style::default(),
+            selector: Style::default().fg(Color::LightCyan),
+            tab: Style::default(),
+            tab_selected: Style::default().fg(Color::LightCyan),
+            tab_marker: Style::default().fg(Color::LightCyan),
+            list_more: Style::default().fg(Color::DarkGray),
+            node_title: Style::default(),
+            node_target: Style::default(),
+            volume: Style::default(),
+            volume_empty: Style::default().fg(Color::DarkGray),
+            volume_filled: Style::default().fg(Color::LightBlue),
+            meter_inactive: Style::default().fg(Color::DarkGray),
+            meter_active: Style::default().fg(Color::LightGreen),
+            meter_overload: Style::default().fg(Color::Red),
+            meter_center_inactive: Style::default().fg(Color::DarkGray),
+            meter_center_active: Style::default().fg(Color::LightGreen),
+            config_device: Style::default(),
+            config_profile: Style::default(),
+            dropdown_icon: Style::default(),
+            dropdown_border: Style::default(),
+            dropdown_item: Style::default(),
+            dropdown_selected: Style::default()
+                .fg(Color::LightCyan)
+                .add_modifier(Modifier::REVERSED),
+            dropdown_more: Style::default().fg(Color::DarkGray),
+        }
+    }
+}
+
 impl Theme {
     pub fn defaults() -> HashMap<String, Theme> {
-        HashMap::from([(String::from("default"), Theme::default())])
+        HashMap::from([
+            (String::from("default"), Theme::default()),
+            (String::from("nocolor"), Theme::nocolor()),
+        ])
+    }
+
+    fn nocolor() -> Self {
+        Self {
+            default_device: Style::default(),
+            default_stream: Style::default(),
+            selector: Style::default().add_modifier(Modifier::BOLD),
+            tab: Style::default(),
+            tab_selected: Style::default().add_modifier(Modifier::BOLD),
+            tab_marker: Style::default().add_modifier(Modifier::BOLD),
+            list_more: Style::default(),
+            node_title: Style::default(),
+            node_target: Style::default(),
+            volume: Style::default(),
+            volume_empty: Style::default().add_modifier(Modifier::DIM),
+            volume_filled: Style::default().add_modifier(Modifier::BOLD),
+            meter_inactive: Style::default().add_modifier(Modifier::DIM),
+            meter_active: Style::default().add_modifier(Modifier::BOLD),
+            meter_overload: Style::default().add_modifier(Modifier::BOLD),
+            meter_center_inactive: Style::default().add_modifier(Modifier::DIM),
+            meter_center_active: Style::default().add_modifier(Modifier::BOLD),
+            config_device: Style::default(),
+            config_profile: Style::default(),
+            dropdown_icon: Style::default(),
+            dropdown_border: Style::default(),
+            dropdown_item: Style::default(),
+            dropdown_selected: Style::default()
+                .add_modifier(Modifier::REVERSED | Modifier::BOLD),
+            dropdown_more: Style::default(),
+        }
     }
 
     /// Merge deserialized themes with defaults
@@ -170,6 +204,9 @@ impl Theme {
             .collect::<Result<HashMap<String, Theme>, D::Error>>()?;
         if !merged.contains_key("default") {
             merged.insert(String::from("default"), Theme::default());
+        }
+        if !merged.contains_key("nocolor") {
+            merged.insert(String::from("nocolor"), Theme::nocolor());
         }
         Ok(merged)
     }
