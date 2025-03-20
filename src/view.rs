@@ -79,6 +79,10 @@ pub struct Node {
     pub peaks: Option<Vec<f32>>,
     pub positions: Option<Vec<u32>>,
 
+    /// If this is a device/endpoint node, store the (device_id, route_index,
+    /// card_device) here because they are needed for the
+    /// [`DeviceVolume`](`crate::command::DeviceVolume`) and
+    /// [`DeviceMute`](`crate::command::DeviceMute`) commands.
     pub device_info: Option<(ObjectId, i32, i32)>,
 
     pub is_default_sink: bool,
@@ -200,8 +204,12 @@ impl Node {
         let media_class = node.media_class.as_ref()?.clone();
         let title = names.resolve(state, node)?;
 
+        // Nodes can represent either streams or devices.
         let (volumes, mute, device_info) =
             if let Some(device_id) = node.device_id {
+                // Nodes for devices should get their volume and mute status
+                // from the associated device's active route which is also used
+                // for changing the volume and mute status.
                 let device = state.devices.get(&device_id)?;
                 let card_device = node.card_profile_device?;
                 if let Some(route) = active_route(device, card_device) {
@@ -215,12 +223,15 @@ impl Node {
                     (node.volumes.as_ref()?.clone(), node.mute?, None)
                 }
             } else {
+                // We can interact with a stream node's volume and mute status
+                // directly.
                 (node.volumes.as_ref()?.clone(), node.mute?, None)
             };
 
         let (routes, target, target_title) = if let Some(device_id) =
             node.device_id
         {
+            // Targets for device nodes are routes for the associated device.
             let device = state.devices.get(&device_id)?;
             let card_device = node.card_profile_device?;
 
@@ -251,6 +262,7 @@ impl Node {
 
             (Some(routes), target, target_title)
         } else if media_class.is_sink_input() {
+            // Targets for output streams are sinks.
             let outputs = state.outputs(id);
             let sink = sinks.iter().find(|(target, _)| {
                 matches!(target, Target::Node(sink_id)
@@ -270,6 +282,7 @@ impl Node {
             };
             (None, target, target_title)
         } else if media_class.is_source_output() {
+            // Targets for input streams are sources.
             let inputs = state.inputs(id);
             let source = sources.iter().find(|(target, _)| {
                 matches!(target, Target::Node(source_id)
