@@ -71,6 +71,7 @@ impl TryFrom<ThemeOverlay> for Theme {
         let mut theme: Self = match overlay.inherit.as_deref() {
             Some("default") => Theme::default(),
             Some("nocolor") => Theme::nocolor(),
+            Some("plain") => Theme::plain(),
             Some(inherit) => {
                 anyhow::bail!("'{}' is not a built-in theme", inherit)
             }
@@ -152,6 +153,7 @@ impl Theme {
         HashMap::from([
             (String::from("default"), Theme::default()),
             (String::from("nocolor"), Theme::nocolor()),
+            (String::from("plain"), Theme::plain()),
         ])
     }
 
@@ -185,6 +187,35 @@ impl Theme {
         }
     }
 
+    fn plain() -> Self {
+        Self {
+            default_device: Style::default(),
+            default_stream: Style::default(),
+            selector: Style::default(),
+            tab: Style::default(),
+            tab_selected: Style::default(),
+            tab_marker: Style::default(),
+            list_more: Style::default(),
+            node_title: Style::default(),
+            node_target: Style::default(),
+            volume: Style::default(),
+            volume_empty: Style::default(),
+            volume_filled: Style::default(),
+            meter_inactive: Style::default(),
+            meter_active: Style::default(),
+            meter_overload: Style::default(),
+            meter_center_inactive: Style::default(),
+            meter_center_active: Style::default(),
+            config_device: Style::default(),
+            config_profile: Style::default(),
+            dropdown_icon: Style::default(),
+            dropdown_border: Style::default(),
+            dropdown_item: Style::default(),
+            dropdown_selected: Style::default(),
+            dropdown_more: Style::default(),
+        }
+    }
+
     /// Merge deserialized themes with defaults
     pub fn merge<'de, D>(
         deserializer: D,
@@ -207,6 +238,9 @@ impl Theme {
         }
         if !merged.contains_key("nocolor") {
             merged.insert(String::from("nocolor"), Theme::nocolor());
+        }
+        if !merged.contains_key("plain") {
+            merged.insert(String::from("plain"), Theme::plain());
         }
         Ok(merged)
     }
