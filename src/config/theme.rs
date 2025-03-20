@@ -9,6 +9,7 @@ use crate::config::Theme;
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ThemeOverlay {
+    inherit: Option<String>,
     default_device: Option<StyleDef>,
     default_stream: Option<StyleDef>,
     selector: Option<StyleDef>,
@@ -100,7 +101,13 @@ impl TryFrom<ThemeOverlay> for Theme {
     type Error = anyhow::Error;
 
     fn try_from(overlay: ThemeOverlay) -> Result<Self, Self::Error> {
-        let mut theme = Theme::default();
+        let mut theme: Self = match overlay.inherit.as_deref() {
+            Some("default") => Theme::default(),
+            Some(inherit) => {
+                anyhow::bail!("'{}' is not a built-in theme", inherit)
+            }
+            None => Theme::default(),
+        };
 
         macro_rules! set {
             ($field:ident) => {
@@ -186,5 +193,35 @@ mod tests {
         unknown = "unknown"
         "#;
         assert!(toml::from_str::<StyleDef>(&config).is_err());
+    }
+
+    #[test]
+    fn test_inherit_nonexistent() {
+        let config = r#"
+        inherit = "doesntexist"
+        tab_selected = { }
+        "#;
+
+        let overlay = toml::from_str::<ThemeOverlay>(&config).unwrap();
+        let theme = Theme::try_from(overlay);
+        assert!(theme.is_err());
+    }
+
+    #[test]
+    fn test_inherit() {
+        for (builtin_key, builtin) in Theme::defaults().iter() {
+            let config = format!(
+                r#"
+            inherit = "{}"
+            tab_selected = {{ }}
+            "#,
+                builtin_key
+            );
+
+            let overlay = toml::from_str::<ThemeOverlay>(&config).unwrap();
+            let theme = Theme::try_from(overlay).unwrap();
+            assert_eq!(theme.tab_selected, Style::default());
+            assert_eq!(theme.selector, builtin.selector);
+        }
     }
 }
