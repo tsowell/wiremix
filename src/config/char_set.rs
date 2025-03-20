@@ -69,7 +69,7 @@ impl TryFrom<CharSetOverlay> for CharSet {
         let mut char_set: Self = match overlay.inherit.as_deref() {
             Some("default") => CharSet::default(),
             Some("compat") => CharSet::compat(),
-            Some("extra_compat") => CharSet::extra_compat(),
+            Some("extracompat") => CharSet::extracompat(),
             Some(inherit) => {
                 anyhow::bail!("'{}' is not a built-in character set", inherit)
             }
@@ -189,7 +189,7 @@ impl CharSet {
         HashMap::from([
             (String::from("default"), CharSet::default()),
             (String::from("compat"), CharSet::compat()),
-            (String::from("extra_compat"), CharSet::extra_compat()),
+            (String::from("extracompat"), CharSet::extracompat()),
         ])
     }
 
@@ -222,7 +222,7 @@ impl CharSet {
         }
     }
 
-    fn extra_compat() -> CharSet {
+    fn extracompat() -> CharSet {
         Self {
             default_device: String::from("*"),
             default_stream: String::from("*"),
@@ -274,9 +274,8 @@ impl CharSet {
         if !merged.contains_key("compat") {
             merged.insert(String::from("compat"), CharSet::compat());
         }
-        if !merged.contains_key("extra_compat") {
-            merged
-                .insert(String::from("extra_compat"), CharSet::extra_compat());
+        if !merged.contains_key("extracompat") {
+            merged.insert(String::from("extracompat"), CharSet::extracompat());
         }
         Ok(merged)
     }

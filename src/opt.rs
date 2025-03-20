@@ -32,7 +32,7 @@ pub struct Opt {
         short = 's',
         long,
         value_name = "NAME",
-        help = "Character set to use\n[built-in sets: default, compat, extra_compat]"
+        help = "Character set to use\n[built-in sets: default, compat, extracompat]"
     )]
     pub char_set: Option<String>,
 
