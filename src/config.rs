@@ -187,8 +187,8 @@ impl ConfigFile {
             self.remote = Some(remote.clone());
         }
 
-        if let Some(fps) = &opt.fps {
-            self.fps = Some(*fps);
+        if let Some(fps) = opt.fps {
+            self.fps = (fps != 0.0).then_some(fps);
         }
 
         if opt.no_mouse {
