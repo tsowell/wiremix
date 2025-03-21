@@ -48,7 +48,11 @@ pub struct Opt {
     )]
     pub theme: Option<String>,
 
-    #[clap(long, value_parser = clap::value_parser!(config::Peaks), help = "Audio peak meters")]
+    #[clap(
+        long,
+        value_parser = clap::value_parser!(config::Peaks),
+        help = "Audio peak meters"
+    )]
     pub peaks: Option<config::Peaks>,
 
     #[clap(long, conflicts_with = "mouse", help = "Disable mouse support")]
