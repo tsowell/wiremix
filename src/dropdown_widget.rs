@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
+use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
 use crate::config::Config;
@@ -51,15 +52,15 @@ impl StatefulWidget for DropdownWidget<'_> {
         // Click anywhere else in the object list to close the dropdown.
         mouse_areas.push((
             area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::CloseDropdown],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::CloseDropdown],
         ));
 
         // But clicking on the border does nothing.
         mouse_areas.push((
             dropdown_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![],
         ));
 
         Clear.render(dropdown_area, buf);
@@ -105,8 +106,8 @@ impl StatefulWidget for DropdownWidget<'_> {
 
             mouse_areas.push((
                 top_area,
-                vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::MoveUp],
+                smallvec![MouseEventKind::Down(MouseButton::Left)],
+                smallvec![Action::MoveUp],
             ));
         }
 
@@ -132,8 +133,8 @@ impl StatefulWidget for DropdownWidget<'_> {
 
             mouse_areas.push((
                 bottom_area,
-                vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::MoveDown],
+                smallvec![MouseEventKind::Down(MouseButton::Left)],
+                smallvec![Action::MoveDown],
             ));
         }
 
@@ -155,8 +156,8 @@ impl StatefulWidget for DropdownWidget<'_> {
             if let Some(target) = target {
                 mouse_areas.push((
                     target_area,
-                    vec![MouseEventKind::Down(MouseButton::Left)],
-                    vec![Action::SetTarget(*target)],
+                    smallvec![MouseEventKind::Down(MouseButton::Left)],
+                    smallvec![Action::SetTarget(*target)],
                 ));
             }
         }

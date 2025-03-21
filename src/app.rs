@@ -20,6 +20,7 @@ use crossterm::event::{
 };
 
 use serde::Deserialize;
+use smallvec::{smallvec, SmallVec};
 
 use crate::command::Command;
 use crate::device_type::DeviceType;
@@ -73,7 +74,8 @@ impl Tab {
 
 // Mouse events matching one of the MouseEventKinds within the Rect will
 // perform the Actions.
-pub type MouseArea = (Rect, Vec<MouseEventKind>, Vec<Action>);
+pub type MouseArea =
+    (Rect, SmallVec<[MouseEventKind; 4]>, SmallVec<[Action; 4]>);
 
 /// Handles the main UI for the application.
 ///
@@ -487,8 +489,8 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 
             state.mouse_areas.push((
                 menu_areas[i],
-                vec![MouseEventKind::Down(MouseButton::Left)],
-                vec![Action::SelectTab(i)],
+                smallvec![MouseEventKind::Down(MouseButton::Left)],
+                smallvec![Action::SelectTab(i)],
             ));
         }
 

@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
+use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
 use crate::config::Config;
@@ -79,8 +80,8 @@ impl StatefulWidget for DeviceWidget<'_> {
 
         mouse_areas.push((
             area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.device.id)],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::SelectObject(self.device.id)],
         ));
 
         let layout = Layout::default()
@@ -153,8 +154,11 @@ impl StatefulWidget for DeviceWidget<'_> {
 
         mouse_areas.push((
             target_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.device.id), Action::OpenDropdown],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![
+                Action::SelectObject(self.device.id),
+                Action::OpenDropdown
+            ],
         ));
     }
 }

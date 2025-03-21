@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
+use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
 use crate::command::Command;
@@ -382,26 +383,26 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
 
         mouse_areas.push((
             header_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::MoveUp],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::MoveUp],
         ));
 
         mouse_areas.push((
             footer_area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::MoveDown],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::MoveDown],
         ));
 
         mouse_areas.push((
             list_area,
-            vec![MouseEventKind::ScrollUp],
-            vec![Action::MoveUp],
+            smallvec![MouseEventKind::ScrollUp],
+            smallvec![Action::MoveUp],
         ));
 
         mouse_areas.push((
             list_area,
-            vec![MouseEventKind::ScrollDown],
-            vec![Action::MoveDown],
+            smallvec![MouseEventKind::ScrollDown],
+            smallvec![Action::MoveDown],
         ));
 
         let (spacing, height) = match self.object_list.list_type {

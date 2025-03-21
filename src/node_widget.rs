@@ -8,6 +8,7 @@ use ratatui::{
 };
 
 use crossterm::event::{MouseButton, MouseEventKind};
+use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
 use crate::config::{Config, Peaks};
@@ -106,20 +107,20 @@ impl StatefulWidget for NodeWidget<'_> {
 
         mouse_areas.push((
             area,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.node.id)],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::SelectObject(self.node.id)],
         ));
 
         mouse_areas.push((
             area,
-            vec![MouseEventKind::Down(MouseButton::Right)],
-            vec![Action::SelectObject(self.node.id), Action::SetDefault],
+            smallvec![MouseEventKind::Down(MouseButton::Right)],
+            smallvec![Action::SelectObject(self.node.id), Action::SetDefault],
         ));
 
         mouse_areas.push((
             area,
-            vec![MouseEventKind::ScrollLeft],
-            vec![
+            smallvec![MouseEventKind::ScrollLeft],
+            smallvec![
                 Action::SelectObject(self.node.id),
                 Action::SetRelativeVolume(-0.01),
             ],
@@ -127,8 +128,8 @@ impl StatefulWidget for NodeWidget<'_> {
 
         mouse_areas.push((
             area,
-            vec![MouseEventKind::ScrollRight],
-            vec![
+            smallvec![MouseEventKind::ScrollRight],
+            smallvec![
                 Action::SelectObject(self.node.id),
                 Action::SetRelativeVolume(0.01),
             ],
@@ -223,8 +224,8 @@ impl StatefulWidget for NodeWidget<'_> {
             .render(header_right, buf);
         mouse_areas.push((
             header_right,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.node.id), Action::OpenDropdown],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::SelectObject(self.node.id), Action::OpenDropdown],
         ));
 
         let default_span = if is_default(self.node, self.device_type) {
@@ -315,8 +316,8 @@ impl StatefulWidget for NodeWidget<'_> {
 
         mouse_areas.push((
             volume_label,
-            vec![MouseEventKind::Down(MouseButton::Left)],
-            vec![Action::SelectObject(self.node.id), Action::ToggleMute],
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::SelectObject(self.node.id), Action::ToggleMute],
         ));
 
         // Add mouse areas for setting volume
@@ -340,11 +341,11 @@ impl StatefulWidget for NodeWidget<'_> {
 
             mouse_areas.push((
                 volume_area,
-                vec![
+                smallvec![
                     MouseEventKind::Down(MouseButton::Left),
                     MouseEventKind::Drag(MouseButton::Left),
                 ],
-                vec![
+                smallvec![
                     Action::SelectObject(self.node.id),
                     Action::SetAbsoluteVolume(sticky_volume),
                 ],
