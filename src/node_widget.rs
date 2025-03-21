@@ -159,18 +159,12 @@ impl StatefulWidget for NodeWidget<'_> {
             let style = self.config.theme.selector;
 
             // Render the selected node indicator
-            Line::from(Span::styled(&self.config.char_set.selector_top, style))
+            Span::styled(&self.config.char_set.selector_top, style)
                 .render(rows[0], buf);
-            Line::from(Span::styled(
-                &self.config.char_set.selector_middle,
-                style,
-            ))
-            .render(rows[1], buf);
-            Line::from(Span::styled(
-                &self.config.char_set.selector_bottom,
-                style,
-            ))
-            .render(rows[2], buf);
+            Span::styled(&self.config.char_set.selector_middle, style)
+                .render(rows[1], buf);
+            Span::styled(&self.config.char_set.selector_bottom, style)
+                .render(rows[2], buf);
         }
 
         let layout = Layout::default()
