@@ -361,7 +361,11 @@ impl App {
 
     fn handle_action(&mut self, action: Action) {
         match action {
-            Action::SelectTab(index) => self.selected_tab_index = index,
+            Action::SelectTab(index) => {
+                if index < self.tabs.len() {
+                    self.selected_tab_index = index;
+                }
+            }
             Action::MoveDown => {
                 self.tabs[self.selected_tab_index].list.down(&self.view);
             }
@@ -513,5 +517,31 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             config: self.config,
         };
         widget.render(list_area, buf, state.mouse_areas);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn select_tab_bounds() {
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let (_, event_rx) = mpsc::channel();
+
+        let config = Config {
+            remote: None,
+            fps: None,
+            mouse: false,
+            peaks: Default::default(),
+            char_set: Default::default(),
+            theme: Default::default(),
+            keybindings: Default::default(),
+            names: Default::default(),
+        };
+        let mut app = App::new(command_tx, event_rx, config);
+
+        app.handle_action(Action::SelectTab(app.tabs.len()));
+        assert!(app.selected_tab_index < app.tabs.len());
     }
 }
