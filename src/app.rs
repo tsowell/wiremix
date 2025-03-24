@@ -105,6 +105,10 @@ pub struct App {
     view: View,
     /// The application configuration
     config: Config,
+    /// The row on which the mouse is being dragged. While the left mouse
+    /// button is held down, this is used in place of the real row to allow the
+    /// mouse to move on the vertical axis during horizontal dragging.
+    drag_row: Option<u16>,
 }
 
 impl App {
@@ -156,6 +160,7 @@ impl App {
             state: State::default(),
             view: View::default(),
             config,
+            drag_row: None,
         }
     }
 
@@ -323,6 +328,14 @@ impl App {
     }
 
     fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
+        match mouse_event.kind {
+            MouseEventKind::Down(MouseButton::Left) => {
+                self.drag_row = Some(mouse_event.row)
+            }
+            MouseEventKind::Up(MouseButton::Left) => self.drag_row = None,
+            _ => {}
+        }
+
         let actions = self
             .mouse_areas
             .iter()
@@ -330,7 +343,7 @@ impl App {
             .find(|(rect, kinds, _)| {
                 rect.contains(Position {
                     x: mouse_event.column,
-                    y: mouse_event.row,
+                    y: self.drag_row.unwrap_or(mouse_event.row),
                 }) && kinds.contains(&mouse_event.kind)
             })
             .map(|(_, _, action)| action.clone())
