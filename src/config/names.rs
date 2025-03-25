@@ -243,6 +243,21 @@ mod tests {
     }
 
     #[test]
+    fn test_render_device_missing_tag() {
+        let (state, device_id, _) = init();
+
+        let names = Names {
+            device: vec!["{device:device.description}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let device = state.devices.get(&device_id).unwrap();
+        let result = names.resolve(&state, device);
+        // Should fall back to device name
+        assert_eq!(result, Some(String::from("Device name")))
+    }
+
+    #[test]
     fn test_render_endpoint_linked_device() {
         let (mut state, device_id, node_id) = init();
 
