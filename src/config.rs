@@ -291,24 +291,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_default_stream() {
-        // Just make sure this doesn't panic.
-        let _ = Names::default_stream();
-    }
-
-    #[test]
-    fn test_default_endpoint() {
-        // Just make sure this doesn't panic.
-        let _ = Names::default_endpoint();
-    }
-
-    #[test]
-    fn test_default_device() {
-        // Just make sure this doesn't panic.
-        let _ = Names::default_device();
-    }
-
-    #[test]
     fn test_unknown_field_config_file() {
         let config = r#"
         unknown = "unknown"

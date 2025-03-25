@@ -184,6 +184,24 @@ mod tests {
     use crate::object::ObjectId;
     use crate::state::State;
 
+    #[test]
+    fn test_default_stream() {
+        // Just make sure this doesn't panic.
+        let _ = Names::default_stream();
+    }
+
+    #[test]
+    fn test_default_endpoint() {
+        // Just make sure this doesn't panic.
+        let _ = Names::default_endpoint();
+    }
+
+    #[test]
+    fn test_default_device() {
+        // Just make sure this doesn't panic.
+        let _ = Names::default_device();
+    }
+
     fn init() -> (State, ObjectId, ObjectId) {
         let mut state: State = Default::default();
 
