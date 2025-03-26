@@ -8,6 +8,7 @@ use crate::config;
 
 #[derive(Parser)]
 #[clap(name = "pwmixer", about = "PipeWire mixer")]
+#[command(version)]
 pub struct Opt {
     #[clap(
         short = 'c',
