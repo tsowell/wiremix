@@ -210,7 +210,13 @@ impl App {
             let now = Instant::now();
             if needs_render && now >= next_frame_time {
                 needs_render = false;
-                next_frame_time = now + frame_duration;
+
+                if now > next_frame_time + frame_duration {
+                    // We're running behind, so reset the frame timing.
+                    next_frame_time = now + frame_duration;
+                } else {
+                    next_frame_time += frame_duration;
+                }
 
                 self.mouse_areas.clear();
 
