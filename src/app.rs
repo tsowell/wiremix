@@ -168,6 +168,14 @@ impl App {
         #[cfg(feature = "trace")]
         trace::initialize_logging()?;
 
+        // Wait until we've received all initial data from PipeWire
+        let _ = terminal.draw(|frame| {
+            frame.render_widget(Line::from("Initializing..."), frame.area());
+        });
+        while !self.exit && !self.is_ready {
+            let _ = self.handle_events(None);
+        }
+
         let frame_duration =
             self.config.fps.map_or(Default::default(), |fps| {
                 Duration::from_secs_f32(1.0 / fps)
@@ -193,9 +201,9 @@ impl App {
             #[cfg(feature = "trace")]
             trace_dbg!(&self.view);
 
-            if self.is_ready
-                && self.tabs[self.selected_tab_index].list.selected.is_none()
-            {
+            // There should always be something selected. Select the first item
+            // if there isn't.
+            if self.tabs[self.selected_tab_index].list.selected.is_none() {
                 self.handle_action(Action::MoveDown);
             }
 
