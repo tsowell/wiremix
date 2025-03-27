@@ -544,4 +544,38 @@ mod tests {
         app.handle_action(Action::SelectTab(app.tabs.len()));
         assert!(app.selected_tab_index < app.tabs.len());
     }
+
+    #[test]
+    fn key_modifiers() {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        use std::collections::HashMap;
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let (_, event_rx) = mpsc::channel();
+
+        let x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
+        let ctrl_x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
+
+        let keybindings = HashMap::from([
+            (x, Action::SelectTab(2)),
+            (ctrl_x, Action::SelectTab(4)),
+        ]);
+        let config = Config {
+            remote: None,
+            fps: None,
+            mouse: false,
+            peaks: Default::default(),
+            char_set: Default::default(),
+            theme: Default::default(),
+            keybindings,
+            names: Default::default(),
+        };
+        let mut app = App::new(command_tx, event_rx, config);
+
+        app.handle_key_event(x);
+        assert_eq!(app.selected_tab_index, 2);
+        app.handle_key_event(ctrl_x);
+        assert_eq!(app.selected_tab_index, 4);
+        app.handle_key_event(x);
+        assert_eq!(app.selected_tab_index, 2);
+    }
 }
