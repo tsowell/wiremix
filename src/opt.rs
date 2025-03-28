@@ -50,6 +50,7 @@ pub struct Opt {
     pub theme: Option<String>,
 
     #[clap(
+        short,
         long,
         value_parser = clap::value_parser!(config::Peaks),
         help = "Audio peak meters"

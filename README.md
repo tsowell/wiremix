@@ -39,7 +39,7 @@ Options:
                          [built-in sets: default, compat, extracompat]
   -t, --theme <NAME>     Theme to use
                          [built-in themes: default]
-      --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
+  -p, --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
       --no-mouse         Disable mouse support
       --mouse            Enable mouse support
   -h, --help             Print help
