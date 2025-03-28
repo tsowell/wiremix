@@ -553,9 +553,8 @@ impl View {
                 match &state_node.peaks {
                     Some(peaks) => {
                         let peaks_ref = node.peaks.get_or_insert_default();
-                        peaks_ref.clear();
-                        peaks_ref.extend(peaks);
-                        peaks_ref.shrink_to_fit();
+                        peaks_ref.resize(peaks.len(), 0.0);
+                        peaks_ref.copy_from_slice(peaks);
                     }
                     _ => node.peaks = None,
                 }
