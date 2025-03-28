@@ -94,21 +94,6 @@ impl TryFrom<CharSetOverlay> for CharSet {
                     char_set.$field = value;
                 }
             };
-            ($field:ident, [$($fallback_field:ident),+], $length:expr) => {
-                // Do the same, but for multiple fields, using the first one
-                // as a default for the fallack fields.
-                $(
-                    if let (Some(value), None) =
-                        (&overlay.$field, &overlay.$fallback_field)
-                    {
-                        char_set.$fallback_field = value.clone();
-                    }
-                )+
-                validate_and_set!($field, $length);
-                $(
-                    validate_and_set!($fallback_field, $length);
-                )+
-            };
         }
 
         validate_and_set!(default_device, 1);
@@ -121,26 +106,16 @@ impl TryFrom<CharSetOverlay> for CharSet {
         validate_and_set!(list_more, 0);
         validate_and_set!(volume_empty, 1);
         validate_and_set!(volume_filled, 1);
-        validate_and_set!(
-            meter_left_active,
-            [meter_left_overload, meter_left_inactive],
-            1
-        );
-        validate_and_set!(
-            meter_right_active,
-            [meter_right_overload, meter_right_inactive],
-            1
-        );
-        validate_and_set!(
-            meter_center_left_active,
-            [meter_center_left_inactive],
-            1
-        );
-        validate_and_set!(
-            meter_center_right_active,
-            [meter_center_right_inactive],
-            1
-        );
+        validate_and_set!(meter_left_inactive, 1);
+        validate_and_set!(meter_left_active, 1);
+        validate_and_set!(meter_left_overload, 1);
+        validate_and_set!(meter_right_inactive, 1);
+        validate_and_set!(meter_right_active, 1);
+        validate_and_set!(meter_right_overload, 1);
+        validate_and_set!(meter_center_left_inactive, 1);
+        validate_and_set!(meter_center_left_active, 1);
+        validate_and_set!(meter_center_right_inactive, 1);
+        validate_and_set!(meter_center_right_active, 1);
         validate_and_set!(dropdown_icon, 1);
         validate_and_set!(dropdown_selector, 1);
         validate_and_set!(dropdown_more, 0);
@@ -172,10 +147,10 @@ impl Default for CharSet {
             meter_right_inactive: String::from("▮"),
             meter_right_active: String::from("▮"),
             meter_right_overload: String::from("▮"),
-            meter_center_left_inactive: String::from("■"),
-            meter_center_left_active: String::from("■"),
-            meter_center_right_inactive: String::from("■"),
-            meter_center_right_active: String::from("■"),
+            meter_center_left_inactive: String::from("▮"),
+            meter_center_left_active: String::from("▮"),
+            meter_center_right_inactive: String::from("▮"),
+            meter_center_right_active: String::from("▮"),
             dropdown_icon: String::from("▼"),
             dropdown_selector: String::from(">"),
             dropdown_more: String::from("•••"),
@@ -318,36 +293,6 @@ mod tests {
         let char_set = CharSet::try_from(overlay).unwrap();
 
         assert_eq!(char_set.dropdown_icon, "$")
-    }
-
-    #[test]
-    fn test_override_fallbacks_unset() {
-        let config = r#"
-        meter_right_active = "$"
-        "#;
-
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
-        let char_set = CharSet::try_from(overlay).unwrap();
-
-        assert_eq!(char_set.meter_right_inactive, "$");
-        assert_eq!(char_set.meter_right_active, "$");
-        assert_eq!(char_set.meter_right_overload, "$");
-    }
-
-    #[test]
-    fn test_override_fallbacks_set() {
-        let config = r#"
-        meter_right_inactive = "."
-        meter_right_active = "$"
-        meter_right_overload = "%"
-        "#;
-
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
-        let char_set = CharSet::try_from(overlay).unwrap();
-
-        assert_eq!(char_set.meter_right_inactive, ".");
-        assert_eq!(char_set.meter_right_active, "$");
-        assert_eq!(char_set.meter_right_overload, "%");
     }
 
     #[test]
