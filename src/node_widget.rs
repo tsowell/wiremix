@@ -26,15 +26,14 @@ fn is_default(node: &view::Node, device_type: Option<DeviceType>) -> bool {
     }
 }
 
-fn node_title(node: &view::Node, device_type: Option<DeviceType>) -> String {
-    (match (device_type, &node.title_source_sink) {
+fn node_title(node: &view::Node, device_type: Option<DeviceType>) -> &str {
+    match (device_type, &node.title_source_sink) {
         (
             Some(DeviceType::Source | DeviceType::Sink),
             Some(title_source_sink),
         ) => title_source_sink,
         _ => &node.title,
-    })
-    .clone()
+    }
 }
 
 pub struct NodeWidget<'a> {
@@ -231,7 +230,7 @@ impl StatefulWidget for NodeWidget<'_> {
             Span::from(" ")
         };
         let node_title = truncate::with_ellipses(
-            &node_title,
+            node_title,
             (header_left.width.saturating_sub(2)) as usize,
         );
         Line::from(vec![
