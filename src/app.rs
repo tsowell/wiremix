@@ -177,11 +177,7 @@ impl App {
             let _ = self.handle_events(None);
         }
 
-        let frame_duration =
-            self.config.fps.map_or(Default::default(), |fps| {
-                Duration::from_secs_f32(1.0 / fps)
-            });
-        let mut next_frame_time = Instant::now();
+        let mut pacer = RenderPacer::new(self.config.fps);
 
         // Did we handle any events and thus need to re-render?
         let mut needs_render = true;
@@ -208,16 +204,8 @@ impl App {
                 let _ = Action::MoveDown.handle(&mut self);
             }
 
-            let now = Instant::now();
-            if needs_render && now >= next_frame_time {
+            if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
-
-                if now > next_frame_time + frame_duration {
-                    // We're running behind, so reset the frame timing.
-                    next_frame_time = now + frame_duration;
-                } else {
-                    next_frame_time += frame_duration;
-                }
 
                 self.mouse_areas.clear();
 
@@ -233,7 +221,7 @@ impl App {
             needs_render |= self.handle_events(
                 // If there's no fps limit, we definitely rendered in this
                 // iteration, so needs_render is false, and there is no timeout.
-                needs_render.then_some(next_frame_time - Instant::now()),
+                needs_render.then_some(pacer.duration_until_next_frame()),
             )?;
         }
 
@@ -277,6 +265,46 @@ impl App {
         }
 
         Ok(were_events_handled)
+    }
+}
+
+struct RenderPacer {
+    frame_duration: Duration,
+    next_frame_time: Instant,
+}
+
+impl RenderPacer {
+    fn new(fps: Option<f32>) -> Self {
+        let frame_duration = fps.map_or(Default::default(), |fps| {
+            Duration::from_secs_f32(1.0 / fps)
+        });
+
+        Self {
+            frame_duration,
+            next_frame_time: Instant::now(),
+        }
+    }
+
+    fn is_time_to_render(&mut self) -> bool {
+        let now = Instant::now();
+
+        if now >= self.next_frame_time {
+            if now > self.next_frame_time + self.frame_duration {
+                // We're running behind, so reset the frame timing.
+                self.next_frame_time = now + self.frame_duration;
+            } else {
+                self.next_frame_time += self.frame_duration;
+            }
+
+            return true;
+        }
+
+        false
+    }
+
+    fn duration_until_next_frame(&self) -> Duration {
+        self.next_frame_time
+            .saturating_duration_since(Instant::now())
     }
 }
 
