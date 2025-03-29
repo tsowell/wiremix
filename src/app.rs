@@ -4,6 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
+use crate::event::MonitorEvent;
 
 use anyhow::{anyhow, Result};
 
@@ -204,7 +205,7 @@ impl App {
             // There should always be something selected. Select the first item
             // if there isn't.
             if self.tabs[self.selected_tab_index].list.selected.is_none() {
-                self.handle_action(Action::MoveDown);
+                let _ = Action::MoveDown.handle(&mut self);
             }
 
             let now = Instant::now();
@@ -263,102 +264,179 @@ impl App {
     fn handle_events(&mut self, timeout: Option<Duration>) -> Result<bool> {
         let mut were_events_handled = match timeout {
             Some(timeout) => match self.rx.recv_timeout(timeout) {
-                Ok(event) => self.handle_event(event)?,
+                Ok(event) => event.handle(self)?,
                 Err(mpsc::RecvTimeoutError::Timeout) => return Ok(false),
                 Err(e) => return Err(e.into()),
             },
             // Block on the next event.
-            None => self.handle_event(self.rx.recv()?)?,
+            None => self.rx.recv()?.handle(self)?,
         };
         // Then handle the rest that are available.
         while let Ok(event) = self.rx.try_recv() {
-            were_events_handled |= self.handle_event(event)?;
+            were_events_handled |= event.handle(self)?;
         }
 
         Ok(were_events_handled)
     }
+}
 
-    fn handle_event(&mut self, event: Event) -> Result<bool> {
-        #[cfg(feature = "trace")]
-        trace_dbg!(&event);
+trait Handle {
+    /// Handle some kind of event. Returns true if the event was handled which
+    /// indicates that the UI needs to be redrawn.
+    fn handle(self, app: &mut App) -> Result<bool>;
+}
 
-        match event {
-            Event::Input(event) => Ok(self.handle_input_event(event)),
-            Event::Error(error) => {
-                match error {
-                    // These happen when objects are removed while the monitor
-                    // is still in the process of setting up listeners.
-                    error if error.starts_with("no global ") => {}
-                    error if error.starts_with("unknown resource ") => {}
-                    // I see this one when disconnecting a Bluetooth sink.
-                    error if error == "Received error event" => {}
-                    _ => self.exit(Some(error)),
-                }
-                Ok(false) // This makes sense for now.
-            }
+impl Handle for Event {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        match self {
+            Event::Input(event) => event.handle(app),
+            Event::Monitor(event) => event.handle(app),
+            Event::Error(event) => event.handle(app),
             Event::Ready => {
-                self.is_ready = true;
+                app.is_ready = true;
                 Ok(true)
             }
-            Event::Monitor(event) => {
-                for command in self.state.update(event) {
-                    // Filter out capture commands if capture is disabled
-                    match command {
-                        Command::NodeCaptureStart(..)
-                        | Command::NodeCaptureStop(..)
-                            if self.config.peaks == Peaks::Off => {}
-                        command => {
-                            let _ = self.tx.send(command);
-                        }
-                    }
+        }
+    }
+}
+
+impl Handle for crossterm::event::Event {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        match self {
+            CrosstermEvent::Key(event) => event.handle(app),
+            CrosstermEvent::Mouse(event) => event.handle(app),
+            CrosstermEvent::Resize(..) => Ok(true),
+            _ => Ok(false),
+        }
+    }
+}
+
+impl Handle for KeyEvent {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        if self.kind != KeyEventKind::Press {
+            return Ok(false);
+        }
+
+        if let Some(&action) = app.config.keybindings.get(&self) {
+            return action.handle(app);
+        }
+
+        Ok(false)
+    }
+}
+
+impl Handle for Action {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        match self {
+            Action::SelectTab(index) => {
+                if index < app.tabs.len() {
+                    app.selected_tab_index = index;
                 }
-                Ok(true)
+            }
+            Action::MoveDown => {
+                app.tabs[app.selected_tab_index].list.down(&app.view);
+            }
+            Action::MoveUp => {
+                app.tabs[app.selected_tab_index].list.up(&app.view);
+            }
+            Action::TabLeft => {
+                app.selected_tab_index =
+                    app.selected_tab_index.checked_sub(1).unwrap_or(4)
+            }
+            Action::TabRight => {
+                app.selected_tab_index = (app.selected_tab_index + 1) % 5
+            }
+            Action::OpenDropdown => {
+                app.tabs[app.selected_tab_index]
+                    .list
+                    .dropdown_open(&app.view);
+            }
+            Action::CloseDropdown => {
+                app.tabs[app.selected_tab_index].list.dropdown_close();
+            }
+            Action::SelectDropdown => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .dropdown_select(&app.view);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::SetTarget(target) => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .set_target(&app.view, target);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::SelectObject(object_id) => {
+                app.tabs[app.selected_tab_index].list.selected = Some(object_id)
+            }
+            Action::ToggleMute => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .toggle_mute(&app.view);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::SetAbsoluteVolume(volume) => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .set_absolute_volume(&app.view, volume);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::SetRelativeVolume(volume) => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .set_relative_volume(&app.view, volume);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::SetDefault => {
+                let commands = app.tabs[app.selected_tab_index]
+                    .list
+                    .set_default(&app.view);
+                for command in commands {
+                    let _ = app.tx.send(command);
+                }
+            }
+            Action::Exit => {
+                app.exit(None);
+            }
+            Action::Nothing => {
+                // Did nothing
+                return Ok(false);
             }
         }
+
+        Ok(true)
     }
+}
 
-    fn handle_input_event(&mut self, event: CrosstermEvent) -> bool {
-        match event {
-            CrosstermEvent::Key(key_event)
-                if key_event.kind == KeyEventKind::Press =>
-            {
-                self.handle_key_event(key_event)
-            }
-            CrosstermEvent::Mouse(mouse_event) => {
-                self.handle_mouse_event(mouse_event)
-            }
-            CrosstermEvent::Resize(..) => true,
-            _ => false,
-        }
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
-        if let Some(&action) = self.config.keybindings.get(&key_event) {
-            self.handle_action(action);
-            return true;
-        }
-
-        false
-    }
-
-    fn handle_mouse_event(&mut self, mouse_event: MouseEvent) -> bool {
-        match mouse_event.kind {
+impl Handle for MouseEvent {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        match self.kind {
             MouseEventKind::Down(MouseButton::Left) => {
-                self.drag_row = Some(mouse_event.row)
+                app.drag_row = Some(self.row)
             }
-            MouseEventKind::Up(MouseButton::Left) => self.drag_row = None,
+            MouseEventKind::Up(MouseButton::Left) => app.drag_row = None,
             _ => {}
         }
 
-        let actions = self
+        let actions = app
             .mouse_areas
             .iter()
             .rev()
             .find(|(rect, kinds, _)| {
                 rect.contains(Position {
-                    x: mouse_event.column,
-                    y: self.drag_row.unwrap_or(mouse_event.row),
-                }) && kinds.contains(&mouse_event.kind)
+                    x: self.column,
+                    y: app.drag_row.unwrap_or(self.row),
+                }) && kinds.contains(&self.kind)
             })
             .map(|(_, _, action)| action.clone())
             .into_iter()
@@ -367,97 +445,43 @@ impl App {
         let mut handled_action = false;
         for action in actions {
             handled_action = true;
-            self.handle_action(action);
+            let _ = action.handle(app);
         }
 
-        handled_action
+        Ok(handled_action)
     }
+}
 
-    fn handle_action(&mut self, action: Action) {
-        match action {
-            Action::SelectTab(index) => {
-                if index < self.tabs.len() {
-                    self.selected_tab_index = index;
+impl Handle for MonitorEvent {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        for command in app.state.update(self) {
+            // Filter out capture commands if capture is disabled
+            match command {
+                Command::NodeCaptureStart(..)
+                | Command::NodeCaptureStop(..)
+                    if app.config.peaks == Peaks::Off => {}
+                command => {
+                    let _ = app.tx.send(command);
                 }
             }
-            Action::MoveDown => {
-                self.tabs[self.selected_tab_index].list.down(&self.view);
-            }
-            Action::MoveUp => {
-                self.tabs[self.selected_tab_index].list.up(&self.view);
-            }
-            Action::TabLeft => {
-                self.selected_tab_index =
-                    self.selected_tab_index.checked_sub(1).unwrap_or(4)
-            }
-            Action::TabRight => {
-                self.selected_tab_index = (self.selected_tab_index + 1) % 5
-            }
-            Action::OpenDropdown => {
-                self.tabs[self.selected_tab_index]
-                    .list
-                    .dropdown_open(&self.view);
-            }
-            Action::CloseDropdown => {
-                self.tabs[self.selected_tab_index].list.dropdown_close();
-            }
-            Action::SelectDropdown => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .dropdown_select(&self.view);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::SetTarget(target) => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .set_target(&self.view, target);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::SelectObject(object_id) => {
-                self.tabs[self.selected_tab_index].list.selected =
-                    Some(object_id)
-            }
-            Action::ToggleMute => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .toggle_mute(&self.view);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::SetAbsoluteVolume(volume) => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .set_absolute_volume(&self.view, volume);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::SetRelativeVolume(volume) => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .set_relative_volume(&self.view, volume);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::SetDefault => {
-                let commands = self.tabs[self.selected_tab_index]
-                    .list
-                    .set_default(&self.view);
-                for command in commands {
-                    let _ = self.tx.send(command);
-                }
-            }
-            Action::Exit => {
-                self.exit(None);
-            }
-            Action::Nothing => {} // Do nothing!
         }
+        Ok(true)
+    }
+}
+
+impl Handle for String {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        // Handle errors
+        match self {
+            // These happen when objects are removed while the monitor
+            // is still in the process of setting up listeners
+            error if error.starts_with("no global ") => {}
+            error if error.starts_with("unknown resource ") => {}
+            // I see this one when disconnecting a Bluetooth sink
+            error if error == "Received error event" => {}
+            _ => app.exit(Some(self)),
+        }
+        Ok(false) // This makes sense for now
     }
 }
 
@@ -555,7 +579,7 @@ mod tests {
         };
         let mut app = App::new(command_tx, event_rx, config);
 
-        app.handle_action(Action::SelectTab(app.tabs.len()));
+        let _ = Action::SelectTab(app.tabs.len()).handle(&mut app);
         assert!(app.selected_tab_index < app.tabs.len());
     }
 
@@ -585,11 +609,11 @@ mod tests {
         };
         let mut app = App::new(command_tx, event_rx, config);
 
-        app.handle_key_event(x);
+        let _ = x.handle(&mut app);
         assert_eq!(app.selected_tab_index, 2);
-        app.handle_key_event(ctrl_x);
+        let _ = ctrl_x.handle(&mut app);
         assert_eq!(app.selected_tab_index, 4);
-        app.handle_key_event(x);
+        let _ = x.handle(&mut app);
         assert_eq!(app.selected_tab_index, 2);
     }
 }
