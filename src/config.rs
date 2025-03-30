@@ -36,7 +36,8 @@ pub struct Config {
 
 /// Represents a configuration deserialized from a file. This gets baked into a
 /// Config, which, for example, has a single char_set and theme.
-#[derive(Default, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 #[serde(deny_unknown_fields)]
 struct ConfigFile {
     remote: Option<String>,
@@ -64,6 +65,25 @@ struct ConfigFile {
     themes: HashMap<String, Theme>,
 }
 
+// The serde defaults need to be repeated here, which is used to generate a
+// default ConfigFile when there is no config file to parse.
+impl Default for ConfigFile {
+    fn default() -> Self {
+        Self {
+            remote: Default::default(),
+            fps: Default::default(),
+            mouse: default_mouse(),
+            peaks: Default::default(),
+            char_set: default_char_set_name(),
+            theme: default_theme_name(),
+            keybindings: Keybinding::defaults(),
+            names: Default::default(),
+            char_sets: CharSet::defaults(),
+            themes: Theme::defaults(),
+        }
+    }
+}
+
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Peaks {
@@ -83,6 +103,7 @@ pub struct Keybinding {
 }
 
 #[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 #[serde(deny_unknown_fields)]
 pub struct Names {
     #[serde(default = "Names::default_stream")]
@@ -104,6 +125,7 @@ pub enum OverrideType {
 }
 
 #[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 #[serde(deny_unknown_fields)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
@@ -113,6 +135,7 @@ pub struct NameOverride {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct CharSet {
     pub default_device: String,
     pub default_stream: String,
@@ -141,6 +164,7 @@ pub struct CharSet {
 }
 
 #[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Theme {
     pub default_device: Style,
     pub default_stream: Style,
@@ -289,6 +313,13 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_config_matches_default() {
+        let empty_config: ConfigFile = toml::from_str("").unwrap();
+
+        assert_eq!(empty_config, ConfigFile::default());
+    }
 
     #[test]
     fn test_unknown_field_config_file() {
