@@ -287,7 +287,7 @@ impl Config {
         opt: &Opt,
     ) -> Result<Self, anyhow::Error> {
         let mut config_file: ConfigFile = match path {
-            Some(path) => {
+            Some(path) if path.exists() => {
                 let context = || {
                     format!(
                         "Failed to read configuration from file '{}'",
@@ -300,7 +300,7 @@ impl Config {
 
                 toml::from_str(&toml_str).with_context(context)?
             }
-            None => ConfigFile::default(),
+            _ => ConfigFile::default(),
         };
 
         config_file.apply_opt(opt);
