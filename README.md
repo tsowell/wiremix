@@ -92,17 +92,17 @@ The configuration file is searched for in these locations (in order of
 precedence):
 
 1. Path specified on the command-line via `-c`/`--config`
-2. `$XDG_CONFIG_HOME/pwmixer.conf`
-3. `~/.config/pwmixer.conf`
+2. `$XDG_CONFIG_HOME/pwmixer/pwmixer.toml`
+3. `~/.config/pwmixer/pwmixer.toml`
 
 This README only describes basic capabilities. Please see
-[pwmixer.conf](./pwmixer.conf) in this repository for detailed documentation on
+[pwmixer.toml](./pwmixer.toml) in this repository for detailed documentation on
 configuring pwmixer. It also provides a reference for pwmixer's defaults.
 
 The configuration specified in the file is merged with pwmixer's defaults, so
 it only needs to specify the options you want to change. It is recommended to
 start with an empty configuration file and use this repository's
-[pwmixer.conf](./pwmixer.conf) as a reference.
+[pwmixer.toml](./pwmixer.toml) as a reference.
 
 ### Basic Configuration
 
