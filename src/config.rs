@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field_config_file() {
+    fn unknown_field_config_file() {
         let config = r#"
         unknown = "unknown"
         "#;
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field_keybinding() {
+    fn unknown_field_keybinding() {
         let config = r#"
         key = { Char = "x" }
         action = "Nothing"
@@ -340,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field_names() {
+    fn unknown_field_names() {
         let config = r#"
         unknown = "unknown"
         "#;
@@ -348,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field_name_override() {
+    fn unknown_field_name_override() {
         let config = r#"
         types = [ "stream" ]
         property = "node:node.name"

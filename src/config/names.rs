@@ -185,19 +185,19 @@ mod tests {
     use crate::state::State;
 
     #[test]
-    fn test_default_stream() {
+    fn default_stream() {
         // Just make sure this doesn't panic.
         let _ = Names::default_stream();
     }
 
     #[test]
-    fn test_default_endpoint() {
+    fn default_endpoint() {
         // Just make sure this doesn't panic.
         let _ = Names::default_endpoint();
     }
 
     #[test]
-    fn test_default_device() {
+    fn default_device() {
         // Just make sure this doesn't panic.
         let _ = Names::default_device();
     }
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_endpoint() {
+    fn render_endpoint() {
         let (mut state, _, node_id) = init();
 
         state.update(MonitorEvent::NodeMediaClass(
@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_endpoint_missing_tag() {
+    fn render_endpoint_missing_tag() {
         let (mut state, _, node_id) = init();
 
         state.update(MonitorEvent::NodeMediaClass(
@@ -261,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_device_missing_tag() {
+    fn render_device_missing_tag() {
         let (state, device_id, _) = init();
 
         let names = Names {
@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_endpoint_linked_device() {
+    fn render_endpoint_linked_device() {
         let (mut state, device_id, node_id) = init();
 
         state.update(MonitorEvent::NodeMediaClass(
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_endpoint_linked_device_missing_tag() {
+    fn render_endpoint_linked_device_missing_tag() {
         let (mut state, device_id, node_id) = init();
 
         state.update(MonitorEvent::NodeMediaClass(
@@ -317,7 +317,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_endpoint_no_linked_device() {
+    fn render_endpoint_no_linked_device() {
         let (mut state, _, node_id) = init();
 
         state.update(MonitorEvent::NodeMediaClass(
@@ -337,7 +337,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_stream() {
+    fn render_stream() {
         let (state, _, node_id) = init();
 
         let names = Names {
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_precedence() {
+    fn render_precedence() {
         let (state, _, node_id) = init();
 
         let names = Names {
@@ -368,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_override_match() {
+    fn render_override_match() {
         let (state, _, node_id) = init();
 
         let names = Names {
@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_override_type_mismatch() {
+    fn render_override_type_mismatch() {
         let (state, _, node_id) = init();
 
         let names = Names {
@@ -409,7 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_override_value_mismatch() {
+    fn render_override_value_mismatch() {
         let (state, _, node_id) = init();
 
         let names = Names {
@@ -428,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_override_empty_templates() {
+    fn render_override_empty_templates() {
         let (state, _, node_id) = init();
 
         let names = Names {

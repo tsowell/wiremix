@@ -123,7 +123,7 @@ mod tests {
     use crate::config::tag::{DeviceTag, NodeTag, Tag};
 
     #[test]
-    fn test_no_tags() {
+    fn no_tags() {
         let s = String::from("Hello");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_good_tag() {
+    fn good_tag() {
         let s = String::from("Hello {node:node.name}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -152,14 +152,14 @@ mod tests {
     }
 
     #[test]
-    fn test_unimplemented_tag() {
+    fn unimplemented_tag() {
         let s = String::from("Hello {world}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_err());
     }
 
     #[test]
-    fn test_escapes() {
+    fn escapes() {
         let s = String::from("Hello }} {{ {{ {node:node.name} }}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -176,28 +176,28 @@ mod tests {
     }
 
     #[test]
-    fn test_extra_opening() {
+    fn extra_opening() {
         let s = String::from("Hello { {node:node.name}}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_err());
     }
 
     #[test]
-    fn test_extra_closing() {
+    fn extra_closing() {
         let s = String::from("Hello {node:node.name}}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_err());
     }
 
     #[test]
-    fn test_empty_tag() {
+    fn empty_tag() {
         let s = String::from("Hello {}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_err());
     }
 
     #[test]
-    fn test_nested_escapes() {
+    fn nested_escapes() {
         let s = String::from("Hello {{{{}}}}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_empty() {
+    fn render_empty() {
         let s = String::from("");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_tags() {
+    fn render_tags() {
         let s = String::from("{node:node.name}{device:device.name}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_missing_tag() {
+    fn render_missing_tag() {
         let s = String::from("{node:node.name}{device:device.name}");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_mixed() {
+    fn render_mixed() {
         let s = String::from("let {node:node.name} = {device:device.name};");
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());

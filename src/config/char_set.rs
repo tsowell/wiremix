@@ -261,7 +261,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_empty_overlay() {
+    fn empty_overlay() {
         let config = r#""#;
 
         let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
@@ -269,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn test_builtins_present() {
+    fn builtins_present() {
         #[derive(Deserialize)]
         struct S {
             #[serde(deserialize_with = "CharSet::merge")]
@@ -284,7 +284,7 @@ mod tests {
     }
 
     #[test]
-    fn test_override_default() {
+    fn override_default() {
         let config = r#"
         dropdown_icon = "$"
         "#;
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_too_narrow() {
+    fn width_too_narrow() {
         let config = r#"
         meter_right_active = ""
         "#;
@@ -307,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_too_wide() {
+    fn width_too_wide() {
         let config = r#"
         meter_right_active = "$$"
         "#;
@@ -318,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_correct() {
+    fn width_correct() {
         let config = r#"
         meter_right_active = "$"
         "#;
@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_1_column_grapheme_cluster() {
+    fn width_1_column_grapheme_cluster() {
         let config = r#"
         meter_right_active = "⚓︎"
         "#;
@@ -340,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_2_column_grapheme_cluster() {
+    fn width_2_column_grapheme_cluster() {
         let config = r#"
         meter_right_active = "🏳️‍🌈"
         "#;
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn test_width_unlimited() {
+    fn width_unlimited() {
         let config = r#"
         list_more = ""
         dropdown_more = "$$$$$$$$$$$$$$$$$$$$$$$$"
@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inherit_nonexistent() {
+    fn inherit_nonexistent() {
         let config = r#"
         inherit = "doesntexist"
         meter_right_active = "$"
@@ -376,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inherit() {
+    fn inherit() {
         for (builtin_key, builtin) in CharSet::defaults().iter() {
             let config = format!(
                 r#"
@@ -394,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field() {
+    fn unknown_field() {
         let config = r#"
         unknown = "unknown"
         "#;

@@ -31,32 +31,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn truncate_test_equal() {
+    fn equal() {
         assert_eq!(with_ellipses("hello", 5), "hello");
     }
 
     #[test]
-    fn truncate_test_larger() {
+    fn larger() {
         assert_eq!(with_ellipses("hello", 6), "hello");
     }
 
     #[test]
-    fn truncate_test_shorter() {
+    fn shorter() {
         assert_eq!(with_ellipses("hello", 4), "h...");
     }
 
     #[test]
-    fn truncate_test_too_short() {
+    fn too_short() {
         assert_eq!(with_ellipses("hello", 3), "...");
     }
 
     #[test]
-    fn truncate_test_much_too_short() {
+    fn much_too_short() {
         assert_eq!(with_ellipses("hello", 2), "..");
     }
 
     #[test]
-    fn truncate_test_empty() {
+    fn empty() {
         assert_eq!(with_ellipses("hello", 0), "");
     }
 }

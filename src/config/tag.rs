@@ -76,7 +76,7 @@ mod tests {
     use strum::IntoEnumIterator;
 
     #[test]
-    fn test_device_variants() {
+    fn device_variants() {
         for device_tag in DeviceTag::iter() {
             // Do a round-trip conversion and compare results.
             let tag = Tag::Device(device_tag);
@@ -87,7 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn test_node_variants() {
+    fn node_variants() {
         for node_tag in NodeTag::iter() {
             // Do a round-trip conversion and compare results.
             let tag = Tag::Node(node_tag);

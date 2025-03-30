@@ -251,7 +251,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_unknown_field_theme() {
+    fn unknown_field_theme() {
         let config = r#"
         unknown = "unknown"
         "#;
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_field_style() {
+    fn unknown_field_style() {
         let config = r#"
         unknown = "unknown"
         "#;
@@ -267,7 +267,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inherit_nonexistent() {
+    fn inherit_nonexistent() {
         let config = r#"
         inherit = "doesntexist"
         tab_selected = { }
@@ -279,7 +279,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inherit() {
+    fn inherit() {
         for (builtin_key, builtin) in Theme::defaults().iter() {
             let config = format!(
                 r#"
