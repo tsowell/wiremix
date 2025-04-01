@@ -1,6 +1,12 @@
 [package]
 name = "wiremix"
 version = "0.1.0"
+authors = ["Thomas Sowell <tom@ldtlb.com>"]
+description = "A TUI mixer for PipeWire"
+readme = "README.md"
+repository = "https://github.com/tsowell/wiremix"
+license = "MIT OR Apache-2.0"
+categories = ["command-line-utilities", "multimedia::audio"]
 edition = "2021"
 
 [dependencies]
