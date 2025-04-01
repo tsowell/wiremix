@@ -271,11 +271,11 @@ impl Config {
     /// Returns the configuration file path.
     pub fn default_path() -> Option<PathBuf> {
         if let Ok(xdg_config) = env::var("XDG_CONFIG_HOME") {
-            return Some(Path::new(&xdg_config).join("pwmixer/pwmixer.toml"));
+            return Some(Path::new(&xdg_config).join("wiremix/wiremix.toml"));
         }
 
         if let Ok(home) = env::var("HOME") {
-            return Some(Path::new(&home).join(".config/pwmixer/pwmixer.toml"));
+            return Some(Path::new(&home).join(".config/wiremix/wiremix.toml"));
         }
 
         None

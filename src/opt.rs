@@ -7,7 +7,7 @@ use clap::Parser;
 use crate::config;
 
 #[derive(Parser)]
-#[clap(name = "pwmixer", about = "PipeWire mixer")]
+#[clap(name = "wiremix", about = "PipeWire mixer")]
 #[command(version)]
 pub struct Opt {
     #[clap(

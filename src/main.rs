@@ -8,12 +8,12 @@ use crossterm::{
     ExecutableCommand,
 };
 
-use pwmixer::app;
-use pwmixer::command::Command;
-use pwmixer::config::Config;
-use pwmixer::input;
-use pwmixer::monitor;
-use pwmixer::opt::Opt;
+use wiremix::app;
+use wiremix::command::Command;
+use wiremix::config::Config;
+use wiremix::input;
+use wiremix::monitor;
+use wiremix::opt::Opt;
 
 fn main() -> Result<()> {
     // Event channel for sending PipeWire and input events to the UI
@@ -43,7 +43,7 @@ fn main() -> Result<()> {
     if opt.dump_events {
         // Event dumping mode for debugging the monitor code
         for received in event_rx {
-            use pwmixer::event::Event;
+            use wiremix::event::Event;
             match received {
                 Event::Monitor(event) => print!("{:?}\r\n", event),
                 event => {

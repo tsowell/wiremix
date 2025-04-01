@@ -958,36 +958,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pwmixer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "crossterm",
- "futures",
- "futures-timer",
- "itertools 0.14.0",
- "libspa",
- "libspa-sys",
- "log",
- "nix 0.29.0",
- "pipewire",
- "ratatui",
- "regex",
- "scopeguard",
- "serde",
- "serde_json",
- "serde_with",
- "smallvec",
- "strum 0.27.1",
- "toml",
- "tracing",
- "tracing-error",
- "tracing-subscriber",
- "unicode-width 0.2.0",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1863,6 +1833,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7f4ea97f6f78012141bcdb6a216b2609f0979ada50b20ca5b52dde2eac2bb1"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "wiremix"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "crossterm",
+ "futures",
+ "futures-timer",
+ "itertools 0.14.0",
+ "libspa",
+ "libspa-sys",
+ "log",
+ "nix 0.29.0",
+ "pipewire",
+ "ratatui",
+ "regex",
+ "scopeguard",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "smallvec",
+ "strum 0.27.1",
+ "toml",
+ "tracing",
+ "tracing-error",
+ "tracing-subscriber",
+ "unicode-width 0.2.0",
 ]
 
 [[package]]

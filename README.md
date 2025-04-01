@@ -1,12 +1,12 @@
-# pwmixer
+# wiremix
 
-pwmixer is a TUI audio mixer for PipeWire. Its interface is more or less a
+wiremix is a TUI audio mixer for PipeWire. Its interface is more or less a
 clone of ncpamixer's which was itself inspired by pavucontrol, so users of
 either should find it familiar.
 
 ## Installation
 
-pwmixer depends on Rust and the PipeWire libraries. To install these:
+wiremix depends on Rust and the PipeWire libraries. To install these:
 
 * Ubuntu: `sudo apt install cargo libpipewire-0.3-dev`
 * Debian: `sudo apt install cargo libpipewire-0.3-dev`
@@ -15,8 +15,8 @@ pwmixer depends on Rust and the PipeWire libraries. To install these:
 
 ## Quick Start
 
-1. Install pwmixer with `cargo install pwmixer`
-2. Run `pwmixer` to launch with default settings
+1. Install wiremix with `cargo install wiremix`
+2. Run `wiremix` to launch with default settings
 3. Use mouse and/or keyboard bindings to operate the mixer
    - Arrow keys/hjkl to navigate and adjust volume
    - Tab/HL to change tabs
@@ -29,7 +29,7 @@ pwmixer depends on Rust and the PipeWire libraries. To install these:
 ```
 PipeWire mixer
 
-Usage: pwmixer [OPTIONS]
+Usage: wiremix [OPTIONS]
 
 Options:
   -c, --config <FILE>    Override default config file path
@@ -86,23 +86,23 @@ less-intuitive mouse controls are:
 
 ## Configuration
 
-pwmixer can be configured through a TOML configuration file.
+wiremix can be configured through a TOML configuration file.
 
 The configuration file is searched for in these locations (in order of
 precedence):
 
 1. Path specified on the command-line via `-c`/`--config`
-2. `$XDG_CONFIG_HOME/pwmixer/pwmixer.toml`
-3. `~/.config/pwmixer/pwmixer.toml`
+2. `$XDG_CONFIG_HOME/wiremix/wiremix.toml`
+3. `~/.config/wiremix/wiremix.toml`
 
 This README only describes basic capabilities. Please see
-[pwmixer.toml](./pwmixer.toml) in this repository for detailed documentation on
-configuring pwmixer. It also provides a reference for pwmixer's defaults.
+[wiremix.toml](./wiremix.toml) in this repository for detailed documentation on
+configuring wiremix. It also provides a reference for wiremix's defaults.
 
-The configuration specified in the file is merged with pwmixer's defaults, so
+The configuration specified in the file is merged with wiremix's defaults, so
 it only needs to specify the options you want to change. It is recommended to
 start with an empty configuration file and use this repository's
-[pwmixer.toml](./pwmixer.toml) as a reference.
+[wiremix.toml](./wiremix.toml) as a reference.
 
 ### Basic Configuration
 
@@ -120,7 +120,7 @@ theme = "default"
 
 ### Keybindings
 
-The configuration file can customize keyboard controls for all pwmixer actions.
+The configuration file can customize keyboard controls for all wiremix actions.
 
 #### Examples
 
@@ -197,7 +197,7 @@ endpoint = [ "{device:device.nick}", "{node:node.description}" ]
 device = [ "{device:device.nick}", "{device:device.description}" ]
 ```
 
-pwmixer's author uses these overrides with the above:
+wiremix's author uses these overrides with the above:
 
 ```toml
 # Fix for Apple USB-C to 3.5mm adapter whose device.nick is truncated to

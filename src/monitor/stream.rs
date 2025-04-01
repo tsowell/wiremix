@@ -34,7 +34,7 @@ pub fn capture_node(
     let mut props = properties! {
         *pipewire::keys::TARGET_OBJECT => String::from(serial),
         *pipewire::keys::STREAM_MONITOR => "true",
-        *pipewire::keys::NODE_NAME => "pwmixer-capture",
+        *pipewire::keys::NODE_NAME => "wiremix-capture",
     };
     if capture_sink {
         props.insert(*pipewire::keys::STREAM_CAPTURE_SINK, "true");
@@ -45,7 +45,7 @@ pub fn capture_node(
         cursor_move: false,
     };
 
-    let stream = Stream::new(core, "pwmixer-capture", props).ok()?;
+    let stream = Stream::new(core, "wiremix-capture", props).ok()?;
     let stream = Rc::new(stream);
     let listener = stream
         .add_local_listener_with_user_data(data)
