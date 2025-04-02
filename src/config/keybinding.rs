@@ -14,6 +14,22 @@ impl Keybinding {
 
         HashMap::from([
             (event(KeyCode::Char('q')), Action::Exit),
+            (
+                // Emulate SIGINT
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+                Action::Exit,
+            ),
+            (
+                // Emulate SIGQUIT
+                // CrossTerm reports Ctrl-\ as Ctrl-4
+                KeyEvent::new(KeyCode::Char('4'), KeyModifiers::CONTROL),
+                Action::Exit,
+            ),
+            (
+                // Emulate EOT
+                KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL),
+                Action::Exit,
+            ),
             (event(KeyCode::Char('m')), Action::ToggleMute),
             (event(KeyCode::Char('d')), Action::SetDefault),
             (event(KeyCode::Char('l')), Action::SetRelativeVolume(0.01)),
