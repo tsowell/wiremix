@@ -370,7 +370,7 @@ impl StatefulWidget for NodeWidget<'_> {
                     .as_ref()
                     .map(|positions| positions.len())
                 {
-                    Some(2) => {
+                    Some(2) if self.config.peaks != Peaks::Mono => {
                         meter::render_stereo(meter_area, buf, None, self.config)
                     }
                     _ => meter::render_mono(meter_area, buf, None, self.config),
