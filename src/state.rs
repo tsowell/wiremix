@@ -138,6 +138,8 @@ pub struct State {
     pub pending_capture: HashSet<ObjectId>,
     /// Used to optimize view rebuilding based on what has changed
     pub dirty: StateDirty,
+    /// Track which streams are being captured
+    pub capturing: HashSet<ObjectId>,
 }
 
 impl State {
@@ -293,6 +295,15 @@ impl State {
                 self.node_entry(id).rate = Some(rate);
             }
             MonitorEvent::NodePositions(id, positions) => {
+                if let Some(node) = self.nodes.get(&id) {
+                    let changed = node
+                        .positions
+                        .as_ref()
+                        .is_some_and(|p| *p != positions);
+                    if changed && self.capturing.contains(&id) {
+                        commands.extend(self.start_capture_command(&id));
+                    }
+                }
                 self.node_entry(id).positions = Some(positions);
             }
             MonitorEvent::NodeVolumes(id, volumes) => {
@@ -335,16 +346,15 @@ impl State {
                 self.nodes.entry(id).and_modify(|node| node.peaks = None);
             }
             MonitorEvent::Removed(id) => {
-                self.links.get(&id).inspect(|Link { input, .. }| {
-                    if self.inputs(*input).len() == 1 {
-                        // This is the last input link.
-                        commands.extend(self.stop_capture_command(input));
+                // Remove from links and stop capture if the last input link
+                if let Some(Link { input, .. }) = self.links.remove(&id) {
+                    if self.inputs(input).len() == 1 {
+                        commands.extend(self.stop_capture_command(&input));
                     }
-                });
+                }
 
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
-                self.links.remove(&id);
                 self.pending_capture.remove(&id);
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
@@ -430,13 +440,18 @@ impl State {
             .collect()
     }
 
-    pub fn start_capture_command(&self, input: &ObjectId) -> Option<Command> {
+    pub fn start_capture_command(
+        &mut self,
+        input: &ObjectId,
+    ) -> Option<Command> {
         let node = self.nodes.get(input)?;
         let object_serial = &node.object_serial?;
         let capture_sink =
             node.media_class.as_ref().is_some_and(|media_class| {
                 media_class.is_sink() || media_class.is_source()
             });
+
+        self.capturing.insert(*input);
 
         Some(Command::NodeCaptureStart(
             node.id,
@@ -445,8 +460,13 @@ impl State {
         ))
     }
 
-    pub fn stop_capture_command(&self, input: &ObjectId) -> Option<Command> {
+    pub fn stop_capture_command(
+        &mut self,
+        input: &ObjectId,
+    ) -> Option<Command> {
         let node = self.nodes.get(input)?;
+
+        self.capturing.remove(input);
 
         Some(Command::NodeCaptureStop(node.id))
     }
