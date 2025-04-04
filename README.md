@@ -4,6 +4,8 @@ wiremix is a TUI audio mixer for PipeWire. Its interface is more or less a
 clone of ncpamixer's which was itself inspired by pavucontrol, so users of
 either should find it familiar.
 
+<img src="https://github.com/user-attachments/assets/eefa5fae-d717-491f-ae74-68197bb270fa" width="612">
+
 ## Installation
 
 wiremix depends on Rust and the PipeWire libraries. To install these:
