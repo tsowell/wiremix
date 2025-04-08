@@ -19,12 +19,12 @@ wiremix depends on Rust and the PipeWire libraries. To install these:
 
 1. Install wiremix with `cargo install wiremix`
 2. Run `wiremix` to launch with default settings
-3. Use mouse and/or keyboard bindings to operate the mixer
-   - Arrow keys/hjkl to navigate and adjust volume
-   - Tab/HL to change tabs
+3. Use mouse and keyboard bindings to operate the mixer
+   - Arrow keys or hjkl to navigate and adjust volume
+   - Tab or HL to change tabs
    - c to open a dropdown to route audio to a different destination
    - m to mute/unmute
-   - d in Input/Output devices to set default source/sink
+   - d set an input or output device as the default source/sink
 
 ## Command-line Options
 
@@ -48,9 +48,19 @@ Options:
   -V, --version          Print version
 ```
 
-Command-line options override settings from the configuration file.
+Command-line options override corresponding settings in the configuration file.
 
-## Default Input Bindings
+## Input Bindings
+
+Everything except quitting can also be done with the mouse. Some of the
+less-intuitive mouse controls are:
+
+* Click the numeric volume percentage to toggle muting.
+* Scroll through lists and dropdowns with the mouse wheel or click on scroll
+  buttons (default appearence: `•••`)
+* Right-click to set as the default source/sink
+
+### Default Keyboard Bindings
 
 | Input         | Action                  |
 | ------------- | ----------------------- |
@@ -66,7 +76,7 @@ Command-line options override settings from the configuration file.
 | k/Up arrow    | Move up                 |
 | H             | Select previous tab     |
 | L/Tab         | Select next tab         |
-| `             | Set volume 0%           |
+| ` (Backtick)  | Set volume 0%           |
 | 1             | Set volume 10%          |
 | 2             | Set volume 20%          |
 | 3             | Set volume 30%          |
@@ -78,19 +88,11 @@ Command-line options override settings from the configuration file.
 | 9             | Set volume 90%          |
 | 0             | Set volume 100%         |
 
-Everything except quitting can also be done with the mouse. Some of the
-less-intuitive mouse controls are:
-
-* Click the numeric volume percentage to toggle muting.
-* Scroll with the mouse wheel or click on scroll buttons (default appearence:
-  `•••`) to scroll
-* Right-click in the Input/Output Devices tab to set the default source/sink
-
 ## Configuration
 
 wiremix can be configured through a TOML configuration file.
 
-The configuration file is searched for in these locations (in order of
+It searches for the configuration file in these locations (in order of
 precedence):
 
 1. Path specified on the command-line via `-c`/`--config`
@@ -99,11 +101,12 @@ precedence):
 
 This README only describes basic capabilities. Please see
 [wiremix.toml](./wiremix.toml) in this repository for detailed documentation on
-configuring wiremix. It also provides a reference for wiremix's defaults.
+configuring wiremix. It also provides a reference for all of wiremix's
+defaults.
 
 The configuration specified in the file is merged with wiremix's defaults, so
-it only needs to specify the options you want to change. It is recommended to
-start with an empty configuration file and use this repository's
+it only needs to specify the options that need to be changed. It is recommended
+to start with an empty configuration file and use this repository's
 [wiremix.toml](./wiremix.toml) as a reference.
 
 ### Basic Configuration
@@ -202,20 +205,25 @@ device = [ "{device:device.nick}", "{device:device.description}" ]
 wiremix's author uses these overrides with the above:
 
 ```toml
-# Fix for Apple USB-C to 3.5mm adapter whose device.nick is truncated to
-# "USB-C to 3.5mm Headphone Jack A".
+# Turn "USB-C to 3.5mm Headphone Jack A" into "USB-C to 3.5mm Headphone Jack
+# Adapter"
 [[names.overrides]]
 types = [ "endpoint", "device" ]
 property = "device:device.name"
 value = "alsa_card.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH841302FEJKLTA3-00"
 templates = [ "{device:device.description}" ]
 
-# Fix for the official Spotify client which has node.name "spotify" and static
-# media.name "Spotify", which makes "{node:node.name}: {node:media.name}" a bit
-# redundant.
+# Turn "spotify: Spotify" into "spotify"
 [[names.overrides]]
 types = [ "stream" ]
 property = "node:node.name"
 value = "spotify"
 templates = [ "{node:node.name}" ]
+
+# Turn "mpv: foo - mpv" into "foo - mpv"
+[[names.overrides]]
+types = [ "stream" ]
+property = "node:node.name"
+value = "mpv"
+templates = [ "{node:media.name}" ]
 ```
