@@ -552,7 +552,8 @@ impl View {
             if let Some(node) = self.nodes.get_mut(&state_node.id) {
                 match &state_node.peaks {
                     Some(peaks) => {
-                        let peaks_ref = node.peaks.get_or_insert_default();
+                        let peaks_ref =
+                            node.peaks.get_or_insert_with(Default::default);
                         peaks_ref.resize(peaks.len(), 0.0);
                         peaks_ref.copy_from_slice(peaks);
                     }

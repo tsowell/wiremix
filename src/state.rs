@@ -76,7 +76,7 @@ impl Node {
         };
 
         // Initialize or resize current peaks.
-        let peaks_ref = self.peaks.get_or_insert_default();
+        let peaks_ref = self.peaks.get_or_insert_with(Default::default);
         if peaks_ref.len() != peaks.len() {
             // New length, clean slate.
             peaks_ref.clear();
