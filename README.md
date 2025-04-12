@@ -195,16 +195,16 @@ for PipeWire nodes matching configurable criteria.
 
 #### Examples
 
-The defaults are ncpamixer style, but for more compact names you can try:
+For ncpamixer-style names you can use:
 
 ```toml
 [names]
 stream = [ "{node:node.name}: {node:media.name}" ]
-endpoint = [ "{device:device.nick}", "{node:node.description}" ]
-device = [ "{device:device.nick}", "{device:device.description}" ]
+endpoint = [ "{node:node.description}" ]
+device = [ "{device:device.description}" ]
 ```
 
-wiremix's author uses these overrides with the above:
+wiremix's author uses these overrides with the default names:
 
 ```toml
 # Turn "USB-C to 3.5mm Headphone Jack A" into "USB-C to 3.5mm Headphone Jack

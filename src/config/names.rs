@@ -16,11 +16,17 @@ impl Names {
     }
 
     pub fn default_endpoint() -> Vec<NameTemplate> {
-        vec!["{node:node.description}".parse().unwrap()]
+        vec![
+            "{device:device.nick}".parse().unwrap(),
+            "{node:node.description}".parse().unwrap(),
+        ]
     }
 
     pub fn default_device() -> Vec<NameTemplate> {
-        vec!["{device:device.description}".parse().unwrap()]
+        vec![
+            "{device:device.nick}".parse().unwrap(),
+            "{device:device.description}".parse().unwrap(),
+        ]
     }
 
     /// Tries to resolve an object's name.
