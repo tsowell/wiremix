@@ -129,6 +129,7 @@ theme = "default"
 ### Keybindings
 
 The configuration file can customize keyboard controls for all wiremix actions.
+See [wiremix.toml](./wiremix.toml) for more details.
 
 #### Examples
 
@@ -169,6 +170,8 @@ There are three built-in character sets.
 The configuration file allows for both modifying built-in character sets and
 creating custom ones.
 
+See [wiremix.toml](./wiremix.toml) for more details.
+
 ### Themes
 
 Themes define colors and other text attributes for UI elements. They are
@@ -185,6 +188,8 @@ There are three built-in themes:
 The configuration file allows for both modifying built-in themes and creating
 custom ones.
 
+See [wiremix.toml](./wiremix.toml) for more details.
+
 ### Names
 
 You can customize how streams, endpoints, and devices are displayed in the user
@@ -193,6 +198,8 @@ interface using a template system to generate names from PipeWire properties.
 It's likely that any particular naming scheme won't work well with 100% of your
 software and devices, so you can also specify alternate name templates to use
 for PipeWire nodes matching configurable criteria.
+
+See [wiremix.toml](./wiremix.toml) for more details.
 
 #### Examples
 
