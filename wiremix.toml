@@ -206,7 +206,7 @@ device = [ "{device:device.description}" ]
 #
 # For example:
 #
-# # Red foreground on a black background with bold, slowly-blinking text
+# # Red foreground on a black background with bold, underlined text
 # { fg = "#FF0000", bg = "Black", add_modifier = "BOLD | UNDERLINE" }
 #
 # An empty style with no properties ({ }) corresponds to the default style.
