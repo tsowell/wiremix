@@ -8,12 +8,14 @@ either should find it familiar.
 
 ## Installation
 
-wiremix depends on Rust and the PipeWire libraries. To install these:
+wiremix depends on Rust and the PipeWire libraries. To install all
+dependencies:
 
-* Ubuntu: `sudo apt install cargo libpipewire-0.3-dev`
-* Debian: `sudo apt install cargo libpipewire-0.3-dev`
-* Fedora: `sudo dnf install cargo pipewire-devel`
-* Arch Linux: `sudo pacman -S rust libpipewire`
+* Ubuntu: `sudo apt install cargo libpipewire-0.3-dev pkg-config clang`
+* Debian: `sudo apt install libpipewire-0.3-dev pkg-config clang` (you will
+  also need to install a somewhat recent Rust toolchain - rustup is one way)
+* Fedora: `sudo dnf install cargo pipewire-devel clang`
+* Arch Linux: `sudo pacman -S rust libpipewire pkgconf clang`
 
 ## Quick Start
 
