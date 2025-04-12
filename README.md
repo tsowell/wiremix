@@ -16,6 +16,7 @@ dependencies:
   also need to install a somewhat recent Rust toolchain - rustup is one way)
 * Fedora: `sudo dnf install cargo pipewire-devel clang`
 * Arch Linux: `sudo pacman -S rust libpipewire pkgconf clang`
+* Nix: See [flake.nix](./flake.nix)
 
 ## Quick Start
 
