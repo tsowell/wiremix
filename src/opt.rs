@@ -45,7 +45,7 @@ pub struct Opt {
         short,
         long,
         value_name = "NAME",
-        help = "Theme to use\n[built-in themes: default]"
+        help = "Theme to use\n[built-in themes: default, nocolor, plain]"
     )]
     pub theme: Option<String>,
 

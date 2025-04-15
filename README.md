@@ -43,7 +43,7 @@ Options:
   -s, --char-set <NAME>  Character set to use
                          [built-in sets: default, compat, extracompat]
   -t, --theme <NAME>     Theme to use
-                         [built-in themes: default]
+                         [built-in themes: default, nocolor, plain]
   -p, --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
       --no-mouse         Disable mouse support
       --mouse            Enable mouse support
