@@ -209,6 +209,19 @@ See [wiremix.toml](./wiremix.toml) for more details.
 
 #### Examples
 
+The default naming scheme is:
+
+```toml
+[names]
+steam = [ "{node:node.name}: {node:media.name}" ]
+endpoint = [ "{device:device.nick}", "{node:node.description}" ]
+device [ "{device:device.nick}", "{device:device.description}" ]
+```
+
+Not all nodes and devices have the same properties present, so if multiple
+naming templates are specified, wiremix will try to resolve them in order and
+use the first one that works.
+
 For ncpamixer-style names you can use:
 
 ```toml
@@ -218,25 +231,30 @@ endpoint = [ "{node:node.description}" ]
 device = [ "{device:device.description}" ]
 ```
 
-wiremix's author uses these overrides with the default names:
+I use these overrides with the default names:
 
 ```toml
-# Turn "USB-C to 3.5mm Headphone Jack A" into "USB-C to 3.5mm Headphone Jack
-# Adapter"
+# This device's device.name is truncated to "USB-C to 3.5mm Headphone Jack
+# A". This override makes wiremix use device.description instead, which for
+# this device is "USB-C to 3.5mm Headphone Jack Adapter".
 [[names.overrides]]
 types = [ "endpoint", "device" ]
 property = "device:device.name"
 value = "alsa_card.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH841302FEJKLTA3-00"
 templates = [ "{device:device.description}" ]
 
-# Turn "spotify: Spotify" into "spotify"
+# The Spotify client's node.name is "spotify", and it also uses "Spotify" for
+# media.name. This override makes wiremix use just the node.name, so it shows
+# as "spotify" instead of "spotify: Spotify".
 [[names.overrides]]
 types = [ "stream" ]
 property = "node:node.name"
 value = "spotify"
 templates = [ "{node:node.name}" ]
 
-# Turn "mpv: foo - mpv" into "foo - mpv"
+# mpv is also a bit redundant with the default naming scheme - it suffices
+# media.name with "- mpv". This override makes it show as "foo - mpv" instead
+# of "mpv: foo - mpv".
 [[names.overrides]]
 types = [ "stream" ]
 property = "node:node.name"
