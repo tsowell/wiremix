@@ -1,8 +1,14 @@
 # wiremix
 
-wiremix is a TUI audio mixer for PipeWire. Its interface is more or less a
-clone of ncpamixer's which was itself inspired by pavucontrol, so users of
-either should find it familiar.
+wiremix is a simple TUI audio mixer for PipeWire. You can use it to adjust
+volumes, route audio between devices and applications, and configure audio
+device settings like input/output ports and profiles.
+
+wiremix's interface is more or less a clone of the wonderful
+[ncpamixer](https://github.com/fulhax/ncpamixer) which was itself inspired by
+pavucontrol, so users of either should find it familiar.
+
+Issues and pull requests are welcome!
 
 <img src="https://github.com/user-attachments/assets/eefa5fae-d717-491f-ae74-68197bb270fa" width="612">
 
