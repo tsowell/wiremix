@@ -10,6 +10,7 @@ categories = ["command-line-utilities", "multimedia::audio"]
 keywords = ["mixer", "pipewire", "volume", "audio", "tui"]
 edition = "2021"
 rust-version = "1.74.1"
+include = ["src/**/*", "Cargo.toml", "LICENSE*", "README.md", "wiremix.toml"]
 
 [dependencies]
 anyhow = "1.0.95"
