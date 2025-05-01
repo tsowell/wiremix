@@ -213,9 +213,9 @@ The default naming scheme is:
 
 ```toml
 [names]
-steam = [ "{node:node.name}: {node:media.name}" ]
+stream = [ "{node:node.name}: {node:media.name}" ]
 endpoint = [ "{device:device.nick}", "{node:node.description}" ]
-device [ "{device:device.nick}", "{device:device.description}" ]
+device = [ "{device:device.nick}", "{device:device.description}" ]
 ```
 
 Not all nodes and devices have the same properties present, so if multiple
