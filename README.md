@@ -10,7 +10,7 @@ pavucontrol, so users of either should find it familiar.
 
 Issues and pull requests are welcome!
 
-<img src="https://github.com/user-attachments/assets/eefa5fae-d717-491f-ae74-68197bb270fa" width="612">
+<img src="https://github.com/user-attachments/assets/26823e34-3a6f-4a3a-bdb2-cde7f3d4cbe5" width="612">
 
 ## Installation
 
