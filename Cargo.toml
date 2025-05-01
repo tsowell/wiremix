@@ -1,6 +1,6 @@
 [package]
 name = "wiremix"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Thomas Sowell <tom@ldtlb.com>"]
 description = "A TUI mixer for PipeWire"
 readme = "README.md"
