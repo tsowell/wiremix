@@ -42,3 +42,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 
 [features]
 trace = ["dep:tracing", "dep:tracing-error", "dep:tracing-subscriber"]
+
+[profile.release]
+codegen-units = 1
+lto = true
