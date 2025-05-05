@@ -83,7 +83,7 @@ less-intuitive mouse controls are:
 | Enter         | Choose dropdown item    |
 | j/Down arrow  | Move down               |
 | k/Up arrow    | Move up                 |
-| H             | Select previous tab     |
+| H/Shift+Tab   | Select previous tab     |
 | L/Tab         | Select next tab         |
 | ` (Backtick)  | Set volume 0%           |
 | 1             | Set volume 10%          |

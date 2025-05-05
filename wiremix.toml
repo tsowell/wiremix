@@ -92,6 +92,7 @@ keybindings = [
  { key = "Tab", action = "TabRight" },
  # Select the previous tab
  { key = { Char = "H" }, action = "TabLeft" },
+ { key = "BackTab", modifiers = "SHIFT", action = "TabLeft" },
  # Set the volume of the selected item in 10% increments from 0% to 100%
  { key = { Char = "`" }, action = { SetAbsoluteVolume = 0.00 } },
  { key = { Char = "1" }, action = { SetAbsoluteVolume = 0.10 } },

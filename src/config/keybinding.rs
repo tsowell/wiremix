@@ -45,6 +45,10 @@ impl Keybinding {
             (event(KeyCode::Up), Action::MoveUp),
             (event(KeyCode::Char('H')), Action::TabLeft),
             (event(KeyCode::Char('L')), Action::TabRight),
+            (
+                KeyEvent::new(KeyCode::BackTab, KeyModifiers::SHIFT),
+                Action::TabLeft,
+            ),
             (event(KeyCode::Tab), Action::TabRight),
             (event(KeyCode::Char('`')), Action::SetAbsoluteVolume(0.00)),
             (event(KeyCode::Char('1')), Action::SetAbsoluteVolume(0.10)),
