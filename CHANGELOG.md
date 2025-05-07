@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a discrepancy between wiremix.toml char set and real defaults.
+
 ## [0.2.0] - 2025-05-05
 
 ### Added

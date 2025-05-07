@@ -328,10 +328,10 @@ meter_right_active = "▮"
 meter_right_overload = "▮"
 # The "live" indicator in the center of the meter
 # Mono meters use only the right side
-meter_center_left_inactive = "■"
-meter_center_left_active = "■"
-meter_center_right_inactive = "■"
-meter_center_right_active = "■"
+meter_center_left_inactive = "▮"
+meter_center_left_active = "▮"
+meter_center_right_inactive = "▮"
+meter_center_right_active = "▮"
 # Dropdown marker next to the profiles in the Configuration tab
 dropdown_icon = "▼"
 # Indicates the selected item in a dropdown
