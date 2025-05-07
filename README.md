@@ -252,7 +252,7 @@ property = "node:node.name"
 value = "spotify"
 templates = [ "{node:node.name}" ]
 
-# mpv is also a bit redundant with the default naming scheme - it suffices
+# mpv is also a bit redundant with the default naming scheme - it suffixes
 # media.name with "- mpv". This override makes it show as "foo - mpv" instead
 # of "mpv: foo - mpv".
 [[names.overrides]]
