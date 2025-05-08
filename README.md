@@ -16,9 +16,6 @@ Issues and pull requests are welcome!
 
 ### Package Managers
 
-* Arch Linux (AUR): Install
-  [wiremix-git](https://aur.archlinux.org/packages/wiremix-git) with your AUR
-  helper. For example, `yay -S wiremix-git`
 * Nix: `nix run github:tsowell/wiremix` or add wiremix to your configuration
   using the provided [flake.nix](./flake.nix)
 
@@ -31,6 +28,7 @@ dependencies:
 * Debian: `sudo apt install libpipewire-0.3-dev pkg-config clang` (you will
   also need to install a somewhat recent Rust toolchain - rustup is one way)
 * Fedora: `sudo dnf install cargo pipewire-devel clang`
+* Arch Linux: `sudo pacman -S rust libpipewire pkgconf clang`
 
 Then install wiremix with `cargo install wiremix`
 
