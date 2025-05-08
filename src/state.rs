@@ -134,8 +134,6 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
-    /// Nodes waiting on object.serial before we can start capture
-    pub pending_capture: HashSet<ObjectId>,
     /// Used to optimize view rebuilding based on what has changed
     pub dirty: StateDirty,
     /// Track which streams are being captured
@@ -254,18 +252,12 @@ impl State {
                 self.node_entry(id).device_id = Some(device_id);
             }
             MonitorEvent::NodeMediaClass(id, media_class) => {
-                let object_serial = {
-                    let node = self.node_entry(id);
-                    node.media_class = Some(media_class.clone());
-                    node.object_serial
-                };
+                self.node_entry(id).media_class = Some(media_class.clone());
 
-                if self.is_node_auto_capturable(id) {
-                    if object_serial.is_none() {
-                        self.pending_capture.insert(id);
-                    } else {
-                        commands.extend(self.start_capture_command(&id));
-                    }
+                if self.is_node_auto_capturable(id)
+                    && !self.capturing.contains(&id)
+                {
+                    commands.extend(self.start_capture_command(&id));
                 }
             }
             MonitorEvent::NodeMediaName(id, media_name) => {
@@ -282,8 +274,8 @@ impl State {
             }
             MonitorEvent::NodeObjectSerial(id, object_serial) => {
                 self.node_entry(id).object_serial = Some(object_serial);
-                if self.pending_capture.remove(&id)
-                    && self.is_node_auto_capturable(id)
+                if self.is_node_auto_capturable(id)
+                    && !self.capturing.contains(&id)
                 {
                     commands.extend(self.start_capture_command(&id));
                 }
@@ -355,7 +347,6 @@ impl State {
 
                 self.devices.remove(&id);
                 self.nodes.remove(&id);
-                self.pending_capture.remove(&id);
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
@@ -378,14 +369,20 @@ impl State {
 
     /// Should we capture this node once we see it?
     fn is_node_auto_capturable(&self, id: ObjectId) -> bool {
-        self.nodes
-            .get(&id)
+        let node = self.nodes.get(&id);
+
+        let is_source_or_stream = node
             .and_then(|node| node.media_class.as_ref())
             .is_some_and(|media_class| {
                 media_class.is_source()
                     || media_class.is_sink_input()
                     || media_class.is_source_output()
-            })
+            });
+
+        let has_object_serial =
+            node.and_then(|node| node.object_serial.as_ref()).is_some();
+
+        is_source_or_stream && has_object_serial
     }
 
     /// Should we capture this node once it is linked to another node?
