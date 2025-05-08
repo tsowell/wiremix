@@ -14,6 +14,8 @@ Issues and pull requests are welcome!
 
 ## Installation
 
+[![AUR package](https://repology.org/badge/version-for-repo/aur/wiremix.svg)](https://repology.org/project/wiremix/versions)
+
 wiremix depends on Rust and the PipeWire libraries. To install all
 dependencies:
 
