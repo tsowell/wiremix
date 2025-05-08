@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This CHANGELOG file.
 - Shift+Tab default keybinding.
+- Nix package to flake.nix.
 
 ### Changed
 

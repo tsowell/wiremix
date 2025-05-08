@@ -13,20 +13,36 @@
           inherit system overlays;
         };
         rust = pkgs.rust-bin.stable.latest.default;
+        nativeBuildInputs = with pkgs; [
+          rust
+          pkg-config
+          clang
+        ];
+        buildInputs = with pkgs; [
+          pipewire
+        ];
+        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
       in
       {
-        devShells.default = with pkgs; mkShell {
-          nativeBuildInputs = [
-            rust
-            pkg-config
-            clang
-          ];
+        devShells.default = pkgs.mkShell {
+          inherit nativeBuildInputs;
+          inherit buildInputs;
+          inherit LIBCLANG_PATH;
+        };
 
-          buildInputs = [
-            pipewire
-          ];
+        packages.default = let
+          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        in pkgs.rustPlatform.buildRustPackage rec {
+          inherit nativeBuildInputs;
+          inherit buildInputs;
+          inherit LIBCLANG_PATH;
 
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+          pname = cargoToml.package.name;
+          version = cargoToml.package.version;
+
+          src = self;
+
+          cargoLock.lockFile = ./Cargo.lock;
         };
       }
     );
