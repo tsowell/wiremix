@@ -14,6 +14,16 @@ Issues and pull requests are welcome!
 
 ## Installation
 
+### Package Managers
+
+* Arch Linux (AUR): Install
+  [wiremix-git](https://aur.archlinux.org/packages/wiremix-git) with your AUR
+  helper. For example, `yay -S wiremix-git`
+* Nix: `nix run github:tsowell/wiremix` or add wiremix to your configuration
+  using the provided [flake.nix](./flake.nix)
+
+### Manual Installation
+
 wiremix depends on Rust and the PipeWire libraries. To install all
 dependencies:
 
@@ -21,14 +31,13 @@ dependencies:
 * Debian: `sudo apt install libpipewire-0.3-dev pkg-config clang` (you will
   also need to install a somewhat recent Rust toolchain - rustup is one way)
 * Fedora: `sudo dnf install cargo pipewire-devel clang`
-* Arch Linux: `sudo pacman -S rust libpipewire pkgconf clang`
-* Nix: See [flake.nix](./flake.nix)
+
+Then install wiremix with `cargo install wiremix`
 
 ## Quick Start
 
-1. Install wiremix with `cargo install wiremix`
-2. Run `wiremix` to launch with default settings
-3. Use mouse and keyboard bindings to operate the mixer
+1. Run `wiremix` to launch with default settings
+2. Use mouse and keyboard bindings to operate the mixer
    - Arrow keys or hjkl to navigate and adjust volume
    - Tab or HL to change tabs
    - c to open a dropdown to route audio to a different destination
