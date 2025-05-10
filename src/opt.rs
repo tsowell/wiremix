@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use crate::config;
+use crate::view;
 
 #[derive(Parser)]
 #[clap(name = "wiremix", about = "PipeWire mixer")]
@@ -26,11 +27,7 @@ pub struct Opt {
     )]
     pub remote: Option<String>,
 
-    #[clap(
-        short,
-        long,
-        help = "Target frames per second (or 0 for unlimited)"
-    )]
+    #[clap(short, long, help = "Target frames per second (or 0 for unlimited)")]
     pub fps: Option<f32>,
 
     #[clap(
@@ -62,6 +59,10 @@ pub struct Opt {
 
     #[clap(long, conflicts_with = "no_mouse", help = "Enable mouse support")]
     pub mouse: bool,
+
+    /// Initial tab view
+    #[clap(short = 'v', long, value_name = "VIEW", value_enum, default_value="playback", value_parser = clap::value_parser!(view::NodeType))]
+    pub tab: Option<view::NodeType>,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
