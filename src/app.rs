@@ -16,8 +16,7 @@ use ratatui::{
 };
 
 use crossterm::event::{
-    Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseButton, MouseEvent,
-    MouseEventKind,
+    Event as CrosstermEvent, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind,
 };
 
 use serde::Deserialize;
@@ -76,8 +75,7 @@ impl Tab {
 
 // Mouse events matching one of the MouseEventKinds within the Rect will
 // perform the Actions.
-pub type MouseArea =
-    (Rect, SmallVec<[MouseEventKind; 4]>, SmallVec<[Action; 4]>);
+pub type MouseArea = (Rect, SmallVec<[MouseEventKind; 4]>, SmallVec<[Action; 4]>);
 
 /// Handles the main UI for the application.
 ///
@@ -126,10 +124,7 @@ impl App {
             ),
             Tab::new(
                 String::from("Recording"),
-                ObjectList::new(
-                    ListType::Node(view::NodeType::Recording),
-                    None,
-                ),
+                ObjectList::new(ListType::Node(view::NodeType::Recording), None),
             ),
             Tab::new(
                 String::from("Output Devices"),
@@ -156,7 +151,7 @@ impl App {
             rx,
             error_message: None,
             tabs,
-            selected_tab_index: 0,
+            selected_tab_index: config.tab.index(),
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
@@ -276,9 +271,8 @@ struct RenderPacer {
 
 impl RenderPacer {
     fn new(fps: Option<f32>) -> Self {
-        let frame_duration = fps.map_or(Default::default(), |fps| {
-            Duration::from_secs_f32(1.0 / fps)
-        });
+        let frame_duration =
+            fps.map_or(Default::default(), |fps| Duration::from_secs_f32(1.0 / fps));
 
         Self {
             frame_duration,
@@ -369,12 +363,9 @@ impl Handle for Action {
                 app.tabs[app.selected_tab_index].list.up(&app.view);
             }
             Action::TabLeft => {
-                app.selected_tab_index =
-                    app.selected_tab_index.checked_sub(1).unwrap_or(4)
+                app.selected_tab_index = app.selected_tab_index.checked_sub(1).unwrap_or(4)
             }
-            Action::TabRight => {
-                app.selected_tab_index = (app.selected_tab_index + 1) % 5
-            }
+            Action::TabRight => app.selected_tab_index = (app.selected_tab_index + 1) % 5,
             Action::OpenDropdown => {
                 app.tabs[app.selected_tab_index]
                     .list
@@ -403,9 +394,7 @@ impl Handle for Action {
                 app.tabs[app.selected_tab_index].list.selected = Some(object_id)
             }
             Action::ToggleMute => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .toggle_mute(&app.view);
+                let commands = app.tabs[app.selected_tab_index].list.toggle_mute(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
@@ -427,9 +416,7 @@ impl Handle for Action {
                 }
             }
             Action::SetDefault => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .set_default(&app.view);
+                let commands = app.tabs[app.selected_tab_index].list.set_default(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
@@ -450,9 +437,7 @@ impl Handle for Action {
 impl Handle for MouseEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
         match self.kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                app.drag_row = Some(self.row)
-            }
+            MouseEventKind::Down(MouseButton::Left) => app.drag_row = Some(self.row),
             MouseEventKind::Up(MouseButton::Left) => app.drag_row = None,
             _ => {}
         }
@@ -486,8 +471,7 @@ impl Handle for MonitorEvent {
         for command in app.state.update(self) {
             // Filter out capture commands if capture is disabled
             match command {
-                Command::NodeCaptureStart(..)
-                | Command::NodeCaptureStop(..)
+                Command::NodeCaptureStart(..) | Command::NodeCaptureStop(..)
                     if app.config.peaks == Peaks::Off => {}
                 command => {
                     let _ = app.tx.send(command);
@@ -607,6 +591,7 @@ mod tests {
             theme: Default::default(),
             keybindings: Default::default(),
             names: Default::default(),
+            tab: Default::default(),
         };
         let mut app = App::new(command_tx, event_rx, config);
 
@@ -624,10 +609,8 @@ mod tests {
         let x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
         let ctrl_x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
 
-        let keybindings = HashMap::from([
-            (x, Action::SelectTab(2)),
-            (ctrl_x, Action::SelectTab(4)),
-        ]);
+        let keybindings =
+            HashMap::from([(x, Action::SelectTab(2)), (ctrl_x, Action::SelectTab(4))]);
         let config = Config {
             remote: None,
             fps: None,
@@ -637,6 +620,7 @@ mod tests {
             theme: Default::default(),
             keybindings,
             names: Default::default(),
+            tab: Default::default(),
         };
         let mut app = App::new(command_tx, event_rx, config);
 
