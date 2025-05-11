@@ -108,7 +108,9 @@ pub enum VolumeAdjustment {
     Absolute(f32),
 }
 
-#[derive(Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum)]
+#[derive(
+    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum NodeType {
     Playback,
@@ -164,16 +166,19 @@ fn route_targets(
                 if !route.profiles.contains(&profile_index) {
                     return None;
                 }
-                let route_device = route
-                    .devices
-                    .iter()
-                    .find(|route_device| profile_devices.contains(route_device))?;
+                let route_device =
+                    route.devices.iter().find(|route_device| {
+                        profile_devices.contains(route_device)
+                    })?;
                 let title = if route.available {
                     route.description.clone()
                 } else {
                     format!("{} (unavailable)", route.description)
                 };
-                Some((Target::Route(device.id, route.index, *route_device), title))
+                Some((
+                    Target::Route(device.id, route.index, *route_device),
+                    title,
+                ))
             })
             .collect(),
     )
@@ -182,7 +187,10 @@ fn route_targets(
 /// Get the active route for a device and card device.
 /// This is the route on a device Node IF the route's profile matches the
 /// device's current profile. Otherwise, there is no valid route.
-fn active_route(device: &state::Device, card_device: i32) -> Option<&state::Route> {
+fn active_route(
+    device: &state::Device,
+    card_device: i32,
+) -> Option<&state::Route> {
     let profile_index = device.profile_index?;
 
     device
@@ -207,38 +215,43 @@ impl Node {
         let title = names.resolve(state, node)?;
 
         // Nodes can represent either streams or devices.
-        let (volumes, mute, device_info) = if let Some(device_id) = node.device_id {
-            // Nodes for devices should get their volume and mute status
-            // from the associated device's active route which is also used
-            // for changing the volume and mute status.
-            let device = state.devices.get(&device_id)?;
-            let card_device = node.card_profile_device?;
-            if let Some(route) = active_route(device, card_device) {
-                let route_index = route.index;
-                (
-                    route.volumes.clone(),
-                    route.mute,
-                    Some((device_id, route_index, card_device)),
-                )
+        let (volumes, mute, device_info) =
+            if let Some(device_id) = node.device_id {
+                // Nodes for devices should get their volume and mute status
+                // from the associated device's active route which is also used
+                // for changing the volume and mute status.
+                let device = state.devices.get(&device_id)?;
+                let card_device = node.card_profile_device?;
+                if let Some(route) = active_route(device, card_device) {
+                    let route_index = route.index;
+                    (
+                        route.volumes.clone(),
+                        route.mute,
+                        Some((device_id, route_index, card_device)),
+                    )
+                } else {
+                    (node.volumes.as_ref()?.clone(), node.mute?, None)
+                }
             } else {
+                // We can interact with a stream node's volume and mute status
+                // directly.
                 (node.volumes.as_ref()?.clone(), node.mute?, None)
-            }
-        } else {
-            // We can interact with a stream node's volume and mute status
-            // directly.
-            (node.volumes.as_ref()?.clone(), node.mute?, None)
-        };
+            };
 
-        let (routes, target, target_title) = if let Some(device_id) = node.device_id {
+        let (routes, target, target_title) = if let Some(device_id) =
+            node.device_id
+        {
             // Targets for device nodes are routes for the associated device.
             let device = state.devices.get(&device_id)?;
             let card_device = node.card_profile_device?;
 
-            let mut routes: Vec<_> = route_targets(device, &media_class).unwrap_or_default();
+            let mut routes: Vec<_> =
+                route_targets(device, &media_class).unwrap_or_default();
             routes.sort_by(|(_, a), (_, b)| a.cmp(b));
             let routes = routes;
 
-            let (target, target_title) = match active_route(device, card_device) {
+            let (target, target_title) = match active_route(device, card_device)
+            {
                 Some(route) => {
                     let target_title = if route.available {
                         route.description.clone()
@@ -246,7 +259,11 @@ impl Node {
                         format!("{} (unavailable)", route.description)
                     };
                     (
-                        Some(Target::Route(device.id, route.index, card_device)),
+                        Some(Target::Route(
+                            device.id,
+                            route.index,
+                            card_device,
+                        )),
                         target_title,
                     )
                 }
@@ -321,7 +338,11 @@ impl Node {
 }
 
 impl Device {
-    fn from(state: &state::State, device: &state::Device, names: &config::Names) -> Option<Device> {
+    fn from(
+        state: &state::State,
+        device: &state::Device,
+        names: &config::Names,
+    ) -> Option<Device> {
         let id = device.id;
 
         let title = names.resolve(state, device)?;
@@ -403,23 +424,27 @@ impl View {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
 
-        let default_sink = default_sink_name.as_ref().and_then(|default_sink_name| {
-            state
-                .nodes
-                .values()
-                .find(|node| node.name.as_ref() == Some(default_sink_name))
-                .map(|node| Target::Node(node.id))
-        });
-
-        let default_source = default_source_name
-            .as_ref()
-            .and_then(|default_source_name| {
+        let default_sink =
+            default_sink_name.as_ref().and_then(|default_sink_name| {
                 state
                     .nodes
                     .values()
-                    .find(|node| node.name.as_ref() == Some(default_source_name))
+                    .find(|node| node.name.as_ref() == Some(default_sink_name))
                     .map(|node| Target::Node(node.id))
             });
+
+        let default_source =
+            default_source_name
+                .as_ref()
+                .and_then(|default_source_name| {
+                    state
+                        .nodes
+                        .values()
+                        .find(|node| {
+                            node.name.as_ref() == Some(default_source_name)
+                        })
+                        .map(|node| Target::Node(node.id))
+                });
 
         let mut sinks: Vec<_> = state
             .nodes
@@ -444,7 +469,10 @@ impl View {
                     Some((Target::Node(node.id), title))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let title = names.resolve(state, node)?;
-                    Some((Target::Node(node.id), format!("Monitor of {}", title)))
+                    Some((
+                        Target::Node(node.id),
+                        format!("Monitor of {}", title),
+                    ))
                 } else {
                     None
                 }
@@ -482,7 +510,9 @@ impl View {
         let mut nodes_recording = Vec::new();
         let mut nodes_output = Vec::new();
         let mut nodes_input = Vec::new();
-        for (id, node) in nodes.iter().sorted_by_key(|(_, node)| node.object_serial) {
+        for (id, node) in
+            nodes.iter().sorted_by_key(|(_, node)| node.object_serial)
+        {
             nodes_all.push(*id);
             if node.media_class.is_sink_input() {
                 nodes_playback.push(*id);
@@ -532,7 +562,8 @@ impl View {
             if let Some(node) = self.nodes.get_mut(&state_node.id) {
                 match &state_node.peaks {
                     Some(peaks) => {
-                        let peaks_ref = node.peaks.get_or_insert_with(Default::default);
+                        let peaks_ref =
+                            node.peaks.get_or_insert_with(Default::default);
                         peaks_ref.resize(peaks.len(), 0.0);
                         peaks_ref.copy_from_slice(peaks);
                     }
@@ -544,7 +575,11 @@ impl View {
 
     /// Returns a command for setting the provided node as the default
     /// source/sink, depending on device_type.
-    pub fn set_default(&self, node_id: ObjectId, device_type: DeviceType) -> Option<Command> {
+    pub fn set_default(
+        &self,
+        node_id: ObjectId,
+        device_type: DeviceType,
+    ) -> Option<Command> {
         let node = self.nodes.get(&node_id)?;
         let key = match device_type {
             DeviceType::Source => "default.configured.audio.source",
@@ -563,7 +598,11 @@ impl View {
 
     /// Returns a command for setting the provided node's target to the
     /// provided target.
-    pub fn set_target(&self, node_id: ObjectId, target: Target) -> Vec<Command> {
+    pub fn set_target(
+        &self,
+        node_id: ObjectId,
+        target: Target,
+    ) -> Vec<Command> {
         let Some(metadata_id) = self.metadata_id else {
             return Vec::new();
         };
@@ -636,7 +675,11 @@ impl View {
     }
 
     /// Returns a command for changing the volume of the provided node.
-    pub fn volume(&self, node_id: ObjectId, adjustment: VolumeAdjustment) -> Option<Command> {
+    pub fn volume(
+        &self,
+        node_id: ObjectId,
+        adjustment: VolumeAdjustment,
+    ) -> Option<Command> {
         let node = self.nodes.get(&node_id)?;
 
         let mut volumes = node.volumes.clone();
@@ -696,7 +739,11 @@ impl View {
     }
 
     /// Returns the next node in the list_type after a provided node.
-    pub fn next_id(&self, list_type: ListType, object_id: Option<ObjectId>) -> Option<ObjectId> {
+    pub fn next_id(
+        &self,
+        list_type: ListType,
+        object_id: Option<ObjectId>,
+    ) -> Option<ObjectId> {
         let objects = self.ids(list_type);
         let next_index = match object_id {
             Some(object_id) => objects
@@ -726,7 +773,11 @@ impl View {
     }
 
     /// Returns the index in the list_type for the provided object.
-    pub fn position(&self, list_type: ListType, object_id: ObjectId) -> Option<usize> {
+    pub fn position(
+        &self,
+        list_type: ListType,
+        object_id: ObjectId,
+    ) -> Option<usize> {
         self.ids(list_type).iter().position(|&id| id == object_id)
     }
 
@@ -736,7 +787,10 @@ impl View {
     }
 
     /// Returns the possible targets for a node.
-    pub fn node_targets(&self, node_id: ObjectId) -> Option<(Vec<(Target, String)>, usize)> {
+    pub fn node_targets(
+        &self,
+        node_id: ObjectId,
+    ) -> Option<(Vec<(Target, String)>, usize)> {
         let node = self.nodes.get(&node_id)?;
 
         // Get the target list appropriate to the node type
@@ -761,7 +815,9 @@ impl View {
         // Sort targets by name
         targets.sort_by(|(_, a), (_, b)| a.cmp(b));
         // If the targets are nodes, add the default node to the top
-        if node.media_class.is_sink_input() || node.media_class.is_source_output() {
+        if node.media_class.is_sink_input()
+            || node.media_class.is_source_output()
+        {
             targets.insert(0, (Target::Default, default_name.clone()));
         };
         let targets = targets;
@@ -781,7 +837,10 @@ impl View {
     }
 
     /// Returns the possible targets for a device.
-    pub fn device_targets(&self, device_id: ObjectId) -> Option<(Vec<(Target, String)>, usize)> {
+    pub fn device_targets(
+        &self,
+        device_id: ObjectId,
+    ) -> Option<(Vec<(Target, String)>, usize)> {
         let device = self.devices.get(&device_id)?;
 
         let targets = device.profiles.clone();

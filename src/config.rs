@@ -58,7 +58,10 @@ struct ConfigFile {
     keybindings: HashMap<KeyEvent, Action>,
     #[serde(default)]
     names: Names,
-    #[serde(default = "CharSet::defaults", deserialize_with = "CharSet::merge")]
+    #[serde(
+        default = "CharSet::defaults",
+        deserialize_with = "CharSet::merge"
+    )]
     char_sets: HashMap<String, CharSet>,
     #[serde(default = "Theme::defaults", deserialize_with = "Theme::merge")]
     themes: HashMap<String, Theme>,
@@ -246,8 +249,13 @@ impl TryFrom<ConfigFile> for Config {
     type Error = anyhow::Error;
 
     fn try_from(mut config_file: ConfigFile) -> Result<Self, Self::Error> {
-        let Some(char_set) = config_file.char_sets.remove(&config_file.char_set) else {
-            anyhow::bail!("char_set '{}' does not exist", &config_file.char_set);
+        let Some(char_set) =
+            config_file.char_sets.remove(&config_file.char_set)
+        else {
+            anyhow::bail!(
+                "char_set '{}' does not exist",
+                &config_file.char_set
+            );
         };
 
         let Some(theme) = config_file.themes.remove(&config_file.theme) else {
@@ -283,7 +291,10 @@ impl Config {
     }
 
     /// Parse configuration from the file at the supplied path.
-    pub fn try_new(path: Option<&Path>, opt: &Opt) -> Result<Self, anyhow::Error> {
+    pub fn try_new(
+        path: Option<&Path>,
+        opt: &Opt,
+    ) -> Result<Self, anyhow::Error> {
         let mut config_file: ConfigFile = match path {
             Some(path) if path.exists() => {
                 let context = || {
@@ -293,7 +304,8 @@ impl Config {
                     )
                 };
 
-                let toml_str = fs::read_to_string(path).with_context(context)?;
+                let toml_str =
+                    fs::read_to_string(path).with_context(context)?;
 
                 toml::from_str(&toml_str).with_context(context)?
             }

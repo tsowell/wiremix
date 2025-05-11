@@ -27,7 +27,11 @@ pub struct Opt {
     )]
     pub remote: Option<String>,
 
-    #[clap(short, long, help = "Target frames per second (or 0 for unlimited)")]
+    #[clap(
+        short,
+        long,
+        help = "Target frames per second (or 0 for unlimited)"
+    )]
     pub fps: Option<f32>,
 
     #[clap(
