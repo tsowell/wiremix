@@ -74,6 +74,25 @@ impl Tab {
     }
 }
 
+#[derive(
+    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Tabs {
+    #[default]
+    Playback,
+    Recording,
+    Output,
+    Input,
+    Configuration,
+}
+
+impl Tabs {
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+}
+
 // Mouse events matching one of the MouseEventKinds within the Rect will
 // perform the Actions.
 pub type MouseArea =

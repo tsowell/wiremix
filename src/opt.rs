@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+use crate::app::Tabs;
 use crate::config;
-use crate::view::NodeType;
 
 #[derive(Parser)]
 #[clap(name = "wiremix", about = "PipeWire mixer")]
@@ -70,10 +70,10 @@ pub struct Opt {
         value_name = "VIEW",
         value_enum,
         default_value="playback",
-        value_parser = clap::value_parser!(NodeType),
+        value_parser = clap::value_parser!(Tabs),
         help = "Initial tab view"
     )]
-    pub tab: Option<NodeType>,
+    pub tab: Option<Tabs>,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]

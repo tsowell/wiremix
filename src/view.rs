@@ -3,7 +3,6 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 
-use serde::Deserialize;
 use serde_json::json;
 
 use crate::command::Command;
@@ -108,10 +107,7 @@ pub enum VolumeAdjustment {
     Absolute(f32),
 }
 
-#[derive(
-    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
-)]
-#[serde(rename_all = "lowercase")]
+#[derive(Default, Debug, Clone, Copy)]
 pub enum NodeType {
     Playback,
     Recording,
@@ -119,12 +115,6 @@ pub enum NodeType {
     Input,
     #[default]
     All,
-}
-
-impl NodeType {
-    pub fn index(&self) -> usize {
-        *self as usize
-    }
 }
 
 #[derive(Default, Debug, Clone, Copy)]

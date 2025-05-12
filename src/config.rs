@@ -19,9 +19,8 @@ use ratatui::{style::Style, widgets::block::BorderType};
 use serde::Deserialize;
 use toml;
 
-use crate::app::Action;
+use crate::app::{Action, Tabs};
 use crate::opt::Opt;
-use crate::view::NodeType;
 
 #[derive(Debug)]
 pub struct Config {
@@ -33,7 +32,7 @@ pub struct Config {
     pub theme: Theme,
     pub keybindings: HashMap<KeyEvent, Action>,
     pub names: Names,
-    pub tab: NodeType,
+    pub tab: Tabs,
 }
 
 /// Represents a configuration deserialized from a file. This gets baked into a
@@ -65,7 +64,7 @@ struct ConfigFile {
     char_sets: HashMap<String, CharSet>,
     #[serde(default = "Theme::defaults", deserialize_with = "Theme::merge")]
     themes: HashMap<String, Theme>,
-    tab: Option<NodeType>,
+    tab: Option<Tabs>,
 }
 
 // The serde defaults need to be repeated here, which is used to generate a
