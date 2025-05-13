@@ -69,7 +69,6 @@ pub struct Opt {
         long,
         value_name = "VIEW",
         value_enum,
-        default_value="playback",
         value_parser = clap::value_parser!(Tabs),
         help = "Initial tab view"
     )]
