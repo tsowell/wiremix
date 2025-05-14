@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Nix package to flake.nix.
+
 ### Fixed
 
 - Fixed a discrepancy between wiremix.toml char set and real defaults.
@@ -17,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This CHANGELOG file.
 - Shift+Tab default keybinding.
-- Nix package to flake.nix.
 
 ### Changed
 
