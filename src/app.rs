@@ -78,6 +78,7 @@ impl Tab {
     Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
 )]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(test, derive(strum::EnumIter))]
 pub enum Tabs {
     #[default]
     Playback,
@@ -611,6 +612,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     #[test]
     fn select_tab_bounds() {
@@ -667,5 +669,40 @@ mod tests {
         assert_eq!(app.selected_tab_index, 4);
         let _ = x.handle(&mut app);
         assert_eq!(app.selected_tab_index, 2);
+    }
+
+    /// Ensure that the tabs enum variants are in the same order as the app's
+    /// tab Vec. Making the initial tab configurable depends on this property
+    /// because it uses the position of the enum variants to derivce an index
+    /// into the tab Vec.
+    #[test]
+    fn tab_enum_order_matches_tab_vec() {
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let (_, event_rx) = mpsc::channel();
+
+        let config = Config {
+            remote: None,
+            fps: None,
+            mouse: false,
+            peaks: Default::default(),
+            char_set: Default::default(),
+            theme: Default::default(),
+            keybindings: Default::default(),
+            names: Default::default(),
+            tab: Default::default(),
+        };
+        let app = App::new(command_tx, event_rx, config);
+
+        assert_eq!(Tabs::iter().count(), app.tabs.len());
+
+        for (tab, Tab { title, .. }) in Tabs::iter().zip(app.tabs.iter()) {
+            match tab {
+                Tabs::Playback => assert_eq!(title, "Playback"),
+                Tabs::Recording => assert_eq!(title, "Recording"),
+                Tabs::Output => assert_eq!(title, "Output Devices"),
+                Tabs::Input => assert_eq!(title, "Input Devices"),
+                Tabs::Configuration => assert_eq!(title, "Configuration"),
+            }
+        }
     }
 }
