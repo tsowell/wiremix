@@ -74,6 +74,25 @@ impl Tab {
     }
 }
 
+#[derive(
+    Deserialize, Default, Debug, Clone, Copy, PartialEq, clap::ValueEnum,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Tabs {
+    #[default]
+    Playback,
+    Recording,
+    Output,
+    Input,
+    Configuration,
+}
+
+impl Tabs {
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+}
+
 // Mouse events matching one of the MouseEventKinds within the Rect will
 // perform the Actions.
 pub type MouseArea =
@@ -156,7 +175,7 @@ impl App {
             rx,
             error_message: None,
             tabs,
-            selected_tab_index: 0,
+            selected_tab_index: config.tab.index(),
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
@@ -607,6 +626,7 @@ mod tests {
             theme: Default::default(),
             keybindings: Default::default(),
             names: Default::default(),
+            tab: Default::default(),
         };
         let mut app = App::new(command_tx, event_rx, config);
 
@@ -637,6 +657,7 @@ mod tests {
             theme: Default::default(),
             keybindings,
             names: Default::default(),
+            tab: Default::default(),
         };
         let mut app = App::new(command_tx, event_rx, config);
 

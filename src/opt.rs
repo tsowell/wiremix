@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+use crate::app::Tabs;
 use crate::config;
 
 #[derive(Parser)]
@@ -62,6 +63,16 @@ pub struct Opt {
 
     #[clap(long, conflicts_with = "no_mouse", help = "Enable mouse support")]
     pub mouse: bool,
+
+    #[clap(
+        short = 'v',
+        long,
+        value_name = "VIEW",
+        value_enum,
+        value_parser = clap::value_parser!(Tabs),
+        help = "Initial tab view"
+    )]
+    pub tab: Option<Tabs>,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
