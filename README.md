@@ -62,6 +62,7 @@ Options:
   -p, --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
       --no-mouse         Disable mouse support
       --mouse            Enable mouse support
+  -v, --tab <VIEW>       Initial tab view [possible values: playback, recording, output, input, configuration]
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -139,6 +140,7 @@ mouse = true
 peaks = "auto"
 char_set = "default"
 theme = "default"
+tab = "playback"
 ```
 
 ### Keybindings

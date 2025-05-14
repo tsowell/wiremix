@@ -29,6 +29,9 @@ char_set = "default"
 # Theme to use (see Themes section)
 theme = "default"
 
+# Initial tab
+tab = "playback"
+
 
 # Keybindings
 #
