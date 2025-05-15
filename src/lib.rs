@@ -1,4 +1,5 @@
 pub mod app;
+pub mod capture_manager;
 pub mod command;
 pub mod config;
 pub mod device_kind;
