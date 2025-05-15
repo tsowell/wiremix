@@ -137,7 +137,7 @@ pub struct State {
     /// Used to optimize view rebuilding based on what has changed
     pub dirty: StateDirty,
     /// Track which streams are being captured
-    pub capturing: HashSet<ObjectId>,
+    capture_manager: CaptureManager,
 }
 
 impl State {
@@ -254,10 +254,8 @@ impl State {
             MonitorEvent::NodeMediaClass(id, media_class) => {
                 self.node_entry(id).media_class = Some(media_class.clone());
 
-                if self.is_node_auto_capturable(id)
-                    && !self.capturing.contains(&id)
-                {
-                    commands.extend(self.start_capture_command(&id));
+                if let Some(node) = self.nodes.get(&id) {
+                    commands.extend(self.capture_manager.on_node(node));
                 }
             }
             MonitorEvent::NodeMediaName(id, media_name) => {
@@ -274,10 +272,9 @@ impl State {
             }
             MonitorEvent::NodeObjectSerial(id, object_serial) => {
                 self.node_entry(id).object_serial = Some(object_serial);
-                if self.is_node_auto_capturable(id)
-                    && !self.capturing.contains(&id)
-                {
-                    commands.extend(self.start_capture_command(&id));
+
+                if let Some(node) = self.nodes.get(&id) {
+                    commands.extend(self.capture_manager.on_node(node));
                 }
             }
             MonitorEvent::NodePeaks(id, peaks, samples) => {
@@ -292,8 +289,10 @@ impl State {
                         .positions
                         .as_ref()
                         .is_some_and(|p| *p != positions);
-                    if changed && self.capturing.contains(&id) {
-                        commands.extend(self.start_capture_command(&id));
+                    if changed {
+                        commands.extend(
+                            self.capture_manager.on_positions_changed(node),
+                        );
                     }
                 }
                 self.node_entry(id).positions = Some(positions);
@@ -302,10 +301,10 @@ impl State {
                 self.node_entry(id).volumes = Some(volumes);
             }
             MonitorEvent::Link(id, output, input) => {
-                if !self.inputs(input).contains(&output)
-                    && self.is_node_capturable_on_link(input)
-                {
-                    commands.extend(self.start_capture_command(&input));
+                if !self.inputs(input).contains(&output) {
+                    if let Some(node) = self.nodes.get(&input) {
+                        commands.extend(self.capture_manager.on_link(node));
+                    }
                 }
 
                 self.links.insert(id, Link { output, input });
@@ -341,7 +340,10 @@ impl State {
                 // Remove from links and stop capture if the last input link
                 if let Some(Link { input, .. }) = self.links.remove(&id) {
                     if self.inputs(input).len() == 1 {
-                        commands.extend(self.stop_capture_command(&input));
+                        if let Some(node) = self.nodes.get(&input) {
+                            commands
+                                .extend(self.capture_manager.on_removed(node));
+                        }
                     }
                 }
 
@@ -365,37 +367,6 @@ impl State {
     ) -> Option<&Metadata> {
         self.metadatas
             .get(self.metadatas_by_name.get(metadata_name)?)
-    }
-
-    /// Should we capture this node once we see it?
-    fn is_node_auto_capturable(&self, id: ObjectId) -> bool {
-        let node = self.nodes.get(&id);
-
-        let is_source_or_stream = node
-            .and_then(|node| node.media_class.as_ref())
-            .is_some_and(|media_class| {
-                media_class.is_source()
-                    || media_class.is_sink_input()
-                    || media_class.is_source_output()
-            });
-
-        let has_object_serial =
-            node.and_then(|node| node.object_serial.as_ref()).is_some();
-
-        is_source_or_stream && has_object_serial
-    }
-
-    /// Should we capture this node once it is linked to another node?
-    fn is_node_capturable_on_link(&self, id: ObjectId) -> bool {
-        self.nodes
-            .get(&id)
-            .and_then(|node| node.media_class.as_ref())
-            .is_some_and(|media_class| {
-                media_class.is_sink()
-                    || media_class.is_source()
-                    || media_class.is_sink_input()
-                    || media_class.is_source_output()
-            })
     }
 
     fn node_entry(&mut self, id: ObjectId) -> &mut Node {
@@ -436,19 +407,72 @@ impl State {
             .map(|(_key, l)| l.output)
             .collect()
     }
+}
 
-    pub fn start_capture_command(
-        &mut self,
-        input: &ObjectId,
-    ) -> Option<Command> {
-        let node = self.nodes.get(input)?;
+/// Track nodes being captured. The on_ methods can return a
+/// [`Command`](`crate::command::Command`) which should be passed to
+/// `crate::monitor::execute_command()` to start or stop capture if needed.
+#[derive(Default, Debug)]
+struct CaptureManager {
+    capturing: HashSet<ObjectId>,
+}
+
+impl CaptureManager {
+    /// Call when a node's capture eligibility might have changed.
+    pub fn on_node(&mut self, node: &Node) -> Option<Command> {
+        if !node.media_class.as_ref().is_some_and(|media_class| {
+            media_class.is_source()
+                || media_class.is_sink_input()
+                || media_class.is_source_output()
+        }) {
+            return None;
+        }
+
+        node.object_serial?;
+
+        if self.capturing.contains(&node.id) {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node gets a new input link.
+    pub fn on_link(&mut self, node: &Node) -> Option<Command> {
+        if !node.media_class.as_ref().is_some_and(|media_class| {
+            media_class.is_sink()
+                || media_class.is_source()
+                || media_class.is_sink_input()
+                || media_class.is_source_output()
+        }) {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node's output positions have changed.
+    pub fn on_positions_changed(&mut self, node: &Node) -> Option<Command> {
+        if !self.capturing.contains(&node.id) {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node has no more input links.
+    pub fn on_removed(&mut self, node: &Node) -> Option<Command> {
+        self.stop_capture_command(node)
+    }
+
+    fn start_capture_command(&mut self, node: &Node) -> Option<Command> {
         let object_serial = &node.object_serial?;
         let capture_sink =
             node.media_class.as_ref().is_some_and(|media_class| {
                 media_class.is_sink() || media_class.is_source()
             });
 
-        self.capturing.insert(*input);
+        self.capturing.insert(node.id);
 
         Some(Command::NodeCaptureStart(
             node.id,
@@ -457,13 +481,8 @@ impl State {
         ))
     }
 
-    pub fn stop_capture_command(
-        &mut self,
-        input: &ObjectId,
-    ) -> Option<Command> {
-        let node = self.nodes.get(input)?;
-
-        self.capturing.remove(input);
+    fn stop_capture_command(&mut self, node: &Node) -> Option<Command> {
+        self.capturing.remove(&node.id);
 
         Some(Command::NodeCaptureStop(node.id))
     }
