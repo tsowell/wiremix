@@ -23,6 +23,7 @@ use crossterm::event::{
 use serde::Deserialize;
 use smallvec::{smallvec, SmallVec};
 
+use crate::capture_manager::CaptureManager;
 use crate::command::Command;
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
@@ -123,6 +124,8 @@ pub struct App {
     is_ready: bool,
     /// The current PipeWire state
     state: State,
+    /// Tracks the nodes being captured
+    capture_manager: CaptureManager,
     /// A rendering view based on the current PipeWire state
     view: View,
     /// The application configuration
@@ -180,6 +183,7 @@ impl App {
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
+            capture_manager: CaptureManager::default(),
             view: View::default(),
             config,
             drag_row: None,
@@ -503,7 +507,7 @@ impl Handle for MouseEvent {
 
 impl Handle for MonitorEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
-        for command in app.state.update(self) {
+        for command in app.state.update(&mut app.capture_manager, self) {
             // Filter out capture commands if capture is disabled
             match command {
                 Command::NodeCaptureStart(..)

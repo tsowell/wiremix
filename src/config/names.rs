@@ -184,6 +184,7 @@ impl NameResolver for state::Node {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::event::MonitorEvent;
     use crate::media_class::MediaClass;
@@ -208,8 +209,9 @@ mod tests {
         let _ = Names::default_device();
     }
 
-    fn init() -> (State, ObjectId, ObjectId) {
-        let mut state: State = Default::default();
+    fn init() -> (State, CaptureManager, ObjectId, ObjectId) {
+        let mut state = State::default();
+        let mut capture_manager = CaptureManager::default();
 
         let device_id = ObjectId::from_raw_id(0);
         let node_id = ObjectId::from_raw_id(1);
@@ -222,20 +224,23 @@ mod tests {
         ];
 
         for event in events {
-            state.update(event);
+            state.update(&mut capture_manager, event);
         }
 
-        (state, device_id, node_id)
+        (state, capture_manager, device_id, node_id)
     }
 
     #[test]
     fn render_endpoint() {
-        let (mut state, _, node_id) = init();
+        let (mut state, mut capture_manager, _, node_id) = init();
 
-        state.update(MonitorEvent::NodeMediaClass(
-            node_id,
-            MediaClass::from("Audio/Sink"),
-        ));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeMediaClass(
+                node_id,
+                MediaClass::from("Audio/Sink"),
+            ),
+        );
         let names = Names {
             endpoint: vec!["{node:node.nick}".parse().unwrap()],
             ..Default::default()
@@ -248,12 +253,15 @@ mod tests {
 
     #[test]
     fn render_endpoint_missing_tag() {
-        let (mut state, _, node_id) = init();
+        let (mut state, mut capture_manager, _, node_id) = init();
 
-        state.update(MonitorEvent::NodeMediaClass(
-            node_id,
-            MediaClass::from("Audio/Sink"),
-        ));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeMediaClass(
+                node_id,
+                MediaClass::from("Audio/Sink"),
+            ),
+        );
 
         let names = Names {
             endpoint: vec!["{node:node.description}".parse().unwrap()],
@@ -268,7 +276,7 @@ mod tests {
 
     #[test]
     fn render_device_missing_tag() {
-        let (state, device_id, _) = init();
+        let (state, _, device_id, _) = init();
 
         let names = Names {
             device: vec!["{device:device.description}".parse().unwrap()],
@@ -283,13 +291,19 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device() {
-        let (mut state, device_id, node_id) = init();
+        let (mut state, mut capture_manager, device_id, node_id) = init();
 
-        state.update(MonitorEvent::NodeMediaClass(
-            node_id,
-            MediaClass::from("Audio/Sink"),
-        ));
-        state.update(MonitorEvent::NodeDeviceId(node_id, device_id));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeMediaClass(
+                node_id,
+                MediaClass::from("Audio/Sink"),
+            ),
+        );
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeDeviceId(node_id, device_id),
+        );
 
         let names = Names {
             endpoint: vec!["{device:device.nick}".parse().unwrap()],
@@ -303,13 +317,19 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device_missing_tag() {
-        let (mut state, device_id, node_id) = init();
+        let (mut state, mut capture_manager, device_id, node_id) = init();
 
-        state.update(MonitorEvent::NodeMediaClass(
-            node_id,
-            MediaClass::from("Audio/Sink"),
-        ));
-        state.update(MonitorEvent::NodeDeviceId(node_id, device_id));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeMediaClass(
+                node_id,
+                MediaClass::from("Audio/Sink"),
+            ),
+        );
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeDeviceId(node_id, device_id),
+        );
 
         let names = Names {
             endpoint: vec!["{device:device.description}".parse().unwrap()],
@@ -324,12 +344,15 @@ mod tests {
 
     #[test]
     fn render_endpoint_no_linked_device() {
-        let (mut state, _, node_id) = init();
+        let (mut state, mut capture_manager, _, node_id) = init();
 
-        state.update(MonitorEvent::NodeMediaClass(
-            node_id,
-            MediaClass::from("Audio/Sink"),
-        ));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::NodeMediaClass(
+                node_id,
+                MediaClass::from("Audio/Sink"),
+            ),
+        );
 
         let names = Names {
             endpoint: vec!["{device:device.nick}".parse().unwrap()],
@@ -344,7 +367,7 @@ mod tests {
 
     #[test]
     fn render_stream() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             stream: vec!["{node:node.nick}".parse().unwrap()],
@@ -358,7 +381,7 @@ mod tests {
 
     #[test]
     fn render_precedence() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             stream: vec![
@@ -375,7 +398,7 @@ mod tests {
 
     #[test]
     fn render_override_match() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -397,7 +420,7 @@ mod tests {
 
     #[test]
     fn render_override_type_mismatch() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -416,7 +439,7 @@ mod tests {
 
     #[test]
     fn render_override_value_mismatch() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -435,7 +458,7 @@ mod tests {
 
     #[test]
     fn render_override_empty_templates() {
-        let (state, _, node_id) = init();
+        let (state, _, _, node_id) = init();
 
         let names = Names {
             overrides: vec![NameOverride {

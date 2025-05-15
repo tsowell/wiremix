@@ -495,14 +495,16 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capture_manager::CaptureManager;
     use crate::config;
     use crate::event::MonitorEvent;
     use crate::media_class::MediaClass;
     use crate::state::State;
     use crate::view::{ListKind, NodeKind, View};
 
-    fn init() -> State {
-        let mut state: State = Default::default();
+    fn init() -> (State, CaptureManager) {
+        let mut state = State::default();
+        let mut capture_manager = CaptureManager::default();
 
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
@@ -525,16 +527,16 @@ mod tests {
                 MonitorEvent::NodeMute(obj_id, false),
             ];
             for event in events {
-                state.update(event);
+                state.update(&mut capture_manager, event);
             }
         }
 
-        state
+        (state, capture_manager)
     }
 
     #[test]
     fn object_list_up_overflow() {
-        let state = init();
+        let (state, _) = init();
         let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
@@ -555,7 +557,7 @@ mod tests {
 
     #[test]
     fn object_list_down_overflow() {
-        let state = init();
+        let (state, _) = init();
         let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
@@ -581,7 +583,7 @@ mod tests {
 
     #[test]
     fn object_list_remove_last_nodes() {
-        let mut state = init();
+        let (mut state, mut capture_manager) = init();
         let view = View::from(&state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
@@ -605,9 +607,18 @@ mod tests {
         assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
 
         // Remove the visible nodes
-        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(7)));
-        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(8)));
-        state.update(MonitorEvent::Removed(ObjectId::from_raw_id(9)));
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::Removed(ObjectId::from_raw_id(7)),
+        );
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::Removed(ObjectId::from_raw_id(8)),
+        );
+        state.update(
+            &mut capture_manager,
+            MonitorEvent::Removed(ObjectId::from_raw_id(9)),
+        );
         let view = View::from(&state, &config::Names::default());
 
         // Viewport is now below end of list
