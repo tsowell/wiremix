@@ -86,9 +86,8 @@ less-intuitive mouse controls are:
 | d             | Set default source/sink |
 | l/Right arrow | Increment volume        |
 | h/Left arrow  | Decrement volume        |
-| c             | Open dropdown           |
+| Enter/c       | Open dropdown or choose |
 | Esc           | Cancel dropdown         |
-| Enter         | Choose dropdown item    |
 | j/Down arrow  | Move down               |
 | k/Up arrow    | Move up                 |
 | H/Shift+Tab   | Select previous tab     |

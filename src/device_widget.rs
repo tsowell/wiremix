@@ -157,7 +157,7 @@ impl StatefulWidget for DeviceWidget<'_> {
             smallvec![MouseEventKind::Down(MouseButton::Left)],
             smallvec![
                 Action::SelectObject(self.device.id),
-                Action::OpenDropdown
+                Action::ActivateDropdown
             ],
         ));
     }

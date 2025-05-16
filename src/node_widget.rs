@@ -218,7 +218,10 @@ impl StatefulWidget for NodeWidget<'_> {
         mouse_areas.push((
             header_right,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
-            smallvec![Action::SelectObject(self.node.id), Action::OpenDropdown],
+            smallvec![
+                Action::SelectObject(self.node.id),
+                Action::ActivateDropdown
+            ],
         ));
 
         let default_span = if is_default(self.node, self.device_kind) {

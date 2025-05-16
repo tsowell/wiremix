@@ -78,12 +78,11 @@ keybindings = [
  # Decrease the volume of the selected item by 1%
  { key = { Char = "h" }, action = { SetRelativeVolume = -0.01 } },
  { key = "Left", action = { SetRelativeVolume = -0.01 } },
- # Open a dropdown for the selected item
- { key = { Char = "c" }, action = "OpenDropdown" },
+ # Open a dropdown for the selected item or chose an item in the dropdown
+ { key = { Char = "c" }, action = "ActivateDropdown" },
+ { key = "Enter", action = "ActivateDropdown" },
  # Close an open dropdown
  { key = "Esc", action = "CloseDropdown" },
- # Choose the currently-selected item in the dropdown
- { key = "Enter", action = "SelectDropdown" },
  # Select the next item
  { key = { Char = "j" }, action = "MoveDown" },
  { key = "Down", action = "MoveDown" },

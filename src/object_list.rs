@@ -73,7 +73,7 @@ impl ObjectList {
         }
     }
 
-    pub fn dropdown_open(&mut self, view: &view::View) {
+    fn dropdown_open(&mut self, view: &view::View) {
         let targets = match self.list_kind {
             ListKind::Node(_) => self
                 .selected
@@ -97,7 +97,13 @@ impl ObjectList {
             .map(|(target, _)| target)
     }
 
-    pub fn dropdown_select(&mut self, view: &view::View) -> Vec<Command> {
+    pub fn dropdown_activate(&mut self, view: &view::View) -> Vec<Command> {
+        // Just open the dropdown if it's not showing yet.
+        if self.list_state.selected().is_none() {
+            self.dropdown_open(view);
+            return Vec::default();
+        }
+
         let commands = self
             .selected
             .zip(self.selected_target())

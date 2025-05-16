@@ -48,9 +48,8 @@ pub enum Action {
     MoveDown,
     TabLeft,
     TabRight,
-    OpenDropdown,
     CloseDropdown,
-    SelectDropdown,
+    ActivateDropdown,
     #[serde(skip_deserializing)]
     SelectObject(ObjectId),
     #[serde(skip_deserializing)]
@@ -399,18 +398,13 @@ impl Handle for Action {
             Action::TabRight => {
                 app.selected_tab_index = (app.selected_tab_index + 1) % 5
             }
-            Action::OpenDropdown => {
-                app.tabs[app.selected_tab_index]
-                    .list
-                    .dropdown_open(&app.view);
-            }
             Action::CloseDropdown => {
                 app.tabs[app.selected_tab_index].list.dropdown_close();
             }
-            Action::SelectDropdown => {
+            Action::ActivateDropdown => {
                 let commands = app.tabs[app.selected_tab_index]
                     .list
-                    .dropdown_select(&app.view);
+                    .dropdown_activate(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
