@@ -54,7 +54,7 @@ impl ObjectList {
         if self.list_state.selected().is_some() {
             self.list_state.select_next();
         } else {
-            let new_selected = { view.next_id(self.list_kind, self.selected) };
+            let new_selected = view.next_id(self.list_kind, self.selected);
             if new_selected.is_some() {
                 self.selected = new_selected;
             }
@@ -65,8 +65,7 @@ impl ObjectList {
         if self.list_state.selected().is_some() {
             self.list_state.select_previous();
         } else {
-            let new_selected =
-                { view.previous_id(self.list_kind, self.selected) };
+            let new_selected = view.previous_id(self.list_kind, self.selected);
             if new_selected.is_some() {
                 self.selected = new_selected;
             }
