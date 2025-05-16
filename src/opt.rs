@@ -67,7 +67,6 @@ pub struct Opt {
     #[clap(
         short = 'v',
         long,
-        value_name = "VIEW",
         value_enum,
         value_parser = clap::value_parser!(TabKind),
         help = "Initial tab view"
