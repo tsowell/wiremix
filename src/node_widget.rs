@@ -12,24 +12,24 @@ use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
 use crate::config::{Config, Peaks};
-use crate::device_type::DeviceType;
+use crate::device_kind::DeviceKind;
 use crate::meter;
 use crate::object_list::ObjectList;
 use crate::truncate;
 use crate::view;
 
-fn is_default(node: &view::Node, device_type: Option<DeviceType>) -> bool {
-    match device_type {
-        Some(DeviceType::Sink) => node.is_default_sink,
-        Some(DeviceType::Source) => node.is_default_source,
+fn is_default(node: &view::Node, device_kind: Option<DeviceKind>) -> bool {
+    match device_kind {
+        Some(DeviceKind::Sink) => node.is_default_sink,
+        Some(DeviceKind::Source) => node.is_default_source,
         None => false,
     }
 }
 
-fn node_title(node: &view::Node, device_type: Option<DeviceType>) -> &str {
-    match (device_type, &node.title_source_sink) {
+fn node_title(node: &view::Node, device_kind: Option<DeviceKind>) -> &str {
+    match (device_kind, &node.title_source_sink) {
         (
-            Some(DeviceType::Source | DeviceType::Sink),
+            Some(DeviceKind::Source | DeviceKind::Sink),
             Some(title_source_sink),
         ) => title_source_sink,
         _ => &node.title,
@@ -39,7 +39,7 @@ fn node_title(node: &view::Node, device_type: Option<DeviceType>) -> &str {
 pub struct NodeWidget<'a> {
     node: &'a view::Node,
     selected: bool,
-    device_type: Option<DeviceType>,
+    device_kind: Option<DeviceKind>,
     config: &'a Config,
 }
 
@@ -47,13 +47,13 @@ impl<'a> NodeWidget<'a> {
     pub fn new(
         node: &'a view::Node,
         selected: bool,
-        device_type: Option<DeviceType>,
+        device_kind: Option<DeviceKind>,
         config: &'a Config,
     ) -> Self {
         Self {
             node,
             selected,
-            device_type,
+            device_kind,
             config,
         }
     }
@@ -178,7 +178,7 @@ impl StatefulWidget for NodeWidget<'_> {
         let header_area = layout[0];
         let bar_area = layout[1];
 
-        let node_title = node_title(self.node, self.device_type);
+        let node_title = node_title(self.node, self.device_kind);
         let target_line = match self.node.target {
             Some(view::Target::Default) => {
                 // Add the default target indicator
@@ -221,7 +221,7 @@ impl StatefulWidget for NodeWidget<'_> {
             smallvec![Action::SelectObject(self.node.id), Action::OpenDropdown],
         ));
 
-        let default_span = if is_default(self.node, self.device_type) {
+        let default_span = if is_default(self.node, self.device_kind) {
             Span::styled(
                 &self.config.char_set.default_device,
                 self.config.theme.default_device,

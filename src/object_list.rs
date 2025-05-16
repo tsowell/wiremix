@@ -12,12 +12,12 @@ use smallvec::smallvec;
 use crate::app::{Action, MouseArea};
 use crate::command::Command;
 use crate::config::Config;
-use crate::device_type::DeviceType;
+use crate::device_kind::DeviceKind;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
 use crate::node_widget::NodeWidget;
 use crate::object::ObjectId;
-use crate::view::{self, ListType, VolumeAdjustment};
+use crate::view::{self, ListKind, VolumeAdjustment};
 
 /// ObjectList stores information for filtering and displaying a subset of
 /// objects from a [`View`](`crate::view::View`).
@@ -30,9 +30,9 @@ pub struct ObjectList {
     /// ID of the currently selected object
     pub selected: Option<ObjectId>,
     /// Which set of objects to use from the View
-    list_type: ListType,
+    list_kind: ListKind,
     /// Default device type to use for defaults and node rendering
-    device_type: Option<DeviceType>,
+    device_kind: Option<DeviceKind>,
     /// Target dropdown state
     pub list_state: ListState,
     /// Targets
@@ -40,12 +40,12 @@ pub struct ObjectList {
 }
 
 impl ObjectList {
-    pub fn new(list_type: ListType, device_type: Option<DeviceType>) -> Self {
+    pub fn new(list_kind: ListKind, device_kind: Option<DeviceKind>) -> Self {
         Self {
             top: 0,
             selected: None,
-            list_type,
-            device_type,
+            list_kind,
+            device_kind,
             ..Default::default()
         }
     }
@@ -54,7 +54,7 @@ impl ObjectList {
         if self.list_state.selected().is_some() {
             self.list_state.select_next();
         } else {
-            let new_selected = { view.next_id(self.list_type, self.selected) };
+            let new_selected = { view.next_id(self.list_kind, self.selected) };
             if new_selected.is_some() {
                 self.selected = new_selected;
             }
@@ -66,7 +66,7 @@ impl ObjectList {
             self.list_state.select_previous();
         } else {
             let new_selected =
-                { view.previous_id(self.list_type, self.selected) };
+                { view.previous_id(self.list_kind, self.selected) };
             if new_selected.is_some() {
                 self.selected = new_selected;
             }
@@ -74,11 +74,11 @@ impl ObjectList {
     }
 
     pub fn dropdown_open(&mut self, view: &view::View) {
-        let targets = match self.list_type {
-            ListType::Node(_) => self
+        let targets = match self.list_kind {
+            ListKind::Node(_) => self
                 .selected
                 .and_then(|object_id| view.node_targets(object_id)),
-            ListType::Device => self
+            ListKind::Device => self
                 .selected
                 .and_then(|object_id| view.device_targets(object_id)),
         };
@@ -127,7 +127,7 @@ impl ObjectList {
     }
 
     pub fn toggle_mute(&mut self, view: &view::View) -> Vec<Command> {
-        if matches!(self.list_type, ListType::Device) {
+        if matches!(self.list_kind, ListKind::Device) {
             return Vec::new();
         }
         self.selected
@@ -141,7 +141,7 @@ impl ObjectList {
         view: &view::View,
         volume: f32,
     ) -> Vec<Command> {
-        if matches!(self.list_type, ListType::Device) {
+        if matches!(self.list_kind, ListKind::Device) {
             return Vec::new();
         }
         self.selected
@@ -157,7 +157,7 @@ impl ObjectList {
         view: &view::View,
         volume: f32,
     ) -> Vec<Command> {
-        if matches!(self.list_type, ListType::Device) {
+        if matches!(self.list_kind, ListKind::Device) {
             return Vec::new();
         }
         self.selected
@@ -169,13 +169,13 @@ impl ObjectList {
     }
 
     pub fn set_default(&mut self, view: &view::View) -> Vec<Command> {
-        if matches!(self.list_type, ListType::Device) {
+        if matches!(self.list_kind, ListKind::Device) {
             return Vec::new();
         }
         self.selected
-            .zip(self.device_type)
-            .and_then(|(node_id, device_type)| {
-                view.set_default(node_id, device_type)
+            .zip(self.device_kind)
+            .and_then(|(node_id, device_kind)| {
+                view.set_default(node_id, device_kind)
             })
             .into_iter()
             .collect()
@@ -185,15 +185,15 @@ impl ObjectList {
     pub fn update(&mut self, area: Rect, view: &view::View) {
         let selected_index = self
             .selected
-            .and_then(|selected| view.position(self.list_type, selected));
-        let objects_len = view.len(self.list_type);
+            .and_then(|selected| view.position(self.list_kind, selected));
+        let objects_len = view.len(self.list_kind);
 
         let (_, list_area, _) = self.areas(&area);
-        let full_height = match self.list_type {
-            ListType::Node(_) => {
+        let full_height = match self.list_kind {
+            ListKind::Node(_) => {
                 NodeWidget::height().saturating_add(NodeWidget::spacing())
             }
-            ListType::Device => {
+            ListKind::Device => {
                 DeviceWidget::height().saturating_add(DeviceWidget::spacing())
             }
         };
@@ -260,13 +260,13 @@ struct ObjectListRenderContext<'a> {
 impl ObjectListWidget<'_> {
     fn render_node_list(
         &mut self,
-        node_type: view::NodeType,
+        node_kind: view::NodeKind,
         context: ObjectListRenderContext,
         area: Rect,
         buf: &mut Buffer,
         mouse_areas: &mut Vec<MouseArea>,
     ) {
-        let all_objects = self.view.full_nodes(node_type);
+        let all_objects = self.view.full_nodes(node_kind);
         let objects = all_objects
             .iter()
             .skip(self.object_list.top)
@@ -285,7 +285,7 @@ impl ObjectListWidget<'_> {
             NodeWidget::new(
                 object,
                 selected,
-                self.object_list.device_type,
+                self.object_list.device_kind,
                 self.config,
             )
             .render(object_area, buf, mouse_areas);
@@ -405,9 +405,9 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
             smallvec![Action::MoveDown],
         ));
 
-        let (spacing, height) = match self.object_list.list_type {
-            ListType::Node(_) => (NodeWidget::spacing(), NodeWidget::height()),
-            ListType::Device => {
+        let (spacing, height) = match self.object_list.list_kind {
+            ListKind::Node(_) => (NodeWidget::spacing(), NodeWidget::height()),
+            ListKind::Device => {
                 (DeviceWidget::spacing(), DeviceWidget::height())
             }
         };
@@ -415,7 +415,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
         let full_object_height = height.saturating_add(spacing);
         let objects_visible = (list_area.height / full_object_height) as usize;
 
-        let len = self.view.len(self.object_list.list_type);
+        let len = self.view.len(self.object_list.list_kind);
 
         // Indicate we can scroll up if there are objects above the viewport.
         if self.object_list.top > 0 {
@@ -462,10 +462,10 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                 .split(list_area)
         };
 
-        match self.object_list.list_type {
-            ListType::Node(node_type) => {
+        match self.object_list.list_kind {
+            ListKind::Node(node_kind) => {
                 self.render_node_list(
-                    node_type,
+                    node_kind,
                     ObjectListRenderContext {
                         list_area,
                         objects_layout: &objects_layout,
@@ -476,7 +476,7 @@ impl StatefulWidget for &mut ObjectListWidget<'_> {
                     mouse_areas,
                 );
             }
-            ListType::Device => {
+            ListKind::Device => {
                 self.render_device_list(
                     ObjectListRenderContext {
                         list_area,
@@ -499,7 +499,7 @@ mod tests {
     use crate::event::MonitorEvent;
     use crate::media_class::MediaClass;
     use crate::state::State;
-    use crate::view::{ListType, NodeType, View};
+    use crate::view::{ListKind, NodeKind, View};
 
     fn init() -> State {
         let mut state: State = Default::default();
@@ -541,7 +541,7 @@ mod tests {
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, height * 3 + 2);
         let mut object_list =
-            ObjectList::new(ListType::Node(NodeType::All), None);
+            ObjectList::new(ListKind::Node(NodeKind::All), None);
         // Select first object
         object_list.down(&view);
         assert_eq!(object_list.top, 0);
@@ -562,7 +562,7 @@ mod tests {
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, height * 3 + 2);
         let mut object_list =
-            ObjectList::new(ListType::Node(NodeType::All), None);
+            ObjectList::new(ListKind::Node(NodeKind::All), None);
         // Select first object
         object_list.down(&view);
         assert_eq!(object_list.top, 0);
@@ -588,7 +588,7 @@ mod tests {
         // + 2 for header and footer
         let rect = Rect::new(0, 0, 80, height * 3 + 2);
         let mut object_list =
-            ObjectList::new(ListType::Node(NodeType::All), None);
+            ObjectList::new(ListKind::Node(NodeKind::All), None);
         // Select first object
         object_list.down(&view);
         assert_eq!(object_list.top, 0);

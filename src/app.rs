@@ -24,12 +24,12 @@ use serde::Deserialize;
 use smallvec::{smallvec, SmallVec};
 
 use crate::command::Command;
-use crate::device_type::DeviceType;
+use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::object::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::{State, StateDirty};
-use crate::view::{self, ListType, View};
+use crate::view::{self, ListKind, View};
 
 #[cfg(feature = "trace")]
 use crate::{trace, trace_dbg};
@@ -79,7 +79,7 @@ impl Tab {
 )]
 #[serde(rename_all = "lowercase")]
 #[cfg_attr(test, derive(strum::EnumIter))]
-pub enum Tabs {
+pub enum TabKind {
     #[default]
     Playback,
     Recording,
@@ -88,7 +88,7 @@ pub enum Tabs {
     Configuration,
 }
 
-impl Tabs {
+impl TabKind {
     pub fn index(&self) -> usize {
         *self as usize
     }
@@ -142,32 +142,32 @@ impl App {
         let tabs = vec![
             Tab::new(
                 String::from("Playback"),
-                ObjectList::new(ListType::Node(view::NodeType::Playback), None),
+                ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
             ),
             Tab::new(
                 String::from("Recording"),
                 ObjectList::new(
-                    ListType::Node(view::NodeType::Recording),
+                    ListKind::Node(view::NodeKind::Recording),
                     None,
                 ),
             ),
             Tab::new(
                 String::from("Output Devices"),
                 ObjectList::new(
-                    ListType::Node(view::NodeType::Output),
-                    Some(DeviceType::Sink),
+                    ListKind::Node(view::NodeKind::Output),
+                    Some(DeviceKind::Sink),
                 ),
             ),
             Tab::new(
                 String::from("Input Devices"),
                 ObjectList::new(
-                    ListType::Node(view::NodeType::Input),
-                    Some(DeviceType::Source),
+                    ListKind::Node(view::NodeKind::Input),
+                    Some(DeviceKind::Source),
                 ),
             ),
             Tab::new(
                 String::from("Configuration"),
-                ObjectList::new(ListType::Device, None),
+                ObjectList::new(ListKind::Device, None),
             ),
         ];
         App {
@@ -693,15 +693,15 @@ mod tests {
         };
         let app = App::new(command_tx, event_rx, config);
 
-        assert_eq!(Tabs::iter().count(), app.tabs.len());
+        assert_eq!(TabKind::iter().count(), app.tabs.len());
 
-        for (tab, Tab { title, .. }) in Tabs::iter().zip(app.tabs.iter()) {
+        for (tab, Tab { title, .. }) in TabKind::iter().zip(app.tabs.iter()) {
             match tab {
-                Tabs::Playback => assert_eq!(title, "Playback"),
-                Tabs::Recording => assert_eq!(title, "Recording"),
-                Tabs::Output => assert_eq!(title, "Output Devices"),
-                Tabs::Input => assert_eq!(title, "Input Devices"),
-                Tabs::Configuration => assert_eq!(title, "Configuration"),
+                TabKind::Playback => assert_eq!(title, "Playback"),
+                TabKind::Recording => assert_eq!(title, "Recording"),
+                TabKind::Output => assert_eq!(title, "Output Devices"),
+                TabKind::Input => assert_eq!(title, "Input Devices"),
+                TabKind::Configuration => assert_eq!(title, "Configuration"),
             }
         }
     }

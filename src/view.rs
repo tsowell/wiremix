@@ -7,7 +7,7 @@ use serde_json::json;
 
 use crate::command::Command;
 use crate::config;
-use crate::device_type::DeviceType;
+use crate::device_kind::DeviceKind;
 use crate::media_class::MediaClass;
 use crate::object::ObjectId;
 use crate::state;
@@ -108,7 +108,7 @@ pub enum VolumeAdjustment {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub enum NodeType {
+pub enum NodeKind {
     Playback,
     Recording,
     Output,
@@ -118,19 +118,19 @@ pub enum NodeType {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub enum ListType {
-    Node(NodeType),
+pub enum ListKind {
+    Node(NodeKind),
     #[default]
     Device,
 }
 
-impl ListType {
+impl ListKind {
     pub fn is_node(&self) -> bool {
-        matches!(self, ListType::Node(_))
+        matches!(self, ListKind::Node(_))
     }
 
     pub fn is_device(&self) -> bool {
-        matches!(self, ListType::Device)
+        matches!(self, ListKind::Device)
     }
 }
 
@@ -564,16 +564,16 @@ impl View {
     }
 
     /// Returns a command for setting the provided node as the default
-    /// source/sink, depending on device_type.
+    /// source/sink, depending on device_kind.
     pub fn set_default(
         &self,
         node_id: ObjectId,
-        device_type: DeviceType,
+        device_kind: DeviceKind,
     ) -> Option<Command> {
         let node = self.nodes.get(&node_id)?;
-        let key = match device_type {
-            DeviceType::Source => "default.configured.audio.source",
-            DeviceType::Sink => "default.configured.audio.sink",
+        let key = match device_kind {
+            DeviceKind::Source => "default.configured.audio.source",
+            DeviceKind::Sink => "default.configured.audio.sink",
         };
         let metadata_id = self.metadata_id?;
 
@@ -699,20 +699,20 @@ impl View {
         }
     }
 
-    fn ids(&self, node_type: ListType) -> &[ObjectId] {
-        match node_type {
-            ListType::Node(NodeType::Playback) => &self.nodes_playback,
-            ListType::Node(NodeType::Recording) => &self.nodes_recording,
-            ListType::Node(NodeType::Output) => &self.nodes_output,
-            ListType::Node(NodeType::Input) => &self.nodes_input,
-            ListType::Node(NodeType::All) => &self.nodes_all,
-            ListType::Device => &self.devices_all,
+    fn ids(&self, node_kind: ListKind) -> &[ObjectId] {
+        match node_kind {
+            ListKind::Node(NodeKind::Playback) => &self.nodes_playback,
+            ListKind::Node(NodeKind::Recording) => &self.nodes_recording,
+            ListKind::Node(NodeKind::Output) => &self.nodes_output,
+            ListKind::Node(NodeKind::Input) => &self.nodes_input,
+            ListKind::Node(NodeKind::All) => &self.nodes_all,
+            ListKind::Device => &self.devices_all,
         }
     }
 
     /// Gets all the nodes without filtering.
-    pub fn full_nodes(&self, node_type: NodeType) -> Vec<&Node> {
-        let node_ids = self.ids(ListType::Node(node_type));
+    pub fn full_nodes(&self, node_kind: NodeKind) -> Vec<&Node> {
+        let node_ids = self.ids(ListKind::Node(node_kind));
         node_ids
             .iter()
             .filter_map(|node_id| self.nodes.get(node_id))
@@ -721,20 +721,20 @@ impl View {
 
     /// Gets all the devices without filtering.
     pub fn full_devices(&self) -> Vec<&Device> {
-        let device_ids = self.ids(ListType::Device);
+        let device_ids = self.ids(ListKind::Device);
         device_ids
             .iter()
             .filter_map(|device_id| self.devices.get(device_id))
             .collect()
     }
 
-    /// Returns the next node in the list_type after a provided node.
+    /// Returns the next node in the list_kind after a provided node.
     pub fn next_id(
         &self,
-        list_type: ListType,
+        list_kind: ListKind,
         object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let objects = self.ids(list_type);
+        let objects = self.ids(list_kind);
         let next_index = match object_id {
             Some(object_id) => objects
                 .iter()
@@ -745,13 +745,13 @@ impl View {
         objects.get(next_index).copied()
     }
 
-    /// Returns the previous node in the list_type before a provided node.
+    /// Returns the previous node in the list_kind before a provided node.
     pub fn previous_id(
         &self,
-        list_type: ListType,
+        list_kind: ListKind,
         object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let objects = self.ids(list_type);
+        let objects = self.ids(list_kind);
         let next_index = match object_id {
             Some(object_id) => objects
                 .iter()
@@ -762,18 +762,18 @@ impl View {
         objects.get(next_index).copied()
     }
 
-    /// Returns the index in the list_type for the provided object.
+    /// Returns the index in the list_kind for the provided object.
     pub fn position(
         &self,
-        list_type: ListType,
+        list_kind: ListKind,
         object_id: ObjectId,
     ) -> Option<usize> {
-        self.ids(list_type).iter().position(|&id| id == object_id)
+        self.ids(list_kind).iter().position(|&id| id == object_id)
     }
 
-    /// Returns length of the list_type.
-    pub fn len(&self, list_type: ListType) -> usize {
-        self.ids(list_type).len()
+    /// Returns length of the list_kind.
+    pub fn len(&self, list_kind: ListKind) -> usize {
+        self.ids(list_kind).len()
     }
 
     /// Returns the possible targets for a node.

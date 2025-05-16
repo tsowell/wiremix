@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use crate::app::Tabs;
+use crate::app::TabKind;
 use crate::config;
 
 #[derive(Parser)]
@@ -69,10 +69,10 @@ pub struct Opt {
         long,
         value_name = "VIEW",
         value_enum,
-        value_parser = clap::value_parser!(Tabs),
+        value_parser = clap::value_parser!(TabKind),
         help = "Initial tab view"
     )]
-    pub tab: Option<Tabs>,
+    pub tab: Option<TabKind>,
 
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]

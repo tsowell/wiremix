@@ -1,7 +1,7 @@
 pub mod app;
 pub mod command;
 pub mod config;
-pub mod device_type;
+pub mod device_kind;
 pub mod device_widget;
 pub mod dropdown_widget;
 pub mod event;
