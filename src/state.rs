@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use crate::capture_manager::CaptureManager;
-use crate::command::Command;
 use crate::event::MonitorEvent;
 use crate::media_class::MediaClass;
 use crate::object::ObjectId;
@@ -147,9 +146,7 @@ impl State {
         &mut self,
         capture_manager: &mut CaptureManager,
         event: MonitorEvent,
-    ) -> Vec<Command> {
-        let mut commands = Vec::new();
-
+    ) {
         // Peaks updates are very frequent and easy to merge, so track if those
         // are the only updates done since the state was last Clean.
         match (self.dirty, &event) {
@@ -257,7 +254,7 @@ impl State {
                 self.node_entry(id).media_class = Some(media_class.clone());
 
                 if let Some(node) = self.nodes.get(&id) {
-                    commands.extend(capture_manager.on_node(node));
+                    capture_manager.on_node(node);
                 }
             }
             MonitorEvent::NodeMediaName(id, media_name) => {
@@ -276,7 +273,7 @@ impl State {
                 self.node_entry(id).object_serial = Some(object_serial);
 
                 if let Some(node) = self.nodes.get(&id) {
-                    commands.extend(capture_manager.on_node(node));
+                    capture_manager.on_node(node);
                 }
             }
             MonitorEvent::NodePeaks(id, peaks, samples) => {
@@ -292,8 +289,7 @@ impl State {
                         .as_ref()
                         .is_some_and(|p| *p != positions);
                     if changed {
-                        commands
-                            .extend(capture_manager.on_positions_changed(node));
+                        capture_manager.on_positions_changed(node);
                     }
                 }
                 self.node_entry(id).positions = Some(positions);
@@ -304,7 +300,7 @@ impl State {
             MonitorEvent::Link(id, output, input) => {
                 if !self.inputs(input).contains(&output) {
                     if let Some(node) = self.nodes.get(&input) {
-                        commands.extend(capture_manager.on_link(node));
+                        capture_manager.on_link(node);
                     }
                 }
 
@@ -342,7 +338,7 @@ impl State {
                 if let Some(Link { input, .. }) = self.links.remove(&id) {
                     if self.inputs(input).len() == 1 {
                         if let Some(node) = self.nodes.get(&input) {
-                            commands.extend(capture_manager.on_removed(node));
+                            capture_manager.on_removed(node);
                         }
                     }
                 }
@@ -357,8 +353,6 @@ impl State {
                 }
             }
         }
-
-        commands
     }
 
     pub fn get_metadata_by_name(

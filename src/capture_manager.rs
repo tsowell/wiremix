@@ -6,60 +6,68 @@ use crate::command::Command;
 use crate::object::ObjectId;
 use crate::state::Node;
 
-/// Track nodes being captured. The on_ methods can return a
-/// [`Command`](`crate::command::Command`) which should be passed to
-/// `crate::monitor::execute_command()` to start or stop capture if needed.
+/// Track nodes being captured. This can be passed to
+/// `crate::state::State::update()` which uses the on_ methods to queue up
+/// start and stop capture commands. Once all updates are complete, the pending
+/// commands can be retrieved via `flush()` and executed.
 #[derive(Default, Debug)]
 pub struct CaptureManager {
     capturing: HashSet<ObjectId>,
+    commands: Vec<Command>,
 }
 
 impl CaptureManager {
     /// Call when a node's capture eligibility might have changed.
-    pub fn on_node(&mut self, node: &Node) -> Option<Command> {
+    pub fn on_node(&mut self, node: &Node) {
         if !node.media_class.as_ref().is_some_and(|media_class| {
             media_class.is_source()
                 || media_class.is_sink_input()
                 || media_class.is_source_output()
         }) {
-            return None;
+            return;
         }
 
-        node.object_serial?;
+        if node.object_serial.is_none() {
+            return;
+        }
 
         if self.capturing.contains(&node.id) {
-            return None;
+            return;
         }
 
-        self.start_capture_command(node)
+        let command = self.start_capture_command(node);
+        self.commands.extend(command);
     }
 
     /// Call when a node gets a new input link.
-    pub fn on_link(&mut self, node: &Node) -> Option<Command> {
+    pub fn on_link(&mut self, node: &Node) {
         if !node.media_class.as_ref().is_some_and(|media_class| {
             media_class.is_sink()
                 || media_class.is_source()
                 || media_class.is_sink_input()
                 || media_class.is_source_output()
         }) {
-            return None;
+            return;
         }
 
-        self.start_capture_command(node)
+        let command = self.start_capture_command(node);
+        self.commands.extend(command);
     }
 
     /// Call when a node's output positions have changed.
-    pub fn on_positions_changed(&mut self, node: &Node) -> Option<Command> {
+    pub fn on_positions_changed(&mut self, node: &Node) {
         if !self.capturing.contains(&node.id) {
-            return None;
+            return;
         }
 
-        self.start_capture_command(node)
+        let command = self.start_capture_command(node);
+        self.commands.extend(command);
     }
 
     /// Call when a node has no more input links.
-    pub fn on_removed(&mut self, node: &Node) -> Option<Command> {
-        self.stop_capture_command(node)
+    pub fn on_removed(&mut self, node: &Node) {
+        let command = self.stop_capture_command(node);
+        self.commands.extend(command);
     }
 
     fn start_capture_command(&mut self, node: &Node) -> Option<Command> {
@@ -82,5 +90,10 @@ impl CaptureManager {
         self.capturing.remove(&node.id);
 
         Some(Command::NodeCaptureStop(node.id))
+    }
+
+    /// Get a list of pending commands.
+    pub fn flush(&mut self) -> Vec<Command> {
+        std::mem::take(&mut self.commands)
     }
 }

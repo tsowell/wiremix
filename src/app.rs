@@ -507,7 +507,8 @@ impl Handle for MouseEvent {
 
 impl Handle for MonitorEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
-        for command in app.state.update(&mut app.capture_manager, self) {
+        app.state.update(&mut app.capture_manager, self);
+        for command in app.capture_manager.flush() {
             // Filter out capture commands if capture is disabled
             match command {
                 Command::NodeCaptureStart(..)
