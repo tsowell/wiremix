@@ -186,11 +186,19 @@ impl ObjectList {
             .collect()
     }
 
+    fn selected_index(&self, view: &view::View) -> Option<usize> {
+        self.selected
+            .and_then(|selected| view.position(self.list_kind, selected))
+    }
+
     /// Reconciles changes to objects, viewport, and selection.
     pub fn update(&mut self, area: Rect, view: &view::View) {
-        let selected_index = self
-            .selected
-            .and_then(|selected| view.position(self.list_kind, selected));
+        let selected_index = self.selected_index(view).or_else(|| {
+            // There's nothing selected! Select the first item and try again.
+            self.selected = view.next_id(self.list_kind, None);
+            self.selected_index(view)
+        });
+
         let objects_len = view.len(self.list_kind);
 
         let (_, list_area, _) = self.areas(&area);

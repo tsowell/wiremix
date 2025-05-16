@@ -222,12 +222,6 @@ impl App {
             #[cfg(feature = "trace")]
             trace_dbg!(&self.view);
 
-            // There should always be something selected. Select the first item
-            // if there isn't.
-            if self.tabs[self.selected_tab_index].list.selected.is_none() {
-                let _ = Action::MoveDown.handle(&mut self);
-            }
-
             if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
 

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Combine bindings for opening a dropdown and choosing a dropdown item.
 
+### Fixed
+
+- Fixed a problem with ensuring that there is always an object selected.
+
 ## [0.3.0] - 2025-05-13
 
 ### Added
