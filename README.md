@@ -55,10 +55,8 @@ Options:
   -c, --config <FILE>    Override default config file path
   -r, --remote <NAME>    The name of the remote to connect to
   -f, --fps <FPS>        Target frames per second (or 0 for unlimited)
-  -s, --char-set <NAME>  Character set to use
-                         [built-in sets: default, compat, extracompat]
-  -t, --theme <NAME>     Theme to use
-                         [built-in themes: default, nocolor, plain]
+  -s, --char-set <NAME>  Character set to use [built-in sets: default, compat, extracompat]
+  -t, --theme <NAME>     Theme to use [built-in themes: default, nocolor, plain]
   -p, --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
       --no-mouse         Disable mouse support
       --mouse            Enable mouse support

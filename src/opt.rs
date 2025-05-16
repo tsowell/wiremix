@@ -38,7 +38,7 @@ pub struct Opt {
         short = 's',
         long,
         value_name = "NAME",
-        help = "Character set to use\n[built-in sets: default, compat, extracompat]"
+        help = "Character set to use [built-in sets: default, compat, extracompat]"
     )]
     pub char_set: Option<String>,
 
@@ -46,7 +46,7 @@ pub struct Opt {
         short,
         long,
         value_name = "NAME",
-        help = "Theme to use\n[built-in themes: default, nocolor, plain]"
+        help = "Theme to use [built-in themes: default, nocolor, plain]"
     )]
     pub theme: Option<String>,
 
