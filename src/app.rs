@@ -135,6 +135,12 @@ pub struct App {
     drag_row: Option<u16>,
 }
 
+macro_rules! current_list {
+    ($self:expr) => {
+        $self.tabs[$self.selected_tab_index].list
+    };
+}
+
 impl App {
     pub fn new(
         tx: pipewire::channel::Sender<Command>,
@@ -228,9 +234,7 @@ impl App {
                 self.mouse_areas.clear();
 
                 terminal.draw(|frame| {
-                    self.tabs[self.selected_tab_index]
-                        .list
-                        .update(frame.area(), &self.view);
+                    current_list!(self).update(frame.area(), &self.view);
 
                     self.draw(frame);
                 })?;
@@ -380,10 +384,10 @@ impl Handle for Action {
                 }
             }
             Action::MoveDown => {
-                app.tabs[app.selected_tab_index].list.down(&app.view);
+                current_list!(app).down(&app.view);
             }
             Action::MoveUp => {
-                app.tabs[app.selected_tab_index].list.up(&app.view);
+                current_list!(app).up(&app.view);
             }
             Action::TabLeft => {
                 app.selected_tab_index =
@@ -393,20 +397,16 @@ impl Handle for Action {
                 app.selected_tab_index = (app.selected_tab_index + 1) % 5
             }
             Action::CloseDropdown => {
-                app.tabs[app.selected_tab_index].list.dropdown_close();
+                current_list!(app).dropdown_close();
             }
             Action::ActivateDropdown => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .dropdown_activate(&app.view);
+                let commands = current_list!(app).dropdown_activate(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
             }
             Action::SetTarget(target) => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .set_target(&app.view, target);
+                let commands = current_list!(app).set_target(&app.view, target);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
@@ -415,33 +415,27 @@ impl Handle for Action {
                 app.tabs[app.selected_tab_index].list.selected = Some(object_id)
             }
             Action::ToggleMute => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .toggle_mute(&app.view);
+                let commands = current_list!(app).toggle_mute(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
             }
             Action::SetAbsoluteVolume(volume) => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .set_absolute_volume(&app.view, volume);
+                let commands =
+                    current_list!(app).set_absolute_volume(&app.view, volume);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
             }
             Action::SetRelativeVolume(volume) => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .set_relative_volume(&app.view, volume);
+                let commands =
+                    current_list!(app).set_relative_volume(&app.view, volume);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
             }
             Action::SetDefault => {
-                let commands = app.tabs[app.selected_tab_index]
-                    .list
-                    .set_default(&app.view);
+                let commands = current_list!(app).set_default(&app.view);
                 for command in commands {
                     let _ = app.tx.send(command);
                 }
