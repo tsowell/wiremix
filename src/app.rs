@@ -115,7 +115,7 @@ pub struct App {
     /// The main tabs
     tabs: Vec<Tab>,
     /// The index of the currently-visible tab
-    selected_tab_index: usize,
+    current_tab_index: usize,
     /// Areas populated during rendering which define actions corresponding to
     /// mouse activity
     mouse_areas: Vec<MouseArea>,
@@ -137,7 +137,7 @@ pub struct App {
 
 macro_rules! current_list {
     ($self:expr) => {
-        $self.tabs[$self.selected_tab_index].list
+        $self.tabs[$self.current_tab_index].list
     };
 }
 
@@ -184,7 +184,7 @@ impl App {
             rx,
             error_message: None,
             tabs,
-            selected_tab_index: config.tab.index(),
+            current_tab_index: config.tab.index(),
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
@@ -252,7 +252,7 @@ impl App {
 
     fn draw(&mut self, frame: &mut Frame) {
         let widget = AppWidget {
-            selected_tab_index: self.selected_tab_index,
+            current_tab_index: self.current_tab_index,
             view: &self.view,
             config: &self.config,
         };
@@ -380,7 +380,7 @@ impl Handle for Action {
         match self {
             Action::SelectTab(index) => {
                 if index < app.tabs.len() {
-                    app.selected_tab_index = index;
+                    app.current_tab_index = index;
                 }
             }
             Action::MoveDown => {
@@ -390,11 +390,11 @@ impl Handle for Action {
                 current_list!(app).up(&app.view);
             }
             Action::TabLeft => {
-                app.selected_tab_index =
-                    app.selected_tab_index.checked_sub(1).unwrap_or(4)
+                app.current_tab_index =
+                    app.current_tab_index.checked_sub(1).unwrap_or(4)
             }
             Action::TabRight => {
-                app.selected_tab_index = (app.selected_tab_index + 1) % 5
+                app.current_tab_index = (app.current_tab_index + 1) % 5
             }
             Action::CloseDropdown => {
                 current_list!(app).dropdown_close();
@@ -412,7 +412,7 @@ impl Handle for Action {
                 }
             }
             Action::SelectObject(object_id) => {
-                app.tabs[app.selected_tab_index].list.selected = Some(object_id)
+                app.tabs[app.current_tab_index].list.selected = Some(object_id)
             }
             Action::ToggleMute => {
                 let commands = current_list!(app).toggle_mute(&app.view);
@@ -524,7 +524,7 @@ impl Handle for String {
 }
 
 pub struct AppWidget<'a> {
-    selected_tab_index: usize,
+    current_tab_index: usize,
     view: &'a View,
     config: &'a Config,
 }
@@ -560,7 +560,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
             .split(menu_area);
 
         for (i, tab) in state.tabs.iter().enumerate() {
-            let title_line = if i == self.selected_tab_index {
+            let title_line = if i == self.current_tab_index {
                 Line::from(vec![
                     Span::styled(
                         &self.config.char_set.tab_marker_left,
@@ -588,7 +588,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
         }
 
         let mut widget = ObjectListWidget {
-            object_list: &mut state.tabs[self.selected_tab_index].list,
+            object_list: &mut state.tabs[self.current_tab_index].list,
             view: self.view,
             config: self.config,
         };
@@ -620,7 +620,7 @@ mod tests {
         let mut app = App::new(command_tx, event_rx, config);
 
         let _ = Action::SelectTab(app.tabs.len()).handle(&mut app);
-        assert!(app.selected_tab_index < app.tabs.len());
+        assert!(app.current_tab_index < app.tabs.len());
     }
 
     #[test]
@@ -651,11 +651,11 @@ mod tests {
         let mut app = App::new(command_tx, event_rx, config);
 
         let _ = x.handle(&mut app);
-        assert_eq!(app.selected_tab_index, 2);
+        assert_eq!(app.current_tab_index, 2);
         let _ = ctrl_x.handle(&mut app);
-        assert_eq!(app.selected_tab_index, 4);
+        assert_eq!(app.current_tab_index, 4);
         let _ = x.handle(&mut app);
-        assert_eq!(app.selected_tab_index, 2);
+        assert_eq!(app.current_tab_index, 2);
     }
 
     /// Ensure that the tabs enum variants are in the same order as the app's
