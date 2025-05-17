@@ -390,11 +390,14 @@ impl Handle for Action {
                 current_list!(app).up(&app.view);
             }
             Action::TabLeft => {
-                app.current_tab_index =
-                    app.current_tab_index.checked_sub(1).unwrap_or(4)
+                app.current_tab_index = app
+                    .current_tab_index
+                    .checked_sub(1)
+                    .unwrap_or(app.tabs.len() - 1)
             }
             Action::TabRight => {
-                app.current_tab_index = (app.current_tab_index + 1) % 5
+                app.current_tab_index =
+                    (app.current_tab_index + 1) % app.tabs.len()
             }
             Action::CloseDropdown => {
                 current_list!(app).dropdown_close();
