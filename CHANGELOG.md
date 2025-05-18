@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed a problem with ensuring that there is always an object selected.
+- Fix a problem with ensuring that there is always an object selected.
 
 ## [0.3.0] - 2025-05-13
 
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed a discrepancy between wiremix.toml char set and real defaults.
+- Fix a discrepancy between wiremix.toml char set and real defaults.
 
 ## [0.2.0] - 2025-05-05
 
