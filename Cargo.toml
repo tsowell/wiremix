@@ -22,7 +22,7 @@ itertools = "0.14.0"
 libspa = "0.8.0"
 libspa-sys = "0.8.0"
 log = "0.4.24"
-nix = { version = "0.29.0", features = ["event"] }
+nix = { version = "0.29.0", features = ["event", "term"] }
 pipewire = { version = "0.8.0", features = ["v0_3_44"] }
 ratatui = { version = "0.29.0", features = ["serde"] }
 regex = "1.11.1"

@@ -2,8 +2,10 @@
 //! default bindings and handles merging of configured bindings with defaults.
 
 use std::collections::HashMap;
+use std::os::fd::AsFd;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use nix::sys::termios::{self, SpecialCharacterIndices};
 use serde::Deserialize;
 
 use crate::config::{Action, Keybinding};
@@ -14,22 +16,6 @@ impl Keybinding {
 
         HashMap::from([
             (event(KeyCode::Char('q')), Action::Exit),
-            (
-                // Emulate SIGINT
-                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
-                Action::Exit,
-            ),
-            (
-                // Emulate SIGQUIT
-                // CrossTerm reports Ctrl-\ as Ctrl-4
-                KeyEvent::new(KeyCode::Char('4'), KeyModifiers::CONTROL),
-                Action::Exit,
-            ),
-            (
-                // Emulate EOT
-                KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL),
-                Action::Exit,
-            ),
             (event(KeyCode::Char('m')), Action::ToggleMute),
             (event(KeyCode::Char('d')), Action::SetDefault),
             (event(KeyCode::Char('l')), Action::SetRelativeVolume(0.01)),
@@ -86,6 +72,56 @@ impl Keybinding {
             );
         }
 
+        // Emulate signals
+        keybindings.extend(Self::control_char_keybindings());
+
         Ok(keybindings)
+    }
+
+    /// Return keybindings emulating effects of certain terminal special
+    /// characters
+    fn control_char_keybindings() -> HashMap<KeyEvent, Action> {
+        let mut bindings = HashMap::new();
+
+        let Ok(termios) = termios::tcgetattr(std::io::stdin().as_fd()) else {
+            return bindings;
+        };
+
+        const SPECIAL_CHAR_INDICES: &[SpecialCharacterIndices] = &[
+            SpecialCharacterIndices::VINTR,
+            SpecialCharacterIndices::VQUIT,
+            SpecialCharacterIndices::VEOF,
+        ];
+
+        for &index in SPECIAL_CHAR_INDICES {
+            let byte = termios.control_chars[index as usize];
+
+            let key_event = match byte {
+                // Handle control characters that are represented by crossterm
+                // as non-Char KeyCodes
+                9 => KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+                27 => KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+                // CrossTerm reports Ctrl-\ as Ctrl-4
+                28 => KeyEvent::new(KeyCode::Char('4'), KeyModifiers::CONTROL),
+
+                // Translate the other control characters to control +
+                // a printable character
+                1..=31 => KeyEvent::new(
+                    KeyCode::Char((byte + 96) as char),
+                    KeyModifiers::CONTROL,
+                ),
+
+                // Pass the printable characters as-is with no modifiers
+                32..=126 => KeyEvent::new(
+                    KeyCode::Char(byte as char),
+                    KeyModifiers::NONE,
+                ),
+                _ => continue,
+            };
+
+            bindings.insert(key_event, Action::Exit);
+        }
+
+        bindings
     }
 }
