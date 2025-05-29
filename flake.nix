@@ -21,13 +21,11 @@
         buildInputs = with pkgs; [
           pipewire
         ];
-        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
       in
       {
         devShells.default = pkgs.mkShell {
           inherit nativeBuildInputs;
           inherit buildInputs;
-          inherit LIBCLANG_PATH;
         };
 
         packages.default = let
@@ -35,7 +33,6 @@
         in pkgs.rustPlatform.buildRustPackage rec {
           inherit nativeBuildInputs;
           inherit buildInputs;
-          inherit LIBCLANG_PATH;
 
           pname = cargoToml.package.name;
           version = cargoToml.package.version;
