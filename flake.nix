@@ -16,7 +16,7 @@
         nativeBuildInputs = with pkgs; [
           rust
           pkg-config
-          clang
+          rustPlatform.bindgenHook
         ];
         buildInputs = with pkgs; [
           pipewire
