@@ -1,46 +1,32 @@
 {
+  description = "Simple TUI audio mixer for PipeWire";
+
   inputs = {
-    nixpkgs.url      = "github:NixOS/nixpkgs/nixos-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
-    flake-utils.url  = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    systems.url = "github:nix-systems/default-linux";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-        rust = pkgs.rust-bin.stable.latest.default;
-        nativeBuildInputs = with pkgs; [
-          rust
+  outputs = { self, nixpkgs, systems, ... }: let
+    eachSystem = callback: nixpkgs.lib.genAttrs (import systems) (system: callback nixpkgs.legacyPackages.${system});
+  in {
+    devShells = eachSystem (pkgs: {
+      default = with pkgs; mkShell {
+        packages = [
+          rustc
+          cargo
           pkg-config
           rustPlatform.bindgenHook
-        ];
-        buildInputs = with pkgs; [
+              
           pipewire
         ];
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          inherit nativeBuildInputs;
-          inherit buildInputs;
-        };
+      };
+    });
 
-        packages.default = let
-          cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-        in pkgs.rustPlatform.buildRustPackage rec {
-          inherit nativeBuildInputs;
-          inherit buildInputs;
-
-          pname = cargoToml.package.name;
-          version = cargoToml.package.version;
-
-          src = self;
-
-          cargoLock.lockFile = ./Cargo.lock;
-        };
-      }
-    );
+    packages = eachSystem (pkgs: let
+      package = pkgs.callPackage ./package.nix {};
+    in {
+      default = package;
+      wiremix = package;
+    });
+  };
 }
