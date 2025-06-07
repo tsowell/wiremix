@@ -6,27 +6,45 @@
     systems.url = "github:nix-systems/default-linux";
   };
 
-  outputs = { self, nixpkgs, systems, ... }: let
-    eachSystem = callback: nixpkgs.lib.genAttrs (import systems) (system: callback nixpkgs.legacyPackages.${system});
-  in {
-    devShells = eachSystem (pkgs: {
-      default = with pkgs; mkShell {
-        packages = [
-          rustc
-          cargo
-          pkg-config
-          rustPlatform.bindgenHook
-              
-          pipewire
-        ];
-      };
-    });
+  outputs =
+    {
+      self,
+      nixpkgs,
+      systems,
+      ...
+    }:
+    let
+      eachSystem =
+        callback:
+        nixpkgs.lib.genAttrs (import systems) (
+          system: callback nixpkgs.legacyPackages.${system}
+        );
+    in
+    {
+      devShells = eachSystem (pkgs: {
+        default =
+          with pkgs;
+          mkShell {
+            packages = [
+              rustc
+              cargo
+              pkg-config
+              rustPlatform.bindgenHook
 
-    packages = eachSystem (pkgs: let
-      package = pkgs.callPackage ./package.nix {};
-    in {
-      default = package;
-      wiremix = package;
-    });
-  };
+              pipewire
+            ];
+          };
+      });
+
+      packages = eachSystem (
+        pkgs:
+        let
+          package = pkgs.callPackage ./package.nix { };
+        in
+        {
+          default = package;
+          wiremix = package;
+        }
+      );
+    };
 }
