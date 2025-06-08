@@ -128,6 +128,15 @@ fn node_info_props(
         }
     }
 
+    if let Some(client_id) = props.get("client.id") {
+        if let Ok(client_id) = client_id.parse() {
+            sender.send(MonitorEvent::NodeClientId(
+                id,
+                ObjectId::from_raw_id(client_id),
+            ));
+        }
+    }
+
     if let Some(object_serial) = props.get("object.serial") {
         if let Ok(object_serial) = object_serial.parse() {
             sender.send(MonitorEvent::NodeObjectSerial(id, object_serial));

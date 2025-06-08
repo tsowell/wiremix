@@ -27,6 +27,7 @@ pub enum MonitorEvent {
     ClientApplicationProcessBinary(ObjectId, String),
 
     NodeCardProfileDevice(ObjectId, i32),
+    NodeClientId(ObjectId, ObjectId),
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),
     NodeMediaClass(ObjectId, MediaClass),

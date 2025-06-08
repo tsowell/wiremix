@@ -71,6 +71,7 @@ pub struct Node {
     pub rate: Option<u32>,
     pub positions: Option<Vec<u32>>,
     pub device_id: Option<ObjectId>,
+    pub client_id: Option<ObjectId>,
     pub card_profile_device: Option<i32>,
 }
 
@@ -261,6 +262,9 @@ impl State {
             MonitorEvent::NodeCardProfileDevice(id, card_profile_device) => {
                 self.node_entry(id).card_profile_device =
                     Some(card_profile_device);
+            }
+            MonitorEvent::NodeClientId(id, client_id) => {
+                self.node_entry(id).client_id = Some(client_id);
             }
             MonitorEvent::NodeDescription(id, description) => {
                 self.node_entry(id).description = Some(description);
