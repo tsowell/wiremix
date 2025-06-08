@@ -215,35 +215,55 @@ mod tests {
         let _ = Names::default_device();
     }
 
-    fn init() -> (State, CaptureManager, ObjectId, ObjectId) {
-        let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+    struct Fixture {
+        state: State,
+        capture_manager: CaptureManager,
+        device_id: ObjectId,
+        node_id: ObjectId,
+    }
 
-        let device_id = ObjectId::from_raw_id(0);
-        let node_id = ObjectId::from_raw_id(1);
+    impl Default for Fixture {
+        fn default() -> Self {
+            let mut state = State::default();
+            let mut capture_manager = CaptureManager::default();
 
-        let events = vec![
-            MonitorEvent::DeviceName(device_id, String::from("Device name")),
-            MonitorEvent::DeviceNick(device_id, String::from("Device nick")),
-            MonitorEvent::NodeName(node_id, String::from("Node name")),
-            MonitorEvent::NodeNick(node_id, String::from("Node nick")),
-        ];
+            let device_id = ObjectId::from_raw_id(0);
+            let node_id = ObjectId::from_raw_id(1);
 
-        for event in events {
-            state.update(&mut capture_manager, event);
+            let events = vec![
+                MonitorEvent::DeviceName(
+                    device_id,
+                    String::from("Device name"),
+                ),
+                MonitorEvent::DeviceNick(
+                    device_id,
+                    String::from("Device nick"),
+                ),
+                MonitorEvent::NodeName(node_id, String::from("Node name")),
+                MonitorEvent::NodeNick(node_id, String::from("Node nick")),
+            ];
+
+            for event in events {
+                state.update(&mut capture_manager, event);
+            }
+
+            Self {
+                state,
+                capture_manager,
+                device_id,
+                node_id,
+            }
         }
-
-        (state, capture_manager, device_id, node_id)
     }
 
     #[test]
     fn render_endpoint() {
-        let (mut state, mut capture_manager, _, node_id) = init();
+        let mut fixture = Fixture::default();
 
-        state.update(
-            &mut capture_manager,
+        fixture.state.update(
+            &mut fixture.capture_manager,
             MonitorEvent::NodeMediaClass(
-                node_id,
+                fixture.node_id,
                 MediaClass::from("Audio/Sink"),
             ),
         );
@@ -252,19 +272,19 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
     #[test]
     fn render_endpoint_missing_tag() {
-        let (mut state, mut capture_manager, _, node_id) = init();
+        let mut fixture = Fixture::default();
 
-        state.update(
-            &mut capture_manager,
+        fixture.state.update(
+            &mut fixture.capture_manager,
             MonitorEvent::NodeMediaClass(
-                node_id,
+                fixture.node_id,
                 MediaClass::from("Audio/Sink"),
             ),
         );
@@ -274,41 +294,41 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
 
     #[test]
     fn render_device_missing_tag() {
-        let (state, _, device_id, _) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             device: vec!["{device:device.description}".parse().unwrap()],
             ..Default::default()
         };
 
-        let device = state.devices.get(&device_id).unwrap();
-        let result = names.resolve(&state, device);
+        let device = fixture.state.devices.get(&fixture.device_id).unwrap();
+        let result = names.resolve(&fixture.state, device);
         // Should fall back to device name
         assert_eq!(result, Some(String::from("Device name")))
     }
 
     #[test]
     fn render_endpoint_linked_device() {
-        let (mut state, mut capture_manager, device_id, node_id) = init();
+        let mut fixture = Fixture::default();
 
-        state.update(
-            &mut capture_manager,
+        fixture.state.update(
+            &mut fixture.capture_manager,
             MonitorEvent::NodeMediaClass(
-                node_id,
+                fixture.node_id,
                 MediaClass::from("Audio/Sink"),
             ),
         );
-        state.update(
-            &mut capture_manager,
-            MonitorEvent::NodeDeviceId(node_id, device_id),
+        fixture.state.update(
+            &mut fixture.capture_manager,
+            MonitorEvent::NodeDeviceId(fixture.node_id, fixture.device_id),
         );
 
         let names = Names {
@@ -316,25 +336,25 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Device nick")))
     }
 
     #[test]
     fn render_endpoint_linked_device_missing_tag() {
-        let (mut state, mut capture_manager, device_id, node_id) = init();
+        let mut fixture = Fixture::default();
 
-        state.update(
-            &mut capture_manager,
+        fixture.state.update(
+            &mut fixture.capture_manager,
             MonitorEvent::NodeMediaClass(
-                node_id,
+                fixture.node_id,
                 MediaClass::from("Audio/Sink"),
             ),
         );
-        state.update(
-            &mut capture_manager,
-            MonitorEvent::NodeDeviceId(node_id, device_id),
+        fixture.state.update(
+            &mut fixture.capture_manager,
+            MonitorEvent::NodeDeviceId(fixture.node_id, fixture.device_id),
         );
 
         let names = Names {
@@ -342,20 +362,20 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
 
     #[test]
     fn render_endpoint_no_linked_device() {
-        let (mut state, mut capture_manager, _, node_id) = init();
+        let mut fixture = Fixture::default();
 
-        state.update(
-            &mut capture_manager,
+        fixture.state.update(
+            &mut fixture.capture_manager,
             MonitorEvent::NodeMediaClass(
-                node_id,
+                fixture.node_id,
                 MediaClass::from("Audio/Sink"),
             ),
         );
@@ -365,29 +385,29 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         // Should fall back to node name
         assert_eq!(result, Some(String::from("Node name")))
     }
 
     #[test]
     fn render_stream() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             stream: vec!["{node:node.nick}".parse().unwrap()],
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
     #[test]
     fn render_precedence() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             stream: vec![
@@ -397,14 +417,14 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
     #[test]
     fn render_override_match() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -419,14 +439,14 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node nick")))
     }
 
     #[test]
     fn render_override_type_mismatch() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -438,14 +458,14 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 
     #[test]
     fn render_override_value_mismatch() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -457,14 +477,14 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 
     #[test]
     fn render_override_empty_templates() {
-        let (state, _, _, node_id) = init();
+        let fixture = Fixture::default();
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -476,8 +496,8 @@ mod tests {
             ..Default::default()
         };
 
-        let node = state.nodes.get(&node_id).unwrap();
-        let result = names.resolve(&state, node);
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node name")))
     }
 }
