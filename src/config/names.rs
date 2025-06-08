@@ -39,7 +39,7 @@ impl Names {
     /// 1. Overrides
     /// 2. Stream/endpoint/device default templates
     /// 3. Fallback
-    pub fn resolve<T: NameResolver>(
+    pub fn resolve<T: TagResolver + NameResolver>(
         &self,
         state: &state::State,
         resolver: &T,
@@ -65,13 +65,15 @@ impl Default for Names {
     }
 }
 
-pub trait NameResolver {
+pub trait TagResolver {
     fn resolve_tag<'a>(
         &'a self,
         state: &'a state::State,
         tag: Tag,
     ) -> Option<&'a String>;
+}
 
+pub trait NameResolver: TagResolver {
     fn fallback(&self) -> Option<&String>;
 
     fn templates<'a>(
@@ -95,7 +97,7 @@ pub trait NameResolver {
     }
 }
 
-impl NameResolver for state::Device {
+impl TagResolver for state::Device {
     /// Resolve a tag using Device.
     fn resolve_tag<'a>(
         &'a self,
@@ -111,7 +113,9 @@ impl NameResolver for state::Device {
             Tag::Node(_) => None,
         }
     }
+}
 
+impl NameResolver for state::Device {
     fn fallback(&self) -> Option<&String> {
         self.name.as_ref()
     }
@@ -130,7 +134,7 @@ impl NameResolver for state::Device {
     }
 }
 
-impl NameResolver for state::Node {
+impl TagResolver for state::Node {
     /// Resolve a tag using Node. Falls back on resolving using the linked
     /// Device, if present.
     fn resolve_tag<'a>(
@@ -149,7 +153,9 @@ impl NameResolver for state::Node {
             }
         }
     }
+}
 
+impl NameResolver for state::Node {
     fn fallback(&self) -> Option<&String> {
         self.name.as_ref()
     }
