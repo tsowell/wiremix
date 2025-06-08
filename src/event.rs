@@ -23,6 +23,9 @@ pub enum MonitorEvent {
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, u32, Option<String>, Option<String>),
 
+    ClientApplicationName(ObjectId, String),
+    ClientApplicationProcessBinary(ObjectId, String),
+
     NodeCardProfileDevice(ObjectId, i32),
     NodeDescription(ObjectId, String),
     NodeDeviceId(ObjectId, ObjectId),

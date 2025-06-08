@@ -2,6 +2,7 @@
 //!
 //! [`spawn()`] starts a PipeWire monitoring thread.
 
+mod client;
 mod deserialize;
 mod device;
 mod event_sender;
@@ -241,6 +242,20 @@ fn monitor_pipewire(
                 };
 
                 let proxy_spe = match obj.type_ {
+                    ObjectType::Client => {
+                        let result =
+                            client::monitor_client(&registry, obj, &sender);
+                        if let Some((node, listener)) = result {
+                            proxies.borrow_mut().add_client(
+                                obj_id,
+                                Rc::clone(&node),
+                                listener,
+                            );
+                            Some(node as Rc<dyn ProxyT>)
+                        } else {
+                            None
+                        }
+                    }
                     ObjectType::Node => {
                         let result =
                             node::monitor_node(&registry, obj, &sender);

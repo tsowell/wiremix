@@ -50,6 +50,13 @@ pub struct Device {
 }
 
 #[derive(Default, Debug)]
+pub struct Client {
+    pub id: ObjectId,
+    pub application_name: Option<String>,
+    pub application_process_binary: Option<String>,
+}
+
+#[derive(Default, Debug)]
 pub struct Node {
     pub id: ObjectId,
     pub name: Option<String>,
@@ -128,6 +135,7 @@ pub enum StateDirty {
 /// [`monitor`](`crate::monitor`) callbacks don't individually have enough
 /// information to determine when that should happen.
 pub struct State {
+    pub clients: HashMap<ObjectId, Client>,
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
     pub links: HashMap<ObjectId, Link>,
@@ -240,6 +248,16 @@ impl State {
                     },
                 );
             }
+            MonitorEvent::ClientApplicationName(id, application_name) => {
+                self.client_entry(id).application_name = Some(application_name);
+            }
+            MonitorEvent::ClientApplicationProcessBinary(
+                id,
+                application_process_binary,
+            ) => {
+                self.client_entry(id).application_process_binary =
+                    Some(application_process_binary);
+            }
             MonitorEvent::NodeCardProfileDevice(id, card_profile_device) => {
                 self.node_entry(id).card_profile_device =
                     Some(card_profile_device);
@@ -344,6 +362,7 @@ impl State {
                 }
 
                 self.devices.remove(&id);
+                self.clients.remove(&id);
                 self.nodes.remove(&id);
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
@@ -361,6 +380,13 @@ impl State {
     ) -> Option<&Metadata> {
         self.metadatas
             .get(self.metadatas_by_name.get(metadata_name)?)
+    }
+
+    fn client_entry(&mut self, id: ObjectId) -> &mut Client {
+        self.clients.entry(id).or_insert_with(|| Client {
+            id,
+            ..Default::default()
+        })
     }
 
     fn node_entry(&mut self, id: ObjectId) -> &mut Node {

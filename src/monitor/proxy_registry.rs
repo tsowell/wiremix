@@ -6,6 +6,7 @@ use anyhow::Result;
 use nix::sys::eventfd::{EfdFlags, EventFd};
 
 use pipewire::{
+    client::Client,
     device::Device,
     link::Link,
     metadata::Metadata,
@@ -19,6 +20,8 @@ use crate::object::ObjectId;
 pub struct ProxyRegistry {
     /// Storage for keeping devices alive
     pub devices: HashMap<ObjectId, Rc<Device>>,
+    /// Storage for keeping clients alive
+    pub clients: HashMap<ObjectId, Rc<Client>>,
     /// Storage for keeping nodes alive
     pub nodes: HashMap<ObjectId, Rc<Node>>,
     /// Storage for keeping metadata alive
@@ -27,7 +30,7 @@ pub struct ProxyRegistry {
     links: HashMap<ObjectId, Rc<Link>>,
     /// Storage for keeping listeners alive
     listeners: HashMap<ObjectId, Vec<Box<dyn Listener>>>,
-    /// Devices, nodes, links, and metadata pending deletion
+    /// Devices, clients, nodes, links, and metadata pending deletion
     garbage_proxies_t: Vec<Rc<dyn ProxyT>>,
     /// Listeners pending deletion
     garbage_listeners: Vec<Box<dyn Listener>>,
@@ -49,6 +52,7 @@ impl ProxyRegistry {
         let gc_fd = EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?;
         Ok(Self {
             devices: HashMap::new(),
+            clients: HashMap::new(),
             nodes: HashMap::new(),
             links: HashMap::new(),
             metadatas: HashMap::new(),
@@ -75,6 +79,25 @@ impl ProxyRegistry {
         listener: Box<dyn Listener>,
     ) {
         if let Some(old) = self.devices.insert(obj_id, device) {
+            self.garbage_proxies_t.push(old);
+            if let Some(listeners) = self.listeners.get_mut(&obj_id) {
+                self.garbage_listeners.append(listeners);
+            }
+            let _ = self.gc_fd.arm();
+        }
+
+        let v = self.listeners.entry(obj_id).or_default();
+        v.push(listener);
+    }
+
+    /// Register a client and its listener, evicting any with the same ID.
+    pub fn add_client(
+        &mut self,
+        obj_id: ObjectId,
+        client: Rc<Client>,
+        listener: Box<dyn Listener>,
+    ) {
+        if let Some(old) = self.clients.insert(obj_id, client) {
             self.garbage_proxies_t.push(old);
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
@@ -163,6 +186,10 @@ impl ProxyRegistry {
             self.garbage_listeners.append(listeners);
         }
         if let Some(old) = self.devices.remove(&obj_id) {
+            self.garbage_proxies_t.push(old);
+            let _ = self.gc_fd.arm();
+        }
+        if let Some(old) = self.clients.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
             let _ = self.gc_fd.arm();
         }
