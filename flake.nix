@@ -28,6 +28,8 @@
             packages = [
               rustc
               cargo
+              rustfmt
+              clippy
               pkg-config
               rustPlatform.bindgenHook
 
