@@ -6,7 +6,7 @@ use crate::state;
 
 pub use crate::config::{name_template::NameTemplate, tag::Tag};
 use crate::config::{
-    tag::{DeviceTag, NodeTag},
+    tag::{ClientTag, DeviceTag, NodeTag},
     Names,
 };
 
@@ -111,6 +111,7 @@ impl TagResolver for state::Device {
                 self.description.as_ref()
             }
             Tag::Node(_) => None,
+            Tag::Client(_) => None,
         }
     }
 }
@@ -151,6 +152,10 @@ impl TagResolver for state::Node {
                 let device = state.devices.get(&self.device_id?)?;
                 device.resolve_tag(state, tag)
             }
+            Tag::Client(_) => {
+                let client = state.clients.get(&self.client_id?)?;
+                client.resolve_tag(state, tag)
+            }
         }
     }
 }
@@ -183,6 +188,26 @@ impl NameResolver for state::Node {
                     config::OverrideType::Stream,
                 )
                 .unwrap_or(&names.stream),
+        }
+    }
+}
+
+impl TagResolver for state::Client {
+    /// Resolve a tag using Client.
+    fn resolve_tag<'a>(
+        &'a self,
+        _state: &'a state::State,
+        tag: Tag,
+    ) -> Option<&'a String> {
+        match tag {
+            Tag::Client(ClientTag::ApplicationName) => {
+                self.application_name.as_ref()
+            }
+            Tag::Client(ClientTag::ApplicationProcessBinary) => {
+                self.application_process_binary.as_ref()
+            }
+            Tag::Node(_) => None,
+            Tag::Device(_) => None,
         }
     }
 }
@@ -220,6 +245,7 @@ mod tests {
         capture_manager: CaptureManager,
         device_id: ObjectId,
         node_id: ObjectId,
+        client_id: ObjectId,
     }
 
     impl Default for Fixture {
@@ -229,6 +255,7 @@ mod tests {
 
             let device_id = ObjectId::from_raw_id(0);
             let node_id = ObjectId::from_raw_id(1);
+            let client_id = ObjectId::from_raw_id(2);
 
             let events = vec![
                 MonitorEvent::DeviceName(
@@ -241,6 +268,10 @@ mod tests {
                 ),
                 MonitorEvent::NodeName(node_id, String::from("Node name")),
                 MonitorEvent::NodeNick(node_id, String::from("Node nick")),
+                MonitorEvent::ClientApplicationName(
+                    client_id,
+                    String::from("Client name"),
+                ),
             ];
 
             for event in events {
@@ -252,6 +283,7 @@ mod tests {
                 capture_manager,
                 device_id,
                 node_id,
+                client_id,
             }
         }
     }
@@ -403,6 +435,25 @@ mod tests {
         let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
         let result = names.resolve(&fixture.state, node);
         assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn render_stream_linked_client() {
+        let mut fixture = Fixture::default();
+
+        fixture.state.update(
+            &mut fixture.capture_manager,
+            MonitorEvent::NodeClientId(fixture.node_id, fixture.client_id),
+        );
+
+        let names = Names {
+            stream: vec!["{client:application.name}".parse().unwrap()],
+            ..Default::default()
+        };
+
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
+        assert_eq!(result, Some(String::from("Client name")))
     }
 
     #[test]

@@ -7,6 +7,7 @@ use serde_with::DeserializeFromStr;
 pub enum Tag {
     Device(DeviceTag),
     Node(NodeTag),
+    Client(ClientTag),
 }
 
 // These correspond to PipeWire property names.
@@ -28,6 +29,13 @@ pub enum NodeTag {
     MediaName,
 }
 
+#[derive(Debug, Copy, Clone)]
+#[cfg_attr(test, derive(PartialEq, strum::EnumIter))]
+pub enum ClientTag {
+    ApplicationName,
+    ApplicationProcessBinary,
+}
+
 #[allow(clippy::to_string_trait_impl)] // This is not for display.
 impl ToString for Tag {
     fn to_string(&self) -> String {
@@ -47,6 +55,12 @@ impl ToString for Tag {
                 String::from("node:node.description")
             }
             Tag::Node(NodeTag::MediaName) => String::from("node:media.name"),
+            Tag::Client(ClientTag::ApplicationName) => {
+                String::from("client:application.name")
+            }
+            Tag::Client(ClientTag::ApplicationProcessBinary) => {
+                String::from("client:application.process.binary")
+            }
         }
     }
 }
@@ -65,6 +79,12 @@ impl std::str::FromStr for Tag {
             "node:node.nick" => Ok(Tag::Node(NodeTag::NodeNick)),
             "node:node.description" => Ok(Tag::Node(NodeTag::NodeDescription)),
             "node:media.name" => Ok(Tag::Node(NodeTag::MediaName)),
+            "client:application.name" => {
+                Ok(Tag::Client(ClientTag::ApplicationName))
+            }
+            "client:application.process.binary" => {
+                Ok(Tag::Client(ClientTag::ApplicationProcessBinary))
+            }
             _ => Err(format!("\"{}\" is not implemented", s)),
         }
     }
@@ -91,6 +111,17 @@ mod tests {
         for node_tag in NodeTag::iter() {
             // Do a round-trip conversion and compare results.
             let tag = Tag::Node(node_tag);
+            let tag_str = tag.to_string();
+            let parsed_tag: Tag = tag_str.parse().unwrap();
+            assert_eq!(tag, parsed_tag);
+        }
+    }
+
+    #[test]
+    fn client_variants() {
+        for client_tag in ClientTag::iter() {
+            // Do a round-trip conversion and compare results.
+            let tag = Tag::Client(client_tag);
             let tag_str = tag.to_string();
             let parsed_tag: Tag = tag_str.parse().unwrap();
             assert_eq!(tag, parsed_tag);

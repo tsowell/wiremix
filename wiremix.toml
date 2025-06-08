@@ -122,7 +122,7 @@ keybindings = [
 # Name templates are composed of property tags enclosed in { } and literal
 # text. For example:
 #
-# "Node {node:node.name} playing {node:media.name}"
+# "Application {client:application.name} playing {node:media.name}"
 #
 # wiremix will replace the property tags with the properties from the PipeWire
 # object being displayed.
@@ -132,6 +132,8 @@ keybindings = [
 #
 # Available node properties:
 #   node.name node.nick node.description media.name
+# Available client properties:
+#   application.name application.process.binary
 # Available device properties:
 #   device.name device.nick device.description
 #
@@ -142,9 +144,10 @@ keybindings = [
 # Literal curly braces can be escaped by doubling them: {{ become { and }}
 # becomes }.
 #
-# Only node properties are valid for stream, and only device properties are
-# valid for device. endpoint can use either node or device properties because
-# an endpoint is a node with a linked device.
+# Streams can have linked clients, so node and client properties are valid for
+# stream. Similarly, endpoint can use either node or device properties. Only
+# device properties are valid for device.
+
 #
 # Each option in names is an array - if a tempalte can't be resolved because it
 # uses a property which doesn't exit on a given object, wiremix tries the next
