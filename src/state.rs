@@ -468,8 +468,8 @@ mod tests {
 
         state.update(&mut capture_manager, MonitorEvent::Removed(obj_id));
 
-        assert!(state.metadatas.get(&obj_id).is_none());
-        assert!(state.metadatas_by_name.get(&metadata_name).is_none());
+        assert!(!state.metadatas.contains_key(&obj_id));
+        assert!(!state.metadatas_by_name.contains_key(&metadata_name));
         assert!(state.get_metadata_by_name(&metadata_name).is_none());
     }
 
