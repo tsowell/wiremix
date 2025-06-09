@@ -334,7 +334,7 @@ mod tests {
         let config = r#"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<ConfigFile>(&config).is_err());
+        assert!(toml::from_str::<ConfigFile>(config).is_err());
     }
 
     #[test]
@@ -344,7 +344,7 @@ mod tests {
         action = "Nothing"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<Keybinding>(&config).is_err());
+        assert!(toml::from_str::<Keybinding>(config).is_err());
     }
 
     #[test]
@@ -352,7 +352,7 @@ mod tests {
         let config = r#"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<Names>(&config).is_err());
+        assert!(toml::from_str::<Names>(config).is_err());
     }
 
     #[test]
@@ -364,6 +364,6 @@ mod tests {
         templates = [ "template" ]
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<NameOverride>(&config).is_err());
+        assert!(toml::from_str::<NameOverride>(config).is_err());
     }
 }

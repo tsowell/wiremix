@@ -255,7 +255,7 @@ mod tests {
         let config = r#"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<ThemeOverlay>(&config).is_err());
+        assert!(toml::from_str::<ThemeOverlay>(config).is_err());
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         let config = r#"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<StyleDef>(&config).is_err());
+        assert!(toml::from_str::<StyleDef>(config).is_err());
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod tests {
         tab_selected = { }
         "#;
 
-        let overlay = toml::from_str::<ThemeOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<ThemeOverlay>(config).unwrap();
         let theme = Theme::try_from(overlay);
         assert!(theme.is_err());
     }

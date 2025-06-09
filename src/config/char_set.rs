@@ -264,7 +264,7 @@ mod tests {
     fn empty_overlay() {
         let config = r#""#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         CharSet::try_from(overlay).unwrap();
     }
 
@@ -277,7 +277,7 @@ mod tests {
         }
         let config = r#"[char_sets.test]"#;
 
-        let s = toml::from_str::<S>(&config).unwrap();
+        let s = toml::from_str::<S>(config).unwrap();
         for name in CharSet::defaults().keys() {
             assert!(s.char_sets.contains_key(name));
         }
@@ -289,7 +289,7 @@ mod tests {
         dropdown_icon = "$"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay).unwrap();
 
         assert_eq!(char_set.dropdown_icon, "$")
@@ -301,7 +301,7 @@ mod tests {
         meter_right_active = ""
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay);
         assert!(char_set.is_err());
     }
@@ -312,7 +312,7 @@ mod tests {
         meter_right_active = "$$"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay);
         assert!(char_set.is_err());
     }
@@ -323,7 +323,7 @@ mod tests {
         meter_right_active = "$"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay).unwrap();
         assert_eq!(char_set.meter_right_active, "$");
     }
@@ -334,7 +334,7 @@ mod tests {
         meter_right_active = "⚓︎"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay).unwrap();
         assert_eq!(char_set.meter_right_active, "⚓︎");
     }
@@ -345,7 +345,7 @@ mod tests {
         meter_right_active = "🏳️‍🌈"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay);
         assert!(char_set.is_err());
     }
@@ -357,7 +357,7 @@ mod tests {
         dropdown_more = "$$$$$$$$$$$$$$$$$$$$$$$$"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay).unwrap();
         assert_eq!(char_set.list_more, "");
         assert_eq!(char_set.dropdown_more, "$$$$$$$$$$$$$$$$$$$$$$$$");
@@ -370,7 +370,7 @@ mod tests {
         meter_right_active = "$"
         "#;
 
-        let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
+        let overlay = toml::from_str::<CharSetOverlay>(config).unwrap();
         let char_set = CharSet::try_from(overlay);
         assert!(char_set.is_err());
     }
@@ -398,6 +398,6 @@ mod tests {
         let config = r#"
         unknown = "unknown"
         "#;
-        assert!(toml::from_str::<CharSetOverlay>(&config).is_err());
+        assert!(toml::from_str::<CharSetOverlay>(config).is_err());
     }
 }
