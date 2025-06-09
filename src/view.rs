@@ -81,8 +81,8 @@ pub struct Node {
 
     /// If this is a device/endpoint node, store the (device_id, route_index,
     /// card_device) here because they are needed for the
-    /// [`DeviceVolume`](`crate::command::DeviceVolume`) and
-    /// [`DeviceMute`](`crate::command::DeviceMute`) commands.
+    /// [`DeviceVolume`](`crate::command::Command::DeviceVolumes`) and
+    /// [`DeviceMute`](`crate::command::Command::DeviceMute`) commands.
     pub device_info: Option<(ObjectId, i32, i32)>,
 
     pub is_default_sink: bool,

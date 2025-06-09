@@ -110,7 +110,7 @@ pub struct App {
     tx: pipewire::channel::Sender<Command>,
     /// [`Event`](`crate::event::Event`) channel
     rx: mpsc::Receiver<Event>,
-    /// An error message to return to [`main`](`crate::main`) on exit
+    /// An error message to return on exit
     error_message: Option<String>,
     /// The main tabs
     tabs: Vec<Tab>,
