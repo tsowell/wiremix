@@ -1,0 +1,16 @@
+name: setup-dependencies
+runs:
+  using: "composite"
+  steps:
+    - name: Disable man-db triggers
+      shell: bash
+      run: echo "set man-db/auto-update false" | sudo debconf-communicate
+    - name: Reconfigure man-db
+      shell: bash
+      run: sudo dpkg-reconfigure man-db
+    - name: Update package list
+      shell: bash
+      run: sudo apt-get update
+    - name: Install dependencies
+      shell: bash
+      run: sudo apt-get install -y libpipewire-0.3-dev pkg-config clang
