@@ -23,6 +23,7 @@ use crate::app::{Action, TabKind};
 use crate::opt::Opt;
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
@@ -328,9 +329,12 @@ mod tests {
 
     #[test]
     fn empty_config_matches_default() {
-        let empty_config: ConfigFile = toml::from_str("").unwrap();
+        let empty: Config =
+            Config::try_from(toml::from_str::<ConfigFile>("").unwrap())
+                .unwrap();
+        let default: Config = Config::try_from(ConfigFile::default()).unwrap();
 
-        assert_eq!(empty_config, ConfigFile::default());
+        assert_eq!(empty, default);
     }
 
     #[test]
