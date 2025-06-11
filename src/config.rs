@@ -76,14 +76,14 @@ impl Default for ConfigFile {
             remote: Default::default(),
             fps: Default::default(),
             mouse: default_mouse(),
-            peaks: Default::default(),
+            peaks: Some(Peaks::default()),
             char_set: default_char_set_name(),
             theme: default_theme_name(),
             keybindings: Keybinding::defaults(),
             names: Default::default(),
             char_sets: CharSet::defaults(),
             themes: Theme::defaults(),
-            tab: Default::default(),
+            tab: Some(TabKind::default()),
         }
     }
 }
