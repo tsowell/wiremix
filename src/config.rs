@@ -374,4 +374,12 @@ mod tests {
         "#;
         assert!(toml::from_str::<NameOverride>(config).is_err());
     }
+
+    #[test]
+    fn example_config_file_matches_default_config_file() {
+        let toml_str = include_str!("../wiremix.toml");
+        let example: ConfigFile = toml::from_str(toml_str).unwrap();
+
+        assert_eq!(ConfigFile::default(), example);
+    }
 }
