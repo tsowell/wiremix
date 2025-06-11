@@ -72,15 +72,12 @@ impl Keybinding {
             );
         }
 
-        // Emulate signals
-        keybindings.extend(Self::control_char_keybindings());
-
         Ok(keybindings)
     }
 
     /// Return keybindings emulating effects of certain terminal special
     /// characters
-    fn control_char_keybindings() -> HashMap<KeyEvent, Action> {
+    pub fn control_char_keybindings() -> HashMap<KeyEvent, Action> {
         let mut bindings = HashMap::new();
 
         let Ok(termios) = termios::tcgetattr(std::io::stdin().as_fd()) else {

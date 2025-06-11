@@ -310,8 +310,12 @@ impl Config {
             }
             _ => ConfigFile::default(),
         };
-
+        // Override with command-line options
         config_file.apply_opt(opt);
+        // Emulate signals
+        config_file
+            .keybindings
+            .extend(Keybinding::control_char_keybindings());
         let config_file = config_file;
 
         Self::try_from(config_file)
