@@ -46,6 +46,7 @@ struct ConfigFile {
     fps: Option<f32>,
     #[serde(default = "default_mouse")]
     mouse: bool,
+    #[serde(default = "default_peaks")]
     peaks: Option<Peaks>,
     #[serde(default = "default_char_set_name")]
     char_set: String,
@@ -65,27 +66,8 @@ struct ConfigFile {
     char_sets: HashMap<String, CharSet>,
     #[serde(default = "Theme::defaults", deserialize_with = "Theme::merge")]
     themes: HashMap<String, Theme>,
+    #[serde(default = "default_tab")]
     tab: Option<TabKind>,
-}
-
-// The serde defaults need to be repeated here, which is used to generate a
-// default ConfigFile when there is no config file to parse.
-impl Default for ConfigFile {
-    fn default() -> Self {
-        Self {
-            remote: Default::default(),
-            fps: Default::default(),
-            mouse: default_mouse(),
-            peaks: Some(Peaks::default()),
-            char_set: default_char_set_name(),
-            theme: default_theme_name(),
-            keybindings: Keybinding::defaults(),
-            names: Default::default(),
-            char_sets: CharSet::defaults(),
-            themes: Theme::defaults(),
-            tab: Some(TabKind::default()),
-        }
-    }
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, clap::ValueEnum)]
@@ -200,6 +182,14 @@ fn default_mouse() -> bool {
     true
 }
 
+fn default_peaks() -> Option<Peaks> {
+    Some(Peaks::default())
+}
+
+fn default_tab() -> Option<TabKind> {
+    Some(TabKind::default())
+}
+
 fn default_char_set_name() -> String {
     String::from("default")
 }
@@ -309,7 +299,7 @@ impl Config {
 
                 toml::from_str(&toml_str).with_context(context)?
             }
-            _ => ConfigFile::default(),
+            _ => toml::from_str("")?,
         };
         // Override with command-line options
         config_file.apply_opt(opt);
@@ -326,16 +316,6 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn empty_config_matches_default() {
-        let empty: Config =
-            Config::try_from(toml::from_str::<ConfigFile>("").unwrap())
-                .unwrap();
-        let default: Config = Config::try_from(ConfigFile::default()).unwrap();
-
-        assert_eq!(empty, default);
-    }
 
     #[test]
     fn unknown_field_config_file() {
@@ -379,7 +359,8 @@ mod tests {
     fn example_config_file_matches_default_config_file() {
         let toml_str = include_str!("../wiremix.toml");
         let example: ConfigFile = toml::from_str(toml_str).unwrap();
+        let default: ConfigFile = toml::from_str("").unwrap();
 
-        assert_eq!(ConfigFile::default(), example);
+        assert_eq!(default, example);
     }
 }
