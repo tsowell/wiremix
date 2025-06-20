@@ -131,10 +131,11 @@ pub enum StateDirty {
 /// [`monitor`](`crate::monitor`) module.
 ///
 /// This is primarily for maintaining a representation of the PipeWire state,
-/// but [`Self::update()`] also returns [`Command`](`crate::command::Command`)s
-/// for starting and stopping streaming because the
-/// [`monitor`](`crate::monitor`) callbacks don't individually have enough
-/// information to determine when that should happen.
+/// but [`Self::update()`] also invokes callbacks on a
+/// [`CaptureManager`](`crate::capture_manager::CaptureManager`) for starting
+/// and stopping streaming because the [`monitor`](`crate::monitor`) callbacks
+/// don't individually have enough information to determine when that should
+/// happen.
 pub struct State {
     pub clients: HashMap<ObjectId, Client>,
     pub nodes: HashMap<ObjectId, Node>,
@@ -147,10 +148,9 @@ pub struct State {
 }
 
 impl State {
-    /// Update the state based on the supplied event.
-    ///
-    /// Returns a list of [`Command`](`crate::command::Command`)s to be
-    /// executed based on the changes.
+    /// Update the state based on the supplied event. Also invokes callbacks on
+    /// a [`CaptureManager`](`crate::capture_manager::CaptureManager`) for
+    /// managing stream capturing.
     pub fn update(
         &mut self,
         capture_manager: &mut CaptureManager,
