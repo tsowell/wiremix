@@ -23,7 +23,7 @@ pub use property_store::PropertyStore;
 use anyhow::Result;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{mpsc, Arc};
+use std::sync::Arc;
 use std::thread;
 
 use nix::sys::eventfd::{EfdFlags, EventFd};
@@ -35,22 +35,25 @@ use pipewire::{
 };
 
 use crate::command::Command;
-use crate::event::{Event, StateEvent};
+use crate::event::StateEvent;
 use crate::monitor::{
-    event_sender::EventSender, proxy_registry::ProxyRegistry,
-    stream_registry::StreamRegistry, sync_registry::SyncRegistry,
+    event_sender::{EventHandler, EventSender},
+    proxy_registry::ProxyRegistry,
+    stream_registry::StreamRegistry,
+    sync_registry::SyncRegistry,
 };
 
 /// Spawns a thread to monitor the PipeWire instance.
 ///
-/// [`Event`](`crate::event::Event`)s from PipeWire are sent to `tx`.
-/// [`Command`](`crate::command::Command`)s sent to `rx` will be executed.
+/// [`MonitorEvent`](`crate::event::MonitorEvent`)s from PipeWire are sent to
+/// the provided `handler`. [`Command`](`crate::command::Command`)s sent to
+/// `rx` will be executed.
 ///
 /// Returns a [`MonitorHandle`] to automatically clean up the thread.
-pub fn spawn(
+pub fn spawn<F: EventHandler>(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<Event>>,
     rx: pipewire::channel::Receiver<Command>,
+    handler: F,
 ) -> Result<MonitorHandle> {
     let shutdown_fd =
         Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
@@ -58,7 +61,7 @@ pub fn spawn(
     let handle = thread::spawn({
         let shutdown_fd = Arc::clone(&shutdown_fd);
         move || {
-            let _ = run(remote, tx, rx, shutdown_fd);
+            let _ = run(remote, rx, handler, shutdown_fd);
         }
     });
 
@@ -69,10 +72,10 @@ pub fn spawn(
 }
 
 /// Wrapper for handling PipeWire initialization/deinitialization.
-fn run(
+fn run<F: EventHandler>(
     remote: Option<String>,
-    tx: Arc<mpsc::Sender<Event>>,
     rx: pipewire::channel::Receiver<Command>,
+    handler: F,
     shutdown_fd: Arc<EventFd>,
 ) -> Result<()> {
     pipewire::init();
@@ -82,7 +85,7 @@ fn run(
     });
 
     let main_loop = MainLoop::new(None)?;
-    let sender = Rc::new(EventSender::new(tx, main_loop.downgrade()));
+    let sender = Rc::new(EventSender::new(handler, main_loop.downgrade()));
 
     let err_sender = Rc::clone(&sender);
     monitor_pipewire(remote, main_loop, sender, rx, shutdown_fd)

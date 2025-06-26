@@ -1,27 +1,47 @@
-use std::sync::{mpsc, Arc};
+use std::cell::RefCell;
 
 use pipewire::main_loop::WeakMainLoop;
 
-use crate::event::{Event, MonitorEvent, StateEvent};
+use crate::event::{MonitorEvent, StateEvent};
+
+/// Trait for handling [`MonitorEvent`]s from [`EventSender`].
+///
+/// Returns `true` if the event was handled successfully, `false` if the
+/// monitor should shut down.
+pub trait EventHandler: Send + 'static {
+    fn handle_event(&mut self, event: MonitorEvent) -> bool;
+}
+
+impl<F> EventHandler for F
+where
+    F: FnMut(MonitorEvent) -> bool + Send + 'static,
+{
+    fn handle_event(&mut self, event: MonitorEvent) -> bool {
+        self(event)
+    }
+}
 
 pub struct EventSender {
-    tx: Arc<mpsc::Sender<Event>>,
+    handler: RefCell<Box<dyn EventHandler>>,
     main_loop_weak: WeakMainLoop,
 }
 
 impl EventSender {
-    pub fn new(
-        tx: Arc<mpsc::Sender<Event>>,
+    pub fn new<F: EventHandler>(
+        handler: F,
         main_loop_weak: WeakMainLoop,
     ) -> Self {
-        Self { tx, main_loop_weak }
+        Self {
+            handler: RefCell::new(Box::new(handler)),
+            main_loop_weak,
+        }
     }
 
     pub fn send(&self, event: StateEvent) {
-        if self
-            .tx
-            .send(Event::Monitor(MonitorEvent::State(event)))
-            .is_err()
+        if !self
+            .handler
+            .borrow_mut()
+            .handle_event(MonitorEvent::State(event))
         {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
@@ -30,7 +50,7 @@ impl EventSender {
     }
 
     pub fn send_ready(&self) {
-        if self.tx.send(Event::Monitor(MonitorEvent::Ready)).is_err() {
+        if !self.handler.borrow_mut().handle_event(MonitorEvent::Ready) {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }
@@ -38,10 +58,10 @@ impl EventSender {
     }
 
     pub fn send_error(&self, error: String) {
-        if self
-            .tx
-            .send(Event::Monitor(MonitorEvent::Error(error)))
-            .is_err()
+        if !self
+            .handler
+            .borrow_mut()
+            .handle_event(MonitorEvent::Error(error))
         {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();

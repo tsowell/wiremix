@@ -11,6 +11,7 @@ use crossterm::{
 use wiremix::app;
 use wiremix::command::Command;
 use wiremix::config::Config;
+use wiremix::event::Event;
 use wiremix::input;
 use wiremix::monitor;
 use wiremix::opt::Opt;
@@ -31,12 +32,15 @@ fn main() -> Result<()> {
 
     let config = Config::try_new(config_path, &opt)?;
 
+    // Handler for events from the PipeWire monitor - just wrap them and put
+    // them on the event channel.
+    let event_handler = {
+        let event_tx = Arc::clone(&event_tx);
+        move |event| event_tx.send(Event::Monitor(event)).is_ok()
+    };
     // Spawn the PipeWire monitor
-    let _monitor_handle = monitor::spawn(
-        config.remote.clone(),
-        Arc::clone(&event_tx),
-        command_rx,
-    )?;
+    let _monitor_handle =
+        monitor::spawn(config.remote.clone(), command_rx, event_handler)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     #[cfg(debug_assertions)]
