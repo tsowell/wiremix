@@ -4,11 +4,10 @@
 use crate::config;
 use crate::state;
 
-pub use crate::config::{name_template::NameTemplate, tag::Tag};
-use crate::config::{
-    tag::{ClientTag, DeviceTag, NodeTag},
-    Names,
-};
+pub use crate::config::name_template::NameTemplate;
+pub use crate::config::tag::Tag;
+use crate::config::Names;
+use crate::media_class;
 
 impl Names {
     pub fn default_stream() -> Vec<NameTemplate> {
@@ -48,7 +47,7 @@ impl Names {
             .templates(state, self)
             .iter()
             .find_map(|template| {
-                template.render(|tag| resolver.resolve_tag(state, *tag))
+                template.render(|tag| resolver.resolve_tag(state, tag))
             })
             .or(resolver.fallback().cloned())
     }
@@ -69,8 +68,8 @@ pub trait TagResolver {
     fn resolve_tag<'a>(
         &'a self,
         state: &'a state::State,
-        tag: Tag,
-    ) -> Option<&'a String>;
+        tag: &Tag,
+    ) -> Option<&'a str>;
 }
 
 pub trait NameResolver: TagResolver {
@@ -90,7 +89,7 @@ pub trait NameResolver: TagResolver {
     ) -> Option<&'a Vec<NameTemplate>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
-                && self.resolve_tag(state, name_override.property)
+                && self.resolve_tag(state, &name_override.property)
                     == Some(&name_override.value))
             .then_some(&name_override.templates)
         })
@@ -102,14 +101,10 @@ impl TagResolver for state::Device {
     fn resolve_tag<'a>(
         &'a self,
         _state: &'a state::State,
-        tag: Tag,
-    ) -> Option<&'a String> {
+        tag: &Tag,
+    ) -> Option<&'a str> {
         match tag {
-            Tag::Device(DeviceTag::DeviceName) => self.name.as_ref(),
-            Tag::Device(DeviceTag::DeviceNick) => self.nick.as_ref(),
-            Tag::Device(DeviceTag::DeviceDescription) => {
-                self.description.as_ref()
-            }
+            Tag::Device(s) => self.props.raw(s),
             Tag::Node(_) => None,
             Tag::Client(_) => None,
         }
@@ -118,7 +113,7 @@ impl TagResolver for state::Device {
 
 impl NameResolver for state::Device {
     fn fallback(&self) -> Option<&String> {
-        self.name.as_ref()
+        self.props.device_name()
     }
 
     fn templates<'a>(
@@ -141,19 +136,16 @@ impl TagResolver for state::Node {
     fn resolve_tag<'a>(
         &'a self,
         state: &'a state::State,
-        tag: Tag,
-    ) -> Option<&'a String> {
+        tag: &Tag,
+    ) -> Option<&'a str> {
         match tag {
-            Tag::Node(NodeTag::NodeName) => self.name.as_ref(),
-            Tag::Node(NodeTag::NodeNick) => self.nick.as_ref(),
-            Tag::Node(NodeTag::NodeDescription) => self.description.as_ref(),
-            Tag::Node(NodeTag::MediaName) => self.media_name.as_ref(),
+            Tag::Node(s) => self.props.raw(s),
             Tag::Device(_) => {
-                let device = state.devices.get(&self.device_id?)?;
+                let device = state.devices.get(self.props.device_id()?)?;
                 device.resolve_tag(state, tag)
             }
             Tag::Client(_) => {
-                let client = state.clients.get(&self.client_id?)?;
+                let client = state.clients.get(self.props.client_id()?)?;
                 client.resolve_tag(state, tag)
             }
         }
@@ -162,7 +154,7 @@ impl TagResolver for state::Node {
 
 impl NameResolver for state::Node {
     fn fallback(&self) -> Option<&String> {
-        self.name.as_ref()
+        self.props.node_name()
     }
 
     fn templates<'a>(
@@ -170,9 +162,10 @@ impl NameResolver for state::Node {
         state: &state::State,
         names: &'a config::Names,
     ) -> &'a Vec<NameTemplate> {
-        match self.media_class.as_ref() {
+        match self.props.media_class() {
             Some(media_class)
-                if media_class.is_sink() || media_class.is_source() =>
+                if media_class::is_sink(media_class)
+                    || media_class::is_source(media_class) =>
             {
                 self.name_override(
                     state,
@@ -197,15 +190,10 @@ impl TagResolver for state::Client {
     fn resolve_tag<'a>(
         &'a self,
         _state: &'a state::State,
-        tag: Tag,
-    ) -> Option<&'a String> {
+        tag: &Tag,
+    ) -> Option<&'a str> {
         match tag {
-            Tag::Client(ClientTag::ApplicationName) => {
-                self.application_name.as_ref()
-            }
-            Tag::Client(ClientTag::ApplicationProcessBinary) => {
-                self.application_process_binary.as_ref()
-            }
+            Tag::Client(s) => self.props.raw(s),
             Tag::Node(_) => None,
             Tag::Device(_) => None,
         }
@@ -218,7 +206,7 @@ mod tests {
     use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::event::MonitorEvent;
-    use crate::media_class::MediaClass;
+    use crate::monitor::PropertyStore;
     use crate::object::ObjectId;
     use crate::state::State;
 
@@ -246,6 +234,7 @@ mod tests {
         device_id: ObjectId,
         node_id: ObjectId,
         client_id: ObjectId,
+        node_props: PropertyStore,
     }
 
     impl Default for Fixture {
@@ -257,21 +246,24 @@ mod tests {
             let node_id = ObjectId::from_raw_id(1);
             let client_id = ObjectId::from_raw_id(2);
 
+            let mut device_props = PropertyStore::default();
+            device_props.set_device_name(String::from("Device name"));
+            device_props.set_device_nick(String::from("Device nick"));
+            let device_props = device_props;
+
+            let mut node_props = PropertyStore::default();
+            node_props.set_node_name(String::from("Node name"));
+            node_props.set_node_nick(String::from("Node nick"));
+            let node_props = node_props;
+
+            let mut client_props = PropertyStore::default();
+            client_props.set_application_name(String::from("Client name"));
+            let client_props = client_props;
+
             let events = vec![
-                MonitorEvent::DeviceName(
-                    device_id,
-                    String::from("Device name"),
-                ),
-                MonitorEvent::DeviceNick(
-                    device_id,
-                    String::from("Device nick"),
-                ),
-                MonitorEvent::NodeName(node_id, String::from("Node name")),
-                MonitorEvent::NodeNick(node_id, String::from("Node nick")),
-                MonitorEvent::ClientApplicationName(
-                    client_id,
-                    String::from("Client name"),
-                ),
+                MonitorEvent::DeviceProperties(device_id, device_props.clone()),
+                MonitorEvent::NodeProperties(node_id, node_props.clone()),
+                MonitorEvent::ClientProperties(client_id, client_props.clone()),
             ];
 
             for event in events {
@@ -284,6 +276,7 @@ mod tests {
                 device_id,
                 node_id,
                 client_id,
+                node_props,
             }
         }
     }
@@ -292,13 +285,14 @@ mod tests {
     fn render_endpoint() {
         let mut fixture = Fixture::default();
 
+        fixture
+            .node_props
+            .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeMediaClass(
-                fixture.node_id,
-                MediaClass::from("Audio/Sink"),
-            ),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
+
         let names = Names {
             endpoint: vec!["{node:node.nick}".parse().unwrap()],
             ..Default::default()
@@ -313,12 +307,12 @@ mod tests {
     fn render_endpoint_missing_tag() {
         let mut fixture = Fixture::default();
 
+        fixture
+            .node_props
+            .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeMediaClass(
-                fixture.node_id,
-                MediaClass::from("Audio/Sink"),
-            ),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -351,16 +345,13 @@ mod tests {
     fn render_endpoint_linked_device() {
         let mut fixture = Fixture::default();
 
+        fixture
+            .node_props
+            .set_media_class(String::from("Audio/Sink"));
+        fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeMediaClass(
-                fixture.node_id,
-                MediaClass::from("Audio/Sink"),
-            ),
-        );
-        fixture.state.update(
-            &mut fixture.capture_manager,
-            MonitorEvent::NodeDeviceId(fixture.node_id, fixture.device_id),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -377,16 +368,13 @@ mod tests {
     fn render_endpoint_linked_device_missing_tag() {
         let mut fixture = Fixture::default();
 
+        fixture
+            .node_props
+            .set_media_class(String::from("Audio/Sink"));
+        fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeMediaClass(
-                fixture.node_id,
-                MediaClass::from("Audio/Sink"),
-            ),
-        );
-        fixture.state.update(
-            &mut fixture.capture_manager,
-            MonitorEvent::NodeDeviceId(fixture.node_id, fixture.device_id),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -404,12 +392,12 @@ mod tests {
     fn render_endpoint_no_linked_device() {
         let mut fixture = Fixture::default();
 
+        fixture
+            .node_props
+            .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeMediaClass(
-                fixture.node_id,
-                MediaClass::from("Audio/Sink"),
-            ),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -441,9 +429,10 @@ mod tests {
     fn render_stream_linked_client() {
         let mut fixture = Fixture::default();
 
+        fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeClientId(fixture.node_id, fixture.client_id),
+            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -480,7 +469,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: Tag::Node(NodeTag::NodeName),
+                property: Tag::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec![
                     "{node:node.description}".parse().unwrap(),
@@ -502,7 +491,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: Tag::Node(NodeTag::NodeName),
+                property: Tag::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
@@ -521,7 +510,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: Tag::Node(NodeTag::NodeDescription),
+                property: Tag::Node(String::from("node.description")),
                 value: String::from("Node name"),
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
@@ -540,7 +529,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: Tag::Node(NodeTag::NodeName),
+                property: Tag::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec![],
             }],

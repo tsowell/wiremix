@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::capture_manager::CaptureManager;
 use crate::event::MonitorEvent;
-use crate::media_class::MediaClass;
+use crate::monitor::PropertyStore;
 use crate::object::ObjectId;
 
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub struct Profile {
     pub index: i32,
     pub description: String,
     pub available: bool,
-    pub classes: Vec<(MediaClass, Vec<i32>)>,
+    pub classes: Vec<(String, Vec<i32>)>,
 }
 
 #[derive(Debug)]
@@ -38,11 +38,7 @@ pub struct Route {
 #[derive(Default, Debug)]
 pub struct Device {
     pub id: ObjectId,
-    pub object_serial: Option<i32>,
-    pub name: Option<String>,
-    pub nick: Option<String>,
-    pub description: Option<String>,
-    pub media_class: Option<MediaClass>,
+    pub props: PropertyStore,
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
     pub routes: HashMap<i32, Route>,
@@ -52,27 +48,18 @@ pub struct Device {
 #[derive(Default, Debug)]
 pub struct Client {
     pub id: ObjectId,
-    pub application_name: Option<String>,
-    pub application_process_binary: Option<String>,
+    pub props: PropertyStore,
 }
 
 #[derive(Default, Debug)]
 pub struct Node {
     pub id: ObjectId,
-    pub name: Option<String>,
-    pub nick: Option<String>,
-    pub description: Option<String>,
-    pub media_class: Option<MediaClass>,
-    pub media_name: Option<String>,
-    pub object_serial: Option<i32>,
+    pub props: PropertyStore,
     pub volumes: Option<Vec<f32>>,
     pub mute: Option<bool>,
     pub peaks: Option<Vec<f32>>,
     pub rate: Option<u32>,
     pub positions: Option<Vec<u32>>,
-    pub device_id: Option<ObjectId>,
-    pub client_id: Option<ObjectId>,
-    pub card_profile_device: Option<i32>,
 }
 
 impl Node {
@@ -172,20 +159,11 @@ impl State {
 
         // Update
         match event {
-            MonitorEvent::DeviceDescription(id, description) => {
-                self.device_entry(id).description = Some(description);
+            MonitorEvent::ClientProperties(id, props) => {
+                self.client_entry(id).props = props;
             }
-            MonitorEvent::DeviceMediaClass(id, media_class) => {
-                self.device_entry(id).media_class = Some(media_class);
-            }
-            MonitorEvent::DeviceName(id, name) => {
-                self.device_entry(id).name = Some(name);
-            }
-            MonitorEvent::DeviceNick(id, nick) => {
-                self.device_entry(id).nick = Some(nick);
-            }
-            MonitorEvent::DeviceObjectSerial(id, object_serial) => {
-                self.device_entry(id).object_serial = Some(object_serial);
+            MonitorEvent::DeviceProperties(id, props) => {
+                self.device_entry(id).props = props;
             }
             MonitorEvent::DeviceEnumProfile(
                 id,
@@ -249,54 +227,15 @@ impl State {
                     },
                 );
             }
-            MonitorEvent::ClientApplicationName(id, application_name) => {
-                self.client_entry(id).application_name = Some(application_name);
-            }
-            MonitorEvent::ClientApplicationProcessBinary(
-                id,
-                application_process_binary,
-            ) => {
-                self.client_entry(id).application_process_binary =
-                    Some(application_process_binary);
-            }
-            MonitorEvent::NodeCardProfileDevice(id, card_profile_device) => {
-                self.node_entry(id).card_profile_device =
-                    Some(card_profile_device);
-            }
-            MonitorEvent::NodeClientId(id, client_id) => {
-                self.node_entry(id).client_id = Some(client_id);
-            }
-            MonitorEvent::NodeDescription(id, description) => {
-                self.node_entry(id).description = Some(description);
-            }
-            MonitorEvent::NodeDeviceId(id, device_id) => {
-                self.node_entry(id).device_id = Some(device_id);
-            }
-            MonitorEvent::NodeMediaClass(id, media_class) => {
-                self.node_entry(id).media_class = Some(media_class.clone());
+            MonitorEvent::NodeProperties(id, props) => {
+                self.node_entry(id).props = props;
 
                 if let Some(node) = self.nodes.get(&id) {
                     capture_manager.on_node(node);
                 }
-            }
-            MonitorEvent::NodeMediaName(id, media_name) => {
-                self.node_entry(id).media_name = Some(media_name);
             }
             MonitorEvent::NodeMute(id, mute) => {
                 self.node_entry(id).mute = Some(mute);
-            }
-            MonitorEvent::NodeName(id, name) => {
-                self.node_entry(id).name = Some(name);
-            }
-            MonitorEvent::NodeNick(id, nick) => {
-                self.node_entry(id).nick = Some(nick);
-            }
-            MonitorEvent::NodeObjectSerial(id, object_serial) => {
-                self.node_entry(id).object_serial = Some(object_serial);
-
-                if let Some(node) = self.nodes.get(&id) {
-                    capture_manager.on_node(node);
-                }
             }
             MonitorEvent::NodePeaks(id, peaks, samples) => {
                 self.node_entry(id).update_peaks(&peaks, samples);

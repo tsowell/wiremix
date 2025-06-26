@@ -135,19 +135,10 @@ keybindings = [
 # wiremix will replace the property tags with the properties from the PipeWire
 # object being displayed.
 #
-# The first part of a tag specifies the object type - device or node, and the
-# second part specifies the property.
+# The first part of a tag specifies the object type - device, node, or client,
+# and the second part specifies the property.
 #
-# Available node properties:
-#   node.name node.nick node.description media.name
-# Available client properties:
-#   application.name application.process.binary
-# Available device properties:
-#   device.name device.nick device.description
-#
-# You can use pw-dump(1) to inspect these properties. If there are useful
-# properties that aren't in the above lists, please create an issue or PR on
-# GitHub.
+# You can use pw-dump(1) to inspect the available properties.
 #
 # Literal curly braces can be escaped by doubling them: {{ become { and }}
 # becomes }.
@@ -155,8 +146,8 @@ keybindings = [
 # Streams can have linked clients, so node and client properties are valid for
 # stream. Similarly, endpoint can use either node or device properties. Only
 # device properties are valid for device.
-
 #
+
 # Each option in names is an array - if a tempalte can't be resolved because it
 # uses a property which doesn't exit on a given object, wiremix tries the next
 # template in the sequence. If none of them can be resolved, it falls back on

@@ -13,8 +13,7 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
-use crate::media_class::MediaClass;
-use crate::monitor::{deserialize::deserialize, EventSender};
+use crate::monitor::{deserialize::deserialize, EventSender, PropertyStore};
 use crate::object::ObjectId;
 
 pub fn monitor_device(
@@ -30,11 +29,6 @@ pub fn monitor_device(
         "Audio/Device" => (),
         _ => return None,
     }
-
-    sender.send(MonitorEvent::DeviceMediaClass(
-        obj_id,
-        MediaClass::from(media_class),
-    ));
 
     let device: Device = registry.bind(obj).ok()?;
     let device = Rc::new(device);
@@ -235,12 +229,12 @@ fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     None
 }
 
-fn parse_class(value: &Value) -> Option<(MediaClass, Vec<i32>)> {
+fn parse_class(value: &Value) -> Option<(String, Vec<i32>)> {
     if let Value::Struct(class) = value {
         if let [Value::String(name), _, _, Value::ValueArray(ValueArray::Int(devices))] =
             class.as_slice()
         {
-            return Some((MediaClass::from(name.as_str()), devices.clone()));
+            return Some((name.clone(), devices.clone()));
         }
     }
 
@@ -308,24 +302,6 @@ fn device_info_props(
         return;
     };
 
-    if let Some(device_name) = props.get("device.name") {
-        sender.send(MonitorEvent::DeviceName(id, String::from(device_name)));
-    }
-
-    if let Some(device_nick) = props.get("device.nick") {
-        sender.send(MonitorEvent::DeviceNick(id, String::from(device_nick)));
-    }
-
-    if let Some(device_description) = props.get("device.description") {
-        sender.send(MonitorEvent::DeviceDescription(
-            id,
-            String::from(device_description),
-        ));
-    }
-
-    if let Some(object_serial) = props.get("object.serial") {
-        if let Ok(object_serial) = object_serial.parse() {
-            sender.send(MonitorEvent::DeviceObjectSerial(id, object_serial));
-        }
-    }
+    let property_store = PropertyStore::from(props);
+    sender.send(MonitorEvent::DeviceProperties(id, property_store));
 }

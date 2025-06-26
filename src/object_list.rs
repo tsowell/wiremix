@@ -511,7 +511,7 @@ mod tests {
     use crate::capture_manager::CaptureManager;
     use crate::config;
     use crate::event::MonitorEvent;
-    use crate::media_class::MediaClass;
+    use crate::monitor::PropertyStore;
     use crate::state::State;
     use crate::view::{ListKind, NodeKind, View};
 
@@ -521,18 +521,16 @@ mod tests {
 
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
+            let mut props = PropertyStore::default();
+            props.set_node_description(String::from("Test node"));
+            props.set_media_class(String::from("Stream/Output/Audio"));
+            props.set_media_name(String::from("Media name"));
+            props.set_node_name(String::from("Node name"));
+            props.set_object_serial(i as u64);
+            let props = props;
+
             let events = vec![
-                MonitorEvent::NodeDescription(
-                    obj_id,
-                    String::from("Test node"),
-                ),
-                MonitorEvent::NodeMediaClass(
-                    obj_id,
-                    MediaClass::from("Stream/Output/Audio"),
-                ),
-                MonitorEvent::NodeMediaName(obj_id, String::from("Media name")),
-                MonitorEvent::NodeName(obj_id, String::from("Node name")),
-                MonitorEvent::NodeObjectSerial(obj_id, i as i32),
+                MonitorEvent::NodeProperties(obj_id, props),
                 MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
                 MonitorEvent::NodePositions(obj_id, vec![0, 1]),
                 MonitorEvent::NodeRate(obj_id, 44100),

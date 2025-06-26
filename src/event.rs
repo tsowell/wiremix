@@ -5,38 +5,25 @@
 
 use pipewire::link::LinkInfoRef;
 
-use crate::media_class::MediaClass;
+use crate::monitor::PropertyStore;
 use crate::object::ObjectId;
 
 #[derive(Debug)]
 pub enum MonitorEvent {
-    DeviceDescription(ObjectId, String),
     DeviceEnumRoute(ObjectId, i32, String, bool, Vec<i32>, Vec<i32>),
-    DeviceMediaClass(ObjectId, MediaClass),
-    DeviceName(ObjectId, String),
-    DeviceNick(ObjectId, String),
-    DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(MediaClass, Vec<i32>)>),
+    DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(String, Vec<i32>)>),
     DeviceProfile(ObjectId, i32),
+    DeviceProperties(ObjectId, PropertyStore),
     DeviceRoute(ObjectId, i32, i32, Vec<i32>, String, bool, Vec<f32>, bool),
-    DeviceObjectSerial(ObjectId, i32),
 
     MetadataMetadataName(ObjectId, String),
     MetadataProperty(ObjectId, u32, Option<String>, Option<String>),
 
-    ClientApplicationName(ObjectId, String),
-    ClientApplicationProcessBinary(ObjectId, String),
+    ClientProperties(ObjectId, PropertyStore),
 
-    NodeCardProfileDevice(ObjectId, i32),
-    NodeClientId(ObjectId, ObjectId),
-    NodeDescription(ObjectId, String),
-    NodeDeviceId(ObjectId, ObjectId),
-    NodeMediaClass(ObjectId, MediaClass),
-    NodeMediaName(ObjectId, String),
-    NodeName(ObjectId, String),
-    NodeNick(ObjectId, String),
-    NodeObjectSerial(ObjectId, i32),
     NodePeaks(ObjectId, Vec<f32>, u32),
     NodePositions(ObjectId, Vec<u32>),
+    NodeProperties(ObjectId, PropertyStore),
     NodeRate(ObjectId, u32),
     NodeVolumes(ObjectId, Vec<f32>),
     NodeMute(ObjectId, bool),

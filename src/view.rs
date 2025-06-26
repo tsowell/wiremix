@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::command::Command;
 use crate::config;
 use crate::device_kind::DeviceKind;
-use crate::media_class::MediaClass;
+use crate::media_class;
 use crate::object::ObjectId;
 use crate::state;
 
@@ -62,11 +62,11 @@ pub enum Target {
 #[derive(Debug)]
 pub struct Node {
     pub id: ObjectId,
-    pub object_serial: i32,
+    pub object_serial: u64,
     pub name: String,
     pub title: String,
     pub title_source_sink: Option<String>,
-    pub media_class: MediaClass,
+    pub media_class: String,
 
     pub routes: Option<Vec<(Target, String)>>,
 
@@ -92,7 +92,7 @@ pub struct Node {
 #[derive(Debug)]
 pub struct Device {
     pub id: ObjectId,
-    pub object_serial: i32,
+    pub object_serial: u64,
     pub title: String,
 
     pub profiles: Vec<(Target, String)>,
@@ -140,7 +140,7 @@ impl ListKind {
 /// given media class.
 fn route_targets(
     device: &state::Device,
-    media_class: &MediaClass,
+    media_class: &String,
 ) -> Option<Vec<(Target, String)>> {
     let profile_index = device.profile_index?;
     let profile = device.profiles.get(&profile_index)?;
@@ -201,23 +201,23 @@ impl Node {
     ) -> Option<Node> {
         let id = node.id;
 
-        let media_class = node.media_class.as_ref()?.clone();
+        let media_class = node.props.media_class()?.clone();
         let title = names.resolve(state, node)?;
 
         // Nodes can represent either streams or devices.
         let (volumes, mute, device_info) =
-            if let Some(device_id) = node.device_id {
+            if let Some(device_id) = node.props.device_id() {
                 // Nodes for devices should get their volume and mute status
                 // from the associated device's active route which is also used
                 // for changing the volume and mute status.
-                let device = state.devices.get(&device_id)?;
-                let card_device = node.card_profile_device?;
+                let device = state.devices.get(device_id)?;
+                let card_device = *node.props.card_profile_device()?;
                 if let Some(route) = active_route(device, card_device) {
                     let route_index = route.index;
                     (
                         route.volumes.clone(),
                         route.mute,
-                        Some((device_id, route_index, card_device)),
+                        Some((*device_id, route_index, card_device)),
                     )
                 } else {
                     (node.volumes.as_ref()?.clone(), node.mute?, None)
@@ -229,11 +229,11 @@ impl Node {
             };
 
         let (routes, target, target_title) = if let Some(device_id) =
-            node.device_id
+            node.props.device_id()
         {
             // Targets for device nodes are routes for the associated device.
-            let device = state.devices.get(&device_id)?;
-            let card_device = node.card_profile_device?;
+            let device = state.devices.get(device_id)?;
+            let card_device = *node.props.card_profile_device()?;
 
             let mut routes: Vec<_> =
                 route_targets(device, &media_class).unwrap_or_default();
@@ -261,7 +261,7 @@ impl Node {
             };
 
             (Some(routes), target, target_title)
-        } else if media_class.is_sink_input() {
+        } else if media_class::is_sink_input(&media_class) {
             // Targets for output streams are sinks.
             let outputs = state.outputs(id);
             let sink = sinks.iter().find(|(target, _)| {
@@ -281,7 +281,7 @@ impl Node {
                 )
             };
             (None, target, target_title)
-        } else if media_class.is_source_output() {
+        } else if media_class::is_source_output(&media_class) {
             // Targets for input streams are sources.
             let inputs = state.inputs(id);
             let source = sources.iter().find(|(target, _)| {
@@ -308,10 +308,10 @@ impl Node {
 
         Some(Self {
             id,
-            object_serial: node.object_serial?,
-            name: node.name.as_ref()?.clone(),
+            object_serial: *node.props.object_serial()?,
+            name: node.props.node_name()?.clone(),
             title,
-            title_source_sink: node.media_name.clone(),
+            title_source_sink: node.props.media_name().cloned(),
             media_class,
             routes,
             target,
@@ -321,8 +321,10 @@ impl Node {
             peaks: node.peaks.clone(),
             positions: node.positions.clone(),
             device_info,
-            is_default_sink: *default_sink_name == node.name,
-            is_default_source: *default_source_name == node.name,
+            is_default_sink: default_sink_name.as_ref()
+                == node.props.node_name(),
+            is_default_source: default_source_name.as_ref()
+                == node.props.node_name(),
         })
     }
 }
@@ -364,9 +366,11 @@ impl Device {
 
         let target = Some(Target::Profile(id, device.profile_index?));
 
+        let object_serial = *device.props.object_serial()?;
+
         Some(Device {
             id,
-            object_serial: device.object_serial?,
+            object_serial,
             title,
             profiles,
             target_title,
@@ -419,7 +423,9 @@ impl View {
                 state
                     .nodes
                     .values()
-                    .find(|node| node.name.as_ref() == Some(default_sink_name))
+                    .find(|node| {
+                        node.props.node_name() == Some(default_sink_name)
+                    })
                     .map(|node| Target::Node(node.id))
             });
 
@@ -431,7 +437,7 @@ impl View {
                         .nodes
                         .values()
                         .find(|node| {
-                            node.name.as_ref() == Some(default_source_name)
+                            node.props.node_name() == Some(default_source_name)
                         })
                         .map(|node| Target::Node(node.id))
                 });
@@ -440,7 +446,7 @@ impl View {
             .nodes
             .values()
             .filter_map(|node| {
-                if node.media_class.as_ref()?.is_sink() {
+                if media_class::is_sink(node.props.media_class()?) {
                     Some((Target::Node(node.id), names.resolve(state, node)?))
                 } else {
                     None
@@ -454,10 +460,10 @@ impl View {
             .nodes
             .values()
             .filter_map(|node| {
-                if node.media_class.as_ref()?.is_source() {
+                if media_class::is_source(node.props.media_class()?) {
                     let title = names.resolve(state, node)?;
                     Some((Target::Node(node.id), title))
-                } else if node.media_class.as_ref()?.is_sink() {
+                } else if media_class::is_sink(node.props.media_class()?) {
                     let title = names.resolve(state, node)?;
                     Some((Target::Node(node.id), format!("Monitor of {title}")))
                 } else {
@@ -501,16 +507,16 @@ impl View {
             nodes.iter().sorted_by_key(|(_, node)| node.object_serial)
         {
             nodes_all.push(*id);
-            if node.media_class.is_sink_input() {
+            if media_class::is_sink_input(&node.media_class) {
                 nodes_playback.push(*id);
             }
-            if node.media_class.is_source_output() {
+            if media_class::is_source_output(&node.media_class) {
                 nodes_recording.push(*id);
             }
-            if node.media_class.is_sink() {
+            if media_class::is_sink(&node.media_class) {
                 nodes_output.push(*id);
             }
-            if node.media_class.is_source() {
+            if media_class::is_source(&node.media_class) {
                 nodes_input.push(*id);
             }
         }
@@ -783,9 +789,9 @@ impl View {
         // Get the target list appropriate to the node type
         let (mut targets, default) = if let Some(routes) = &node.routes {
             (routes.clone(), None)
-        } else if node.media_class.is_sink_input() {
+        } else if media_class::is_sink_input(&node.media_class) {
             (self.sinks.clone(), self.default_sink)
-        } else if node.media_class.is_source_output() {
+        } else if media_class::is_source_output(&node.media_class) {
             (self.sources.clone(), self.default_source)
         } else {
             (Vec::new(), None)
@@ -802,8 +808,8 @@ impl View {
         // Sort targets by name
         targets.sort_by(|(_, a), (_, b)| a.cmp(b));
         // If the targets are nodes, add the default node to the top
-        if node.media_class.is_sink_input()
-            || node.media_class.is_source_output()
+        if media_class::is_sink_input(&node.media_class)
+            || media_class::is_source_output(&node.media_class)
         {
             targets.insert(0, (Target::Default, default_name.clone()));
         };

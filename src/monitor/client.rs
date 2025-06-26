@@ -9,7 +9,7 @@ use pipewire::{
 use libspa::utils::dict::DictRef;
 
 use crate::event::MonitorEvent;
-use crate::monitor::EventSender;
+use crate::monitor::{EventSender, PropertyStore};
 use crate::object::ObjectId;
 
 pub fn monitor_client(
@@ -51,19 +51,6 @@ fn client_info_props(
         return;
     };
 
-    if let Some(application_name) = props.get("application.name") {
-        sender.send(MonitorEvent::ClientApplicationName(
-            id,
-            String::from(application_name),
-        ));
-    }
-
-    if let Some(application_process_binary) =
-        props.get("application.process.binary")
-    {
-        sender.send(MonitorEvent::ClientApplicationProcessBinary(
-            id,
-            String::from(application_process_binary),
-        ));
-    }
+    let property_store = PropertyStore::from(props);
+    sender.send(MonitorEvent::ClientProperties(id, property_store));
 }

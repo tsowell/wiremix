@@ -13,8 +13,7 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
-use crate::media_class::MediaClass;
-use crate::monitor::{deserialize::deserialize, EventSender};
+use crate::monitor::{deserialize::deserialize, EventSender, PropertyStore};
 use crate::object::ObjectId;
 
 pub fn monitor_node(
@@ -42,11 +41,6 @@ pub fn monitor_node(
         Some("ncpamixer") => return None,
         _ => (),
     }
-
-    sender.send(MonitorEvent::NodeMediaClass(
-        obj_id,
-        MediaClass::from(media_class),
-    ));
 
     let node: Node = registry.bind(obj).ok()?;
     let node = Rc::new(node);
@@ -100,57 +94,8 @@ fn node_info_props(
         return;
     };
 
-    if let Some(node_name) = props.get("node.name") {
-        sender.send(MonitorEvent::NodeName(id, String::from(node_name)));
-    }
-
-    if let Some(node_nick) = props.get("node.nick") {
-        sender.send(MonitorEvent::NodeNick(id, String::from(node_nick)));
-    }
-
-    if let Some(node_description) = props.get("node.description") {
-        sender.send(MonitorEvent::NodeDescription(
-            id,
-            String::from(node_description),
-        ));
-    }
-
-    if let Some(media_name) = props.get("media.name") {
-        sender.send(MonitorEvent::NodeMediaName(id, String::from(media_name)));
-    }
-
-    if let Some(device_id) = props.get("device.id") {
-        if let Ok(device_id) = device_id.parse() {
-            sender.send(MonitorEvent::NodeDeviceId(
-                id,
-                ObjectId::from_raw_id(device_id),
-            ));
-        }
-    }
-
-    if let Some(client_id) = props.get("client.id") {
-        if let Ok(client_id) = client_id.parse() {
-            sender.send(MonitorEvent::NodeClientId(
-                id,
-                ObjectId::from_raw_id(client_id),
-            ));
-        }
-    }
-
-    if let Some(object_serial) = props.get("object.serial") {
-        if let Ok(object_serial) = object_serial.parse() {
-            sender.send(MonitorEvent::NodeObjectSerial(id, object_serial));
-        }
-    }
-
-    if let Some(card_profile_device) = props.get("card.profile.device") {
-        if let Ok(card_profile_device) = card_profile_device.parse() {
-            sender.send(MonitorEvent::NodeCardProfileDevice(
-                id,
-                card_profile_device,
-            ));
-        }
-    }
+    let property_store = PropertyStore::from(props);
+    sender.send(MonitorEvent::NodeProperties(id, property_store));
 }
 
 fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {

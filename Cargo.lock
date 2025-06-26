@@ -2268,6 +2268,7 @@ dependencies = [
  "libspa-sys",
  "log",
  "nix 0.29.0",
+ "paste",
  "pipewire",
  "ratatui",
  "regex",

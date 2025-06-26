@@ -10,10 +10,13 @@ mod execute;
 mod link;
 mod metadata;
 mod node;
+mod property_store;
 mod proxy_registry;
 mod stream;
 mod stream_registry;
 mod sync_registry;
+
+pub use property_store::PropertyStore;
 
 use anyhow::Result;
 use std::cell::RefCell;

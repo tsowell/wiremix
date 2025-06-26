@@ -784,7 +784,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::media_class::MediaClass;
+    use crate::monitor::PropertyStore;
     use strum::IntoEnumIterator;
 
     fn fixture() -> App {
@@ -810,15 +810,15 @@ mod tests {
 
         // Create a node for testing
         let obj_id = ObjectId::from_raw_id(0);
+        let mut node_props = PropertyStore::default();
+        node_props.set_node_description(String::from("Test node"));
+        node_props.set_media_class(String::from("Stream/Output/Audio"));
+        node_props.set_media_name(String::from("Media name"));
+        node_props.set_node_name(String::from("Node name"));
+        node_props.set_object_serial(0);
+        let node_props = node_props;
         let events = vec![
-            MonitorEvent::NodeDescription(obj_id, String::from("Test node")),
-            MonitorEvent::NodeMediaClass(
-                obj_id,
-                MediaClass::from("Stream/Output/Audio"),
-            ),
-            MonitorEvent::NodeMediaName(obj_id, String::from("Media name")),
-            MonitorEvent::NodeName(obj_id, String::from("Node name")),
-            MonitorEvent::NodeObjectSerial(obj_id, 0),
+            MonitorEvent::NodeProperties(obj_id, node_props),
             MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
             MonitorEvent::NodePositions(obj_id, vec![0, 1]),
             MonitorEvent::NodeRate(obj_id, 44100),

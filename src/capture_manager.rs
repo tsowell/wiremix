@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use crate::command::Command;
+use crate::media_class;
 use crate::object::ObjectId;
 use crate::state::Node;
 
@@ -19,15 +20,20 @@ pub struct CaptureManager {
 impl CaptureManager {
     /// Call when a node's capture eligibility might have changed.
     pub fn on_node(&mut self, node: &Node) {
-        if !node.media_class.as_ref().is_some_and(|media_class| {
-            media_class.is_source()
-                || media_class.is_sink_input()
-                || media_class.is_source_output()
-        }) {
+        if !node
+            .props
+            .media_class()
+            .as_ref()
+            .is_some_and(|media_class| {
+                media_class::is_source(media_class)
+                    || media_class::is_sink_input(media_class)
+                    || media_class::is_source_output(media_class)
+            })
+        {
             return;
         }
 
-        if node.object_serial.is_none() {
+        if node.props.object_serial().is_none() {
             return;
         }
 
@@ -41,12 +47,17 @@ impl CaptureManager {
 
     /// Call when a node gets a new input link.
     pub fn on_link(&mut self, node: &Node) {
-        if !node.media_class.as_ref().is_some_and(|media_class| {
-            media_class.is_sink()
-                || media_class.is_source()
-                || media_class.is_sink_input()
-                || media_class.is_source_output()
-        }) {
+        if !node
+            .props
+            .media_class()
+            .as_ref()
+            .is_some_and(|media_class| {
+                media_class::is_sink(media_class)
+                    || media_class::is_source(media_class)
+                    || media_class::is_sink_input(media_class)
+                    || media_class::is_source_output(media_class)
+            })
+        {
             return;
         }
 
@@ -71,17 +82,21 @@ impl CaptureManager {
     }
 
     fn start_capture_command(&mut self, node: &Node) -> Option<Command> {
-        let object_serial = &node.object_serial?;
+        let object_serial = *node.props.object_serial()?;
         let capture_sink =
-            node.media_class.as_ref().is_some_and(|media_class| {
-                media_class.is_sink() || media_class.is_source()
-            });
+            node.props
+                .media_class()
+                .as_ref()
+                .is_some_and(|media_class| {
+                    media_class::is_sink(media_class)
+                        || media_class::is_source(media_class)
+                });
 
         self.capturing.insert(node.id);
 
         Some(Command::NodeCaptureStart(
             node.id,
-            *object_serial,
+            object_serial,
             capture_sink,
         ))
     }

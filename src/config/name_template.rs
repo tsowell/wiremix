@@ -120,7 +120,6 @@ impl NameTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::tag::{DeviceTag, NodeTag, Tag};
 
     #[test]
     fn no_tags() {
@@ -145,7 +144,7 @@ mod tests {
             NameTemplate {
                 parts: vec![
                     Part::Literal(String::from("Hello ")),
-                    Part::Tag(Tag::Node(NodeTag::NodeName)),
+                    Part::Tag(Tag::Node(String::from("node.name"))),
                 ],
             }
         );
@@ -168,7 +167,7 @@ mod tests {
             NameTemplate {
                 parts: vec![
                     Part::Literal(String::from("Hello } { { ")),
-                    Part::Tag(Tag::Node(NodeTag::NodeName)),
+                    Part::Tag(Tag::Node(String::from("node.name"))),
                     Part::Literal(String::from(" }")),
                 ],
             }
@@ -224,8 +223,10 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(NodeTag::NodeName) => Some(String::from("foo")),
-            Tag::Device(DeviceTag::DeviceName) => Some(String::from("bar")),
+            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
+            Tag::Device(ref s) if s == "device.name" => {
+                Some(String::from("bar"))
+            }
             _ => None,
         });
         assert_eq!(rendered, Some(String::from("foobar")));
@@ -237,7 +238,7 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(NodeTag::NodeName) => Some(String::from("foo")),
+            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
             _ => None,
         });
         assert_eq!(rendered, None)
@@ -249,8 +250,10 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(NodeTag::NodeName) => Some(String::from("foo")),
-            Tag::Device(DeviceTag::DeviceName) => Some(String::from("bar")),
+            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
+            Tag::Device(ref s) if s == "device.name" => {
+                Some(String::from("bar"))
+            }
             _ => None,
         });
         assert_eq!(rendered, Some(String::from("let foo = bar;")));
