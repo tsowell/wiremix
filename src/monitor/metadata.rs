@@ -8,7 +8,7 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{EventSender, ObjectId};
 
 pub fn monitor_metadata(
@@ -24,7 +24,7 @@ pub fn monitor_metadata(
         return None;
     }
 
-    sender.send(MonitorEvent::MetadataMetadataName(
+    sender.send(StateEvent::MetadataMetadataName(
         obj_id,
         String::from(metadata_name),
     ));
@@ -41,7 +41,7 @@ pub fn monitor_metadata(
                     return 0;
                 };
 
-                sender.send(MonitorEvent::MetadataProperty(
+                sender.send(StateEvent::MetadataProperty(
                     obj_id,
                     subject,
                     key.map(String::from),

@@ -14,7 +14,7 @@ use libspa::{
     pod::{Object, Pod},
 };
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{EventSender, ObjectId};
 
 #[derive(Default)]
@@ -79,7 +79,7 @@ pub fn capture_node(
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
                 };
-                sender.send(MonitorEvent::NodeRate(
+                sender.send(StateEvent::NodeRate(
                     obj_id,
                     user_data.format.rate(),
                 ));
@@ -121,9 +121,8 @@ pub fn capture_node(
 
                         peaks.push(max);
                     }
-                    sender.send(MonitorEvent::NodePeaks(
-                        obj_id, peaks, n_samples,
-                    ));
+                    sender
+                        .send(StateEvent::NodePeaks(obj_id, peaks, n_samples));
                     user_data.cursor_move = true;
                 }
             }

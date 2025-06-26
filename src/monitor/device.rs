@@ -12,7 +12,7 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{
     deserialize::deserialize, EventSender, ObjectId, PropertyStore,
 };
@@ -94,7 +94,7 @@ pub fn monitor_device(
     Some((device, Box::new(listener)))
 }
 
-fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+fn device_enum_route(id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
@@ -133,7 +133,7 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         }
     }
 
-    Some(MonitorEvent::DeviceEnumRoute(
+    Some(StateEvent::DeviceEnumRoute(
         id,
         index?,
         description?,
@@ -143,7 +143,7 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     ))
 }
 
-fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+fn device_route(id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut device = None;
     let mut profiles = None;
@@ -206,7 +206,7 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         }
     }
 
-    Some(MonitorEvent::DeviceRoute(
+    Some(StateEvent::DeviceRoute(
         id,
         index?,
         device?,
@@ -218,11 +218,11 @@ fn device_route(id: ObjectId, param: Object) -> Option<MonitorEvent> {
     ))
 }
 
-fn device_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+fn device_profile(id: ObjectId, param: Object) -> Option<StateEvent> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                return Some(MonitorEvent::DeviceProfile(id, value));
+                return Some(StateEvent::DeviceProfile(id, value));
             }
         }
     }
@@ -242,7 +242,7 @@ fn parse_class(value: &Value) -> Option<(String, Vec<i32>)> {
     None
 }
 
-fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
+fn device_enum_profile(id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
@@ -285,7 +285,7 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<MonitorEvent> {
         }
     }
 
-    Some(MonitorEvent::DeviceEnumProfile(
+    Some(StateEvent::DeviceEnumProfile(
         id,
         index?,
         description?,
@@ -304,5 +304,5 @@ fn device_info_props(
     };
 
     let property_store = PropertyStore::from(props);
-    sender.send(MonitorEvent::DeviceProperties(id, property_store));
+    sender.send(StateEvent::DeviceProperties(id, property_store));
 }

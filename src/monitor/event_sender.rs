@@ -2,7 +2,7 @@ use std::sync::{mpsc, Arc};
 
 use pipewire::main_loop::WeakMainLoop;
 
-use crate::monitor::{Event, MonitorEvent};
+use crate::event::{Event, MonitorEvent, StateEvent};
 
 pub struct EventSender {
     tx: Arc<mpsc::Sender<Event>>,
@@ -17,8 +17,12 @@ impl EventSender {
         Self { tx, main_loop_weak }
     }
 
-    pub fn send(&self, event: MonitorEvent) {
-        if self.tx.send(Event::Monitor(event)).is_err() {
+    pub fn send(&self, event: StateEvent) {
+        if self
+            .tx
+            .send(Event::Monitor(MonitorEvent::State(event)))
+            .is_err()
+        {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }
@@ -26,7 +30,7 @@ impl EventSender {
     }
 
     pub fn send_ready(&self) {
-        if self.tx.send(Event::Ready).is_err() {
+        if self.tx.send(Event::Monitor(MonitorEvent::Ready)).is_err() {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }
@@ -34,7 +38,11 @@ impl EventSender {
     }
 
     pub fn send_error(&self, error: String) {
-        if self.tx.send(Event::Error(error)).is_err() {
+        if self
+            .tx
+            .send(Event::Monitor(MonitorEvent::Error(error)))
+            .is_err()
+        {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }

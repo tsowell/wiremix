@@ -35,7 +35,7 @@ use pipewire::{
 };
 
 use crate::command::Command;
-use crate::event::{Event, MonitorEvent};
+use crate::event::{Event, StateEvent};
 use crate::monitor::{
     event_sender::EventSender, proxy_registry::ProxyRegistry,
     stream_registry::StreamRegistry, sync_registry::SyncRegistry,
@@ -208,7 +208,7 @@ fn monitor_pipewire(
                 let collected = streams.borrow_mut().collect_garbage();
                 if let Some(sender) = sender_weak.upgrade() {
                     for id in collected {
-                        sender.send(MonitorEvent::StreamStopped(id));
+                        sender.send(StateEvent::StreamStopped(id));
                     }
                 }
             }
@@ -337,7 +337,7 @@ fn monitor_pipewire(
                     .add_listener_local()
                     .removed(move || {
                         if let Some(sender) = sender_weak.upgrade() {
-                            sender.send(MonitorEvent::Removed(obj_id));
+                            sender.send(StateEvent::Removed(obj_id));
                         };
                         if let Some(proxies) = proxies_weak.upgrade() {
                             proxies.borrow_mut().remove(obj_id);

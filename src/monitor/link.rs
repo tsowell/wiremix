@@ -8,7 +8,7 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::EventSender;
 
 pub fn monitor_link(
@@ -41,5 +41,5 @@ pub fn monitor_link(
 
 fn link_info_props(sender: &EventSender, link_info: &LinkInfoRef) {
     // Ignore props and get the nodes directly from the link info.
-    sender.send(MonitorEvent::from(link_info));
+    sender.send(StateEvent::from(link_info));
 }

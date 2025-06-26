@@ -8,7 +8,7 @@ use pipewire::link::LinkInfoRef;
 use crate::monitor::{ObjectId, PropertyStore};
 
 #[derive(Debug)]
-pub enum MonitorEvent {
+pub enum StateEvent {
     DeviceEnumRoute(ObjectId, i32, String, bool, Vec<i32>, Vec<i32>),
     DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(String, Vec<i32>)>),
     DeviceProfile(ObjectId, i32),
@@ -34,9 +34,16 @@ pub enum MonitorEvent {
     Removed(ObjectId),
 }
 
-impl From<&LinkInfoRef> for MonitorEvent {
+#[derive(Debug)]
+pub enum MonitorEvent {
+    State(StateEvent),
+    Error(String),
+    Ready,
+}
+
+impl From<&LinkInfoRef> for StateEvent {
     fn from(link_info: &LinkInfoRef) -> Self {
-        MonitorEvent::Link(
+        StateEvent::Link(
             ObjectId::from_raw_id(link_info.id()),
             ObjectId::from_raw_id(link_info.output_node_id()),
             ObjectId::from_raw_id(link_info.input_node_id()),
@@ -48,8 +55,6 @@ impl From<&LinkInfoRef> for MonitorEvent {
 pub enum Event {
     Input(crossterm::event::Event),
     Monitor(MonitorEvent),
-    Error(String),
-    Ready,
 }
 
 impl From<crossterm::event::Event> for Event {

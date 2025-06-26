@@ -8,7 +8,7 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{EventSender, ObjectId, PropertyStore};
 
 pub fn monitor_client(
@@ -51,5 +51,5 @@ fn client_info_props(
     };
 
     let property_store = PropertyStore::from(props);
-    sender.send(MonitorEvent::ClientProperties(id, property_store));
+    sender.send(StateEvent::ClientProperties(id, property_store));
 }

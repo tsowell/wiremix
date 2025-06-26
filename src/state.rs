@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::capture_manager::CaptureManager;
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{ObjectId, PropertyStore};
 
 #[derive(Debug)]
@@ -113,7 +113,7 @@ pub enum StateDirty {
 
 #[derive(Default, Debug)]
 /// PipeWire state, maintained from
-/// [`MonitorEvent`](`crate::event::MonitorEvent`)s from the
+/// [`StateEvent`](`crate::event::StateEvent`)s from the
 /// [`monitor`](`crate::monitor`) module.
 ///
 /// This is primarily for maintaining a representation of the PipeWire state,
@@ -140,14 +140,14 @@ impl State {
     pub fn update(
         &mut self,
         capture_manager: &mut CaptureManager,
-        event: MonitorEvent,
+        event: StateEvent,
     ) {
         // Peaks updates are very frequent and easy to merge, so track if those
         // are the only updates done since the state was last Clean.
         match (self.dirty, &event) {
             (
                 StateDirty::Clean | StateDirty::PeaksOnly,
-                MonitorEvent::NodePeaks(..),
+                StateEvent::NodePeaks(..),
             ) => {
                 self.dirty = StateDirty::PeaksOnly;
             }
@@ -158,13 +158,13 @@ impl State {
 
         // Update
         match event {
-            MonitorEvent::ClientProperties(id, props) => {
+            StateEvent::ClientProperties(id, props) => {
                 self.client_entry(id).props = props;
             }
-            MonitorEvent::DeviceProperties(id, props) => {
+            StateEvent::DeviceProperties(id, props) => {
                 self.device_entry(id).props = props;
             }
-            MonitorEvent::DeviceEnumProfile(
+            StateEvent::DeviceEnumProfile(
                 id,
                 index,
                 description,
@@ -181,10 +181,10 @@ impl State {
                     },
                 );
             }
-            MonitorEvent::DeviceProfile(id, index) => {
+            StateEvent::DeviceProfile(id, index) => {
                 self.device_entry(id).profile_index = Some(index);
             }
-            MonitorEvent::DeviceRoute(
+            StateEvent::DeviceRoute(
                 id,
                 index,
                 device,
@@ -207,7 +207,7 @@ impl State {
                     },
                 );
             }
-            MonitorEvent::DeviceEnumRoute(
+            StateEvent::DeviceEnumRoute(
                 id,
                 index,
                 description,
@@ -226,23 +226,23 @@ impl State {
                     },
                 );
             }
-            MonitorEvent::NodeProperties(id, props) => {
+            StateEvent::NodeProperties(id, props) => {
                 self.node_entry(id).props = props;
 
                 if let Some(node) = self.nodes.get(&id) {
                     capture_manager.on_node(node);
                 }
             }
-            MonitorEvent::NodeMute(id, mute) => {
+            StateEvent::NodeMute(id, mute) => {
                 self.node_entry(id).mute = Some(mute);
             }
-            MonitorEvent::NodePeaks(id, peaks, samples) => {
+            StateEvent::NodePeaks(id, peaks, samples) => {
                 self.node_entry(id).update_peaks(&peaks, samples);
             }
-            MonitorEvent::NodeRate(id, rate) => {
+            StateEvent::NodeRate(id, rate) => {
                 self.node_entry(id).rate = Some(rate);
             }
-            MonitorEvent::NodePositions(id, positions) => {
+            StateEvent::NodePositions(id, positions) => {
                 if let Some(node) = self.nodes.get(&id) {
                     let changed = node
                         .positions
@@ -254,10 +254,10 @@ impl State {
                 }
                 self.node_entry(id).positions = Some(positions);
             }
-            MonitorEvent::NodeVolumes(id, volumes) => {
+            StateEvent::NodeVolumes(id, volumes) => {
                 self.node_entry(id).volumes = Some(volumes);
             }
-            MonitorEvent::Link(id, output, input) => {
+            StateEvent::Link(id, output, input) => {
                 if !self.inputs(input).contains(&output) {
                     if let Some(node) = self.nodes.get(&input) {
                         capture_manager.on_link(node);
@@ -266,12 +266,12 @@ impl State {
 
                 self.links.insert(id, Link { output, input });
             }
-            MonitorEvent::MetadataMetadataName(id, metadata_name) => {
+            StateEvent::MetadataMetadataName(id, metadata_name) => {
                 self.metadata_entry(id).metadata_name =
                     Some(metadata_name.clone());
                 self.metadatas_by_name.insert(metadata_name, id);
             }
-            MonitorEvent::MetadataProperty(id, subject, key, value) => {
+            StateEvent::MetadataProperty(id, subject, key, value) => {
                 let properties = self
                     .metadata_entry(id)
                     .properties
@@ -289,11 +289,11 @@ impl State {
                     None => properties.clear(),
                 };
             }
-            MonitorEvent::StreamStopped(id) => {
+            StateEvent::StreamStopped(id) => {
                 // It's likely that the node doesn't exist anymore.
                 self.nodes.entry(id).and_modify(|node| node.peaks = None);
             }
-            MonitorEvent::Removed(id) => {
+            StateEvent::Removed(id) => {
                 // Remove from links and stop capture if the last input link
                 if let Some(Link { input, .. }) = self.links.remove(&id) {
                     if self.inputs(input).len() == 1 {
@@ -385,7 +385,7 @@ mod tests {
         let metadata_name = String::from("metadata0");
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
         let metadata = state.metadatas.get(&obj_id).unwrap();
@@ -403,10 +403,10 @@ mod tests {
         let metadata_name = String::from("metadata0");
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
-        state.update(&mut capture_manager, MonitorEvent::Removed(obj_id));
+        state.update(&mut capture_manager, StateEvent::Removed(obj_id));
 
         assert!(!state.metadatas.contains_key(&obj_id));
         assert!(!state.metadatas_by_name.contains_key(&metadata_name));
@@ -435,7 +435,7 @@ mod tests {
         let metadata_name = String::from("metadata0");
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
         let key = String::from("key");
@@ -443,7 +443,7 @@ mod tests {
 
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(
+            StateEvent::MetadataProperty(
                 obj_id,
                 0,
                 Some(key.clone()),
@@ -452,7 +452,7 @@ mod tests {
         );
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(
+            StateEvent::MetadataProperty(
                 obj_id,
                 1,
                 Some(key.clone()),
@@ -470,7 +470,7 @@ mod tests {
 
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(obj_id, 0, Some(key.clone()), None),
+            StateEvent::MetadataProperty(obj_id, 0, Some(key.clone()), None),
         );
         assert_eq!(get_metadata_properties(&state, &obj_id, 0).get(&key), None);
         assert_eq!(
@@ -487,7 +487,7 @@ mod tests {
         let metadata_name = String::from("metadata0");
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
         let key = String::from("key");
@@ -495,7 +495,7 @@ mod tests {
 
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(
+            StateEvent::MetadataProperty(
                 obj_id,
                 0,
                 Some(key.clone()),
@@ -504,7 +504,7 @@ mod tests {
         );
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(
+            StateEvent::MetadataProperty(
                 obj_id,
                 1,
                 Some(key.clone()),
@@ -516,7 +516,7 @@ mod tests {
 
         state.update(
             &mut capture_manager,
-            MonitorEvent::MetadataProperty(obj_id, 0, None, None),
+            StateEvent::MetadataProperty(obj_id, 0, None, None),
         );
 
         assert!(get_metadata_properties(&state, &obj_id, 0).is_empty());

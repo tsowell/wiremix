@@ -205,7 +205,7 @@ mod tests {
     use super::*;
     use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
-    use crate::event::MonitorEvent;
+    use crate::event::StateEvent;
     use crate::monitor::{ObjectId, PropertyStore};
     use crate::state::State;
 
@@ -260,9 +260,9 @@ mod tests {
             let client_props = client_props;
 
             let events = vec![
-                MonitorEvent::DeviceProperties(device_id, device_props.clone()),
-                MonitorEvent::NodeProperties(node_id, node_props.clone()),
-                MonitorEvent::ClientProperties(client_id, client_props.clone()),
+                StateEvent::DeviceProperties(device_id, device_props.clone()),
+                StateEvent::NodeProperties(node_id, node_props.clone()),
+                StateEvent::ClientProperties(client_id, client_props.clone()),
             ];
 
             for event in events {
@@ -289,7 +289,7 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -311,7 +311,7 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -350,7 +350,7 @@ mod tests {
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -373,7 +373,7 @@ mod tests {
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -396,7 +396,7 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {
@@ -431,7 +431,7 @@ mod tests {
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
             &mut fixture.capture_manager,
-            MonitorEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
         let names = Names {

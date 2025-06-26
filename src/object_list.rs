@@ -510,7 +510,7 @@ mod tests {
     use super::*;
     use crate::capture_manager::CaptureManager;
     use crate::config;
-    use crate::event::MonitorEvent;
+    use crate::event::StateEvent;
     use crate::monitor::PropertyStore;
     use crate::state::State;
     use crate::view::{ListKind, NodeKind, View};
@@ -530,12 +530,12 @@ mod tests {
             let props = props;
 
             let events = vec![
-                MonitorEvent::NodeProperties(obj_id, props),
-                MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
-                MonitorEvent::NodePositions(obj_id, vec![0, 1]),
-                MonitorEvent::NodeRate(obj_id, 44100),
-                MonitorEvent::NodeVolumes(obj_id, vec![0.0, 0.0]),
-                MonitorEvent::NodeMute(obj_id, false),
+                StateEvent::NodeProperties(obj_id, props),
+                StateEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
+                StateEvent::NodePositions(obj_id, vec![0, 1]),
+                StateEvent::NodeRate(obj_id, 44100),
+                StateEvent::NodeVolumes(obj_id, vec![0.0, 0.0]),
+                StateEvent::NodeMute(obj_id, false),
             ];
             for event in events {
                 state.update(&mut capture_manager, event);

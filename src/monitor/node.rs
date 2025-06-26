@@ -12,7 +12,7 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::event::MonitorEvent;
+use crate::event::StateEvent;
 use crate::monitor::{
     deserialize::deserialize, EventSender, ObjectId, PropertyStore,
 };
@@ -96,7 +96,7 @@ fn node_info_props(
     };
 
     let property_store = PropertyStore::from(props);
-    sender.send(MonitorEvent::NodeProperties(id, property_store));
+    sender.send(StateEvent::NodeProperties(id, property_store));
 }
 
 fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {
@@ -105,12 +105,12 @@ fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {
             libspa_sys::SPA_PROP_channelVolumes => {
                 if let Value::ValueArray(ValueArray::Float(value)) = prop.value
                 {
-                    sender.send(MonitorEvent::NodeVolumes(id, value));
+                    sender.send(StateEvent::NodeVolumes(id, value));
                 }
             }
             libspa_sys::SPA_PROP_mute => {
                 if let Value::Bool(value) = prop.value {
-                    sender.send(MonitorEvent::NodeMute(id, value));
+                    sender.send(StateEvent::NodeMute(id, value));
                 }
             }
             _ => {}
@@ -143,5 +143,5 @@ fn node_param_port_config(sender: &EventSender, id: ObjectId, param: Object) {
     };
 
     let positions = value.into_iter().map(|x| x.0).collect();
-    sender.send(MonitorEvent::NodePositions(id, positions));
+    sender.send(StateEvent::NodePositions(id, positions));
 }

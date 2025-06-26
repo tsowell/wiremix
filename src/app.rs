@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
-use crate::event::MonitorEvent;
+use crate::event::{MonitorEvent, StateEvent};
 
 use anyhow::{anyhow, Result};
 
@@ -412,11 +412,6 @@ impl Handle for Event {
         match self {
             Event::Input(event) => event.handle(app),
             Event::Monitor(event) => event.handle(app),
-            Event::Error(event) => event.handle(app),
-            Event::Ready => {
-                app.is_ready = true;
-                Ok(true)
-            }
         }
     }
 }
@@ -620,6 +615,32 @@ impl Handle for MouseEvent {
 }
 
 impl Handle for MonitorEvent {
+    fn handle(self, app: &mut App) -> Result<bool> {
+        match self {
+            MonitorEvent::Ready => {
+                app.is_ready = true;
+                Ok(true)
+            }
+            MonitorEvent::Error(message) => {
+                match message {
+                    // These happen when objects are removed while the monitor
+                    // is still in the process of setting up listeners
+                    error if error.starts_with("no global ") => {}
+                    error if error.starts_with("unknown resource ") => {}
+                    // I see this one when disconnecting a Bluetooth sink
+                    error if error == "Received error event" => {}
+                    // Not sure where this originates
+                    error if error == "Error: Buffer allocation failed" => {}
+                    _ => app.exit(Some(message)),
+                }
+                Ok(false) // This makes sense for now
+            }
+            MonitorEvent::State(event) => event.handle(app),
+        }
+    }
+}
+
+impl Handle for StateEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
         app.state.update(&mut app.capture_manager, self);
         for command in app.capture_manager.flush() {
