@@ -206,8 +206,7 @@ mod tests {
     use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::event::MonitorEvent;
-    use crate::monitor::PropertyStore;
-    use crate::object::ObjectId;
+    use crate::monitor::{ObjectId, PropertyStore};
     use crate::state::State;
 
     #[test]

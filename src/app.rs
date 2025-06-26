@@ -29,7 +29,7 @@ use crate::command::Command;
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::{State, StateDirty};
 use crate::view::{self, ListKind, View};

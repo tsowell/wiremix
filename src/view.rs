@@ -9,7 +9,7 @@ use crate::command::Command;
 use crate::config;
 use crate::device_kind::DeviceKind;
 use crate::media_class;
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 use crate::state;
 
 /// A view for transforming [`State`](`crate::state::State`) into a better

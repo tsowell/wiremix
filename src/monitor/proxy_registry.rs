@@ -14,7 +14,7 @@ use pipewire::{
     proxy::{Listener, ProxyListener, ProxyT},
 };
 
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 
 /// Storage for keeping proxies and their listeners alive
 pub struct ProxyRegistry {

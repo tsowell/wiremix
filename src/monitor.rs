@@ -10,12 +10,14 @@ mod execute;
 mod link;
 mod metadata;
 mod node;
+mod object_id;
 mod property_store;
 mod proxy_registry;
 mod stream;
 mod stream_registry;
 mod sync_registry;
 
+pub use object_id::ObjectId;
 pub use property_store::PropertyStore;
 
 use anyhow::Result;
@@ -38,7 +40,6 @@ use crate::monitor::{
     event_sender::EventSender, proxy_registry::ProxyRegistry,
     stream_registry::StreamRegistry, sync_registry::SyncRegistry,
 };
-use crate::object::ObjectId;
 
 /// Spawns a thread to monitor the PipeWire instance.
 ///

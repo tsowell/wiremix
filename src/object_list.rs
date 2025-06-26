@@ -15,8 +15,8 @@ use crate::config::Config;
 use crate::device_kind::DeviceKind;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
+use crate::monitor::ObjectId;
 use crate::node_widget::NodeWidget;
-use crate::object::ObjectId;
 use crate::view::{self, ListKind, VolumeAdjustment};
 
 /// ObjectList stores information for filtering and displaying a subset of

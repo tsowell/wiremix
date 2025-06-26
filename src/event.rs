@@ -5,8 +5,7 @@
 
 use pipewire::link::LinkInfoRef;
 
-use crate::monitor::PropertyStore;
-use crate::object::ObjectId;
+use crate::monitor::{ObjectId, PropertyStore};
 
 #[derive(Debug)]
 pub enum MonitorEvent {

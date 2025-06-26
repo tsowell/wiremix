@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::command::Command;
 use crate::media_class;
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 use crate::state::Node;
 
 /// Track nodes being captured. This can be passed to

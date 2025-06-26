@@ -1,6 +1,6 @@
 //! PipeWire controls which can be executed by the monitor module.
 
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 
 #[derive(Debug)]
 pub enum Command {

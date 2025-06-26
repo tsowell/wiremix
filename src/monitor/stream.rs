@@ -15,8 +15,7 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
-use crate::monitor::EventSender;
-use crate::object::ObjectId;
+use crate::monitor::{EventSender, ObjectId};
 
 #[derive(Default)]
 pub struct StreamData {

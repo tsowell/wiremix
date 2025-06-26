@@ -13,8 +13,9 @@ use libspa::{
 };
 
 use crate::event::MonitorEvent;
-use crate::monitor::{deserialize::deserialize, EventSender, PropertyStore};
-use crate::object::ObjectId;
+use crate::monitor::{
+    deserialize::deserialize, EventSender, ObjectId, PropertyStore,
+};
 
 pub fn monitor_device(
     registry: &Registry,

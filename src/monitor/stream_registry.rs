@@ -7,7 +7,7 @@ use nix::sys::eventfd::{EfdFlags, EventFd};
 
 use pipewire::stream::{Stream, StreamListener};
 
-use crate::object::ObjectId;
+use crate::monitor::ObjectId;
 
 /// Storage for keeping streams and their listeners alive
 pub struct StreamRegistry<D> {

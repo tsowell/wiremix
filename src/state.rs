@@ -4,8 +4,7 @@ use std::collections::HashMap;
 
 use crate::capture_manager::CaptureManager;
 use crate::event::MonitorEvent;
-use crate::monitor::PropertyStore;
-use crate::object::ObjectId;
+use crate::monitor::{ObjectId, PropertyStore};
 
 #[derive(Debug)]
 pub struct Profile {
