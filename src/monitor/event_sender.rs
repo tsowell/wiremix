@@ -2,21 +2,21 @@ use std::cell::RefCell;
 
 use pipewire::main_loop::WeakMainLoop;
 
-use crate::event::{MonitorEvent, StateEvent};
+use crate::monitor::{Event, StateEvent};
 
-/// Trait for handling [`MonitorEvent`]s from [`EventSender`].
+/// Trait for handling [`Event`]s from [`EventSender`].
 ///
 /// Returns `true` if the event was handled successfully, `false` if the
 /// monitor should shut down.
 pub trait EventHandler: Send + 'static {
-    fn handle_event(&mut self, event: MonitorEvent) -> bool;
+    fn handle_event(&mut self, event: Event) -> bool;
 }
 
 impl<F> EventHandler for F
 where
-    F: FnMut(MonitorEvent) -> bool + Send + 'static,
+    F: FnMut(Event) -> bool + Send + 'static,
 {
-    fn handle_event(&mut self, event: MonitorEvent) -> bool {
+    fn handle_event(&mut self, event: Event) -> bool {
         self(event)
     }
 }
@@ -38,11 +38,7 @@ impl EventSender {
     }
 
     pub fn send(&self, event: StateEvent) {
-        if !self
-            .handler
-            .borrow_mut()
-            .handle_event(MonitorEvent::State(event))
-        {
+        if !self.handler.borrow_mut().handle_event(Event::State(event)) {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }
@@ -50,7 +46,7 @@ impl EventSender {
     }
 
     pub fn send_ready(&self) {
-        if !self.handler.borrow_mut().handle_event(MonitorEvent::Ready) {
+        if !self.handler.borrow_mut().handle_event(Event::Ready) {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }
@@ -58,11 +54,7 @@ impl EventSender {
     }
 
     pub fn send_error(&self, error: String) {
-        if !self
-            .handler
-            .borrow_mut()
-            .handle_event(MonitorEvent::Error(error))
-        {
+        if !self.handler.borrow_mut().handle_event(Event::Error(error)) {
             if let Some(main_loop) = self.main_loop_weak.upgrade() {
                 main_loop.quit();
             }

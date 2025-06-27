@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
-use crate::event::{MonitorEvent, StateEvent};
+use crate::monitor::{Event as MonitorEvent, StateEvent};
 
 use anyhow::{anyhow, Result};
 

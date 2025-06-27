@@ -3,8 +3,7 @@
 use std::collections::HashMap;
 
 use crate::capture_manager::CaptureManager;
-use crate::event::StateEvent;
-use crate::monitor::{ObjectId, PropertyStore};
+use crate::monitor::{ObjectId, PropertyStore, StateEvent};
 
 #[derive(Debug)]
 pub struct Profile {
@@ -112,8 +111,7 @@ pub enum StateDirty {
 }
 
 #[derive(Default, Debug)]
-/// PipeWire state, maintained from
-/// [`StateEvent`](`crate::event::StateEvent`)s from the
+/// PipeWire state, maintained from [`StateEvent`]s from the
 /// [`monitor`](`crate::monitor`) module.
 ///
 /// This is primarily for maintaining a representation of the PipeWire state,

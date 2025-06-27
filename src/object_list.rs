@@ -510,8 +510,7 @@ mod tests {
     use super::*;
     use crate::capture_manager::CaptureManager;
     use crate::config;
-    use crate::event::StateEvent;
-    use crate::monitor::PropertyStore;
+    use crate::monitor::{PropertyStore, StateEvent};
     use crate::state::State;
     use crate::view::{ListKind, NodeKind, View};
 
