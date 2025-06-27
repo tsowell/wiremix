@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::config;
 use crate::device_kind::DeviceKind;
 use crate::media_class;
-use crate::monitor::{Command, ObjectId};
+use crate::monitor::{CommandSender, ObjectId};
 use crate::state;
 
 /// A view for transforming [`State`](`crate::state::State`) into a better
@@ -25,10 +25,10 @@ use crate::state;
 /// get the initial state from PipeWire. Peak updates happen very frequently
 /// though, hence the optimization.
 ///
-/// There are also functions like [`Self::mute()`] for returning [`Command`]s
-/// which can be sent to the [`monitor`](`crate::monitor`).
-#[derive(Debug, Default)]
-pub struct View {
+/// There are also functions like [`Self::mute()`] for executing commands
+/// against the [`monitor`](`crate::monitor`).
+pub struct View<'a> {
+    monitor: &'a dyn CommandSender,
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
 
@@ -78,9 +78,8 @@ pub struct Node {
     pub positions: Option<Vec<u32>>,
 
     /// If this is a device/endpoint node, store the (device_id, route_index,
-    /// card_device) here because they are needed for the
-    /// [`DeviceVolume`](`Command::DeviceVolumes`) and
-    /// [`DeviceMute`](`Command::DeviceMute`) commands.
+    /// card_device) here because they are needed for changing volumes and
+    /// muting via [`monitor`](`crate::monitor`).
     pub device_info: Option<(ObjectId, i32, i32)>,
 
     pub is_default_sink: bool,
@@ -410,9 +409,32 @@ fn has_target(state: &state::State, node_id: ObjectId) -> bool {
     }
 }
 
-impl View {
+impl<'a> View<'a> {
+    pub fn new(monitor: &'a dyn CommandSender) -> View<'a> {
+        Self {
+            monitor,
+            nodes: Default::default(),
+            devices: Default::default(),
+            nodes_all: Default::default(),
+            nodes_playback: Default::default(),
+            nodes_recording: Default::default(),
+            nodes_output: Default::default(),
+            nodes_input: Default::default(),
+            devices_all: Default::default(),
+            sinks: Default::default(),
+            sources: Default::default(),
+            default_sink: Default::default(),
+            default_source: Default::default(),
+            metadata_id: Default::default(),
+        }
+    }
+
     /// Create a View from scratch from a provided State.
-    pub fn from(state: &state::State, names: &config::Names) -> View {
+    pub fn from(
+        monitor: &'a dyn CommandSender,
+        state: &state::State,
+        names: &config::Names,
+    ) -> View<'a> {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
 
@@ -531,6 +553,7 @@ impl View {
             .collect();
 
         Self {
+            monitor,
             nodes,
             devices,
             nodes_all,
@@ -564,118 +587,118 @@ impl View {
         }
     }
 
-    /// Returns a command for setting the provided node as the default
-    /// source/sink, depending on device_kind.
-    pub fn set_default(
-        &self,
-        node_id: ObjectId,
-        device_kind: DeviceKind,
-    ) -> Option<Command> {
-        let node = self.nodes.get(&node_id)?;
+    /// Sets the provided node as the default source/sink, depending on
+    /// device_kind.
+    pub fn set_default(&self, node_id: ObjectId, device_kind: DeviceKind) {
+        let Some(node) = self.nodes.get(&node_id) else {
+            return;
+        };
+        let Some(metadata_id) = self.metadata_id else {
+            return;
+        };
+
         let key = match device_kind {
             DeviceKind::Source => "default.configured.audio.source",
             DeviceKind::Sink => "default.configured.audio.sink",
         };
-        let metadata_id = self.metadata_id?;
 
-        Some(Command::MetadataSetProperty(
+        self.monitor.metadata_set_property(
             metadata_id,
             0,
             String::from(key),
             Some(String::from("Spa:String:JSON")),
             Some(json!({ "name": &node.name }).to_string()),
-        ))
+        );
     }
 
-    /// Returns a command for setting the provided node's target to the
-    /// provided target.
-    pub fn set_target(
-        &self,
-        node_id: ObjectId,
-        target: Target,
-    ) -> Vec<Command> {
+    /// Sets the provided node's target to the provided target.
+    pub fn set_target(&self, node_id: ObjectId, target: Target) {
         let Some(metadata_id) = self.metadata_id else {
-            return Vec::new();
+            return;
         };
 
         match target {
             Target::Default => {
-                vec![
-                    Command::MetadataSetProperty(
-                        metadata_id,
-                        node_id.into(),
-                        String::from("target.object"),
-                        Some(String::from("Spa:Id")),
-                        Some(String::from("-1")),
-                    ),
-                    Command::MetadataSetProperty(
-                        metadata_id,
-                        node_id.into(),
-                        String::from("target.node"),
-                        Some(String::from("Spa:Id")),
-                        Some(String::from("-1")),
-                    ),
-                ]
+                self.monitor.metadata_set_property(
+                    metadata_id,
+                    node_id.into(),
+                    String::from("target.object"),
+                    Some(String::from("Spa:Id")),
+                    Some(String::from("-1")),
+                );
+                self.monitor.metadata_set_property(
+                    metadata_id,
+                    node_id.into(),
+                    String::from("target.node"),
+                    Some(String::from("Spa:Id")),
+                    Some(String::from("-1")),
+                );
             }
             Target::Node(target_id) => {
-                vec![
-                    Command::MetadataSetProperty(
-                        metadata_id,
-                        node_id.into(),
-                        String::from("target.object"),
-                        None,
-                        None,
-                    ),
-                    Command::MetadataSetProperty(
-                        metadata_id,
-                        node_id.into(),
-                        String::from("target.node"),
-                        Some(String::from("Spa:Id")),
-                        Some(target_id.to_string()),
-                    ),
-                ]
+                self.monitor.metadata_set_property(
+                    metadata_id,
+                    node_id.into(),
+                    String::from("target.object"),
+                    None,
+                    None,
+                );
+                self.monitor.metadata_set_property(
+                    metadata_id,
+                    node_id.into(),
+                    String::from("target.node"),
+                    Some(String::from("Spa:Id")),
+                    Some(target_id.to_string()),
+                );
             }
             Target::Route(device_id, route_index, route_device) => {
-                vec![Command::DeviceSetRoute(
+                self.monitor.device_set_route(
                     device_id,
                     route_index,
                     route_device,
-                )]
+                );
             }
             Target::Profile(device_id, profile_index) => {
-                vec![Command::DeviceSetProfile(device_id, profile_index)]
+                self.monitor.device_set_profile(device_id, profile_index);
             }
         }
     }
 
-    /// Returns a command for muting the provided node.
-    pub fn mute(&self, node_id: ObjectId) -> Option<Command> {
-        let node = self.nodes.get(&node_id)?;
+    /// Mutes the provided node.
+    pub fn mute(&self, node_id: ObjectId) {
+        let Some(node) = self.nodes.get(&node_id) else {
+            return;
+        };
+
         let mute = !node.mute;
 
         if let Some((device_id, route_index, route_device)) = node.device_info {
-            Some(Command::DeviceMute(
+            self.monitor.device_mute(
                 device_id,
                 route_index,
                 route_device,
                 mute,
-            ))
+            );
         } else {
-            Some(Command::NodeMute(node_id, mute))
+            self.monitor.node_mute(node_id, mute);
         }
     }
 
-    /// Returns a command for changing the volume of the provided node.
+    /// Changes the volume of the provided node. If max volume is provided,
+    /// won't change volume if result would be greater than max. Returns true
+    /// if volume was changed, otherwise false.
     pub fn volume(
         &self,
         node_id: ObjectId,
         adjustment: VolumeAdjustment,
-    ) -> Option<Command> {
-        let node = self.nodes.get(&node_id)?;
+        max: Option<f32>,
+    ) -> bool {
+        let Some(node) = self.nodes.get(&node_id) else {
+            return false;
+        };
 
         let mut volumes = node.volumes.clone();
         if volumes.is_empty() {
-            return None;
+            return false;
         }
         match adjustment {
             VolumeAdjustment::Relative(delta) => {
@@ -688,16 +711,27 @@ impl View {
         }
         let volumes = volumes;
 
+        if let Some(max) = max {
+            if volumes
+                .iter()
+                .any(|volume| (volume.cbrt() * 100.0).round() > max)
+            {
+                return false;
+            }
+        }
+
         if let Some((device_id, route_index, route_device)) = node.device_info {
-            Some(Command::DeviceVolumes(
+            self.monitor.device_volumes(
                 device_id,
                 route_index,
                 route_device,
                 volumes,
-            ))
+            );
         } else {
-            Some(Command::NodeVolumes(node_id, volumes))
+            self.monitor.node_volumes(node_id, volumes);
         }
+
+        true
     }
 
     fn ids(&self, node_kind: ListKind) -> &[ObjectId] {

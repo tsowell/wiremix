@@ -19,7 +19,7 @@ mod stream;
 mod stream_registry;
 mod sync_registry;
 
-pub use command::Command;
+pub use command::{Command, CommandSender};
 pub use event::{Event, StateEvent};
 pub use object_id::ObjectId;
 pub use property_store::PropertyStore;
@@ -108,7 +108,7 @@ pub struct MonitorHandle {
     fd: Option<Arc<EventFd>>,
     handle: Option<thread::JoinHandle<()>>,
     /// Channel for sending [`Command`]s to be executed
-    pub tx: pipewire::channel::Sender<Command>,
+    tx: pipewire::channel::Sender<Command>,
 }
 
 impl Drop for MonitorHandle {
@@ -119,6 +119,95 @@ impl Drop for MonitorHandle {
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
+    }
+}
+
+impl CommandSender for MonitorHandle {
+    fn node_capture_start(
+        &self,
+        obj_id: ObjectId,
+        object_serial: u64,
+        capture_sink: bool,
+    ) {
+        let _ = self.tx.send(Command::NodeCaptureStart(
+            obj_id,
+            object_serial,
+            capture_sink,
+        ));
+    }
+
+    fn node_capture_stop(&self, obj_id: ObjectId) {
+        let _ = self.tx.send(Command::NodeCaptureStop(obj_id));
+    }
+
+    fn node_mute(&self, obj_id: ObjectId, mute: bool) {
+        let _ = self.tx.send(Command::NodeMute(obj_id, mute));
+    }
+
+    fn node_volumes(&self, obj_id: ObjectId, volumes: Vec<f32>) {
+        let _ = self.tx.send(Command::NodeVolumes(obj_id, volumes));
+    }
+
+    fn device_mute(
+        &self,
+        obj_id: ObjectId,
+        route_index: i32,
+        route_device: i32,
+        mute: bool,
+    ) {
+        let _ = self.tx.send(Command::DeviceMute(
+            obj_id,
+            route_index,
+            route_device,
+            mute,
+        ));
+    }
+
+    fn device_set_profile(&self, obj_id: ObjectId, profile_index: i32) {
+        let _ = self
+            .tx
+            .send(Command::DeviceSetProfile(obj_id, profile_index));
+    }
+
+    fn device_set_route(
+        &self,
+        obj_id: ObjectId,
+        route_index: i32,
+        route_device: i32,
+    ) {
+        let _ = self.tx.send(Command::DeviceSetRoute(
+            obj_id,
+            route_index,
+            route_device,
+        ));
+    }
+
+    fn device_volumes(
+        &self,
+        obj_id: ObjectId,
+        route_index: i32,
+        route_device: i32,
+        volumes: Vec<f32>,
+    ) {
+        let _ = self.tx.send(Command::DeviceVolumes(
+            obj_id,
+            route_index,
+            route_device,
+            volumes,
+        ));
+    }
+
+    fn metadata_set_property(
+        &self,
+        obj_id: ObjectId,
+        subject: u32,
+        key: String,
+        type_: Option<String>,
+        value: Option<String>,
+    ) {
+        let _ = self.tx.send(Command::MetadataSetProperty(
+            obj_id, subject, key, type_, value,
+        ));
     }
 }
 

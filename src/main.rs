@@ -61,7 +61,7 @@ fn main() -> Result<()> {
     }
     let mut terminal = ratatui::init();
     let app_result =
-        app::App::new(&monitor_handle.tx, event_rx, config).run(&mut terminal);
+        app::App::new(&monitor_handle, event_rx, config).run(&mut terminal);
     ratatui::restore();
     if support_mouse {
         stdout().execute(DisableMouseCapture)?;

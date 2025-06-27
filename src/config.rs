@@ -360,14 +360,6 @@ impl Config {
 
         Self::try_from(config_file)
     }
-
-    /// Check if volumes are less than max_volume (if enforcing)
-    pub fn are_volumes_valid(&self, volumes: &[f32]) -> bool {
-        !self.enforce_max_volume
-            || volumes.iter().all(|volume| {
-                (volume.cbrt() * 100.0).round() <= self.max_volume_percent
-            })
-    }
 }
 
 #[cfg(test)]

@@ -3,20 +3,27 @@
 use std::collections::HashSet;
 
 use crate::media_class;
-use crate::monitor::{Command, ObjectId};
+use crate::monitor::{CommandSender, ObjectId};
 use crate::state::Node;
 
 /// Track nodes being captured. This can be passed to
-/// `crate::state::State::update()` which uses the on_ methods to queue up
-/// start and stop capture commands. Once all updates are complete, the pending
-/// commands can be retrieved via `flush()` and executed.
-#[derive(Default, Debug)]
-pub struct CaptureManager {
+/// `crate::state::State::update()` which uses the on_ methods to issue start
+/// and stop capture commands.
+pub struct CaptureManager<'a> {
     capturing: HashSet<ObjectId>,
-    commands: Vec<Command>,
+    monitor: &'a dyn CommandSender,
+    capture_enabled: bool,
 }
 
-impl CaptureManager {
+impl<'a> CaptureManager<'a> {
+    pub fn new(monitor: &'a dyn CommandSender, capture_enabled: bool) -> Self {
+        Self {
+            capturing: Default::default(),
+            monitor,
+            capture_enabled,
+        }
+    }
+
     /// Call when a node's capture eligibility might have changed.
     pub fn on_node(&mut self, node: &Node) {
         if !node
@@ -40,8 +47,7 @@ impl CaptureManager {
             return;
         }
 
-        let command = self.start_capture_command(node);
-        self.commands.extend(command);
+        self.start_capture_command(node);
     }
 
     /// Call when a node gets a new input link.
@@ -60,8 +66,7 @@ impl CaptureManager {
             return;
         }
 
-        let command = self.start_capture_command(node);
-        self.commands.extend(command);
+        self.start_capture_command(node);
     }
 
     /// Call when a node's output positions have changed.
@@ -70,18 +75,23 @@ impl CaptureManager {
             return;
         }
 
-        let command = self.start_capture_command(node);
-        self.commands.extend(command);
+        self.start_capture_command(node);
     }
 
     /// Call when a node has no more input links.
     pub fn on_removed(&mut self, node: &Node) {
-        let command = self.stop_capture_command(node);
-        self.commands.extend(command);
+        self.stop_capture_command(node);
     }
 
-    fn start_capture_command(&mut self, node: &Node) -> Option<Command> {
-        let object_serial = *node.props.object_serial()?;
+    fn start_capture_command(&mut self, node: &Node) {
+        if !self.capture_enabled {
+            return;
+        }
+
+        let Some(object_serial) = node.props.object_serial() else {
+            return;
+        };
+
         let capture_sink =
             node.props
                 .media_class()
@@ -93,21 +103,17 @@ impl CaptureManager {
 
         self.capturing.insert(node.id);
 
-        Some(Command::NodeCaptureStart(
-            node.id,
-            object_serial,
-            capture_sink,
-        ))
+        self.monitor
+            .node_capture_start(node.id, *object_serial, capture_sink);
     }
 
-    fn stop_capture_command(&mut self, node: &Node) -> Option<Command> {
+    fn stop_capture_command(&mut self, node: &Node) {
+        if !self.capture_enabled {
+            return;
+        }
+
         self.capturing.remove(&node.id);
 
-        Some(Command::NodeCaptureStop(node.id))
-    }
-
-    /// Get a list of pending commands.
-    pub fn flush(&mut self) -> Vec<Command> {
-        std::mem::take(&mut self.commands)
+        self.monitor.node_capture_stop(node.id);
     }
 }

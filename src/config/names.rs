@@ -205,6 +205,7 @@ mod tests {
     use super::*;
     use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
+    use crate::mock;
     use crate::monitor::{ObjectId, PropertyStore, StateEvent};
     use crate::state::State;
 
@@ -226,19 +227,19 @@ mod tests {
         let _ = Names::default_device();
     }
 
-    struct Fixture {
+    struct Fixture<'a> {
         state: State,
-        capture_manager: CaptureManager,
+        capture_manager: CaptureManager<'a>,
         device_id: ObjectId,
         node_id: ObjectId,
         client_id: ObjectId,
         node_props: PropertyStore,
     }
 
-    impl Default for Fixture {
-        fn default() -> Self {
+    impl<'a> Fixture<'a> {
+        fn new(monitor: &'a mock::MonitorHandle) -> Self {
             let mut state = State::default();
-            let mut capture_manager = CaptureManager::default();
+            let mut capture_manager = CaptureManager::new(monitor, false);
 
             let device_id = ObjectId::from_raw_id(0);
             let node_id = ObjectId::from_raw_id(1);
@@ -281,7 +282,8 @@ mod tests {
 
     #[test]
     fn render_endpoint() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture
             .node_props
@@ -303,7 +305,8 @@ mod tests {
 
     #[test]
     fn render_endpoint_missing_tag() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture
             .node_props
@@ -326,7 +329,8 @@ mod tests {
 
     #[test]
     fn render_device_missing_tag() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             device: vec!["{device:device.description}".parse().unwrap()],
@@ -341,7 +345,8 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture
             .node_props
@@ -364,7 +369,8 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device_missing_tag() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture
             .node_props
@@ -388,7 +394,8 @@ mod tests {
 
     #[test]
     fn render_endpoint_no_linked_device() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture
             .node_props
@@ -411,7 +418,8 @@ mod tests {
 
     #[test]
     fn render_stream() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             stream: vec!["{node:node.nick}".parse().unwrap()],
@@ -425,7 +433,8 @@ mod tests {
 
     #[test]
     fn render_stream_linked_client() {
-        let mut fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut fixture = Fixture::new(&monitor);
 
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
@@ -445,7 +454,8 @@ mod tests {
 
     #[test]
     fn render_precedence() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             stream: vec![
@@ -462,7 +472,8 @@ mod tests {
 
     #[test]
     fn render_override_match() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -484,7 +495,8 @@ mod tests {
 
     #[test]
     fn render_override_type_mismatch() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -503,7 +515,8 @@ mod tests {
 
     #[test]
     fn render_override_value_mismatch() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -522,7 +535,8 @@ mod tests {
 
     #[test]
     fn render_override_empty_templates() {
-        let fixture = Fixture::default();
+        let monitor = mock::MonitorHandle::default();
+        let fixture = Fixture::new(&monitor);
 
         let names = Names {
             overrides: vec![NameOverride {

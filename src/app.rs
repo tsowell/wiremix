@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
-use crate::monitor::{Event as MonitorEvent, StateEvent};
+use crate::monitor::{CommandSender, Event as MonitorEvent, StateEvent};
 
 use anyhow::{anyhow, Result};
 
@@ -28,7 +28,7 @@ use crate::capture_manager::CaptureManager;
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
-use crate::monitor::{Command, ObjectId};
+use crate::monitor::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::{State, StateDirty};
 use crate::view::{self, ListKind, View};
@@ -169,8 +169,8 @@ pub type MouseArea =
 pub struct App<'a> {
     /// If set, tells the main loop it's time to exit
     exit: bool,
-    /// [`Command`] channel
-    tx: &'a pipewire::channel::Sender<Command>,
+    /// PipeWire monitor handle, for sending commands
+    monitor: &'a dyn CommandSender,
     /// [`Event`](`crate::event::Event`) channel
     rx: mpsc::Receiver<Event>,
     /// An error message to return on exit
@@ -187,9 +187,9 @@ pub struct App<'a> {
     /// The current PipeWire state
     state: State,
     /// Tracks the nodes being captured
-    capture_manager: CaptureManager,
+    capture_manager: CaptureManager<'a>,
     /// A rendering view based on the current PipeWire state
-    view: View,
+    view: View<'a>,
     /// The application configuration
     config: Config,
     /// The row on which the mouse is being dragged. While the left mouse
@@ -208,7 +208,7 @@ macro_rules! current_list {
 
 impl<'a> App<'a> {
     pub fn new(
-        tx: &'a pipewire::channel::Sender<Command>,
+        monitor: &'a dyn CommandSender,
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
@@ -245,7 +245,7 @@ impl<'a> App<'a> {
         ];
         App {
             exit: false,
-            tx,
+            monitor,
             rx,
             error_message: None,
             tabs,
@@ -253,8 +253,11 @@ impl<'a> App<'a> {
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
-            capture_manager: CaptureManager::default(),
-            view: View::default(),
+            capture_manager: CaptureManager::new(
+                monitor,
+                config.peaks != Peaks::Off,
+            ),
+            view: View::new(monitor),
             config,
             drag_row: None,
             help_position: None,
@@ -279,7 +282,11 @@ impl<'a> App<'a> {
             // Update view if needed
             match self.state.dirty {
                 StateDirty::Everything => {
-                    self.view = View::from(&self.state, &self.config.names);
+                    self.view = View::from(
+                        self.monitor,
+                        &self.state,
+                        &self.config.names,
+                    );
                 }
                 StateDirty::PeaksOnly => {
                     self.view.update_peaks(&self.state);
@@ -486,72 +493,35 @@ impl Handle for Action {
                 current_list!(app).dropdown_close();
             }
             Action::ActivateDropdown => {
-                let commands = current_list!(app).dropdown_activate(&app.view);
-                for command in commands {
-                    let _ = app.tx.send(command);
-                }
+                current_list!(app).dropdown_activate(&app.view);
             }
             Action::SetTarget(target) => {
-                let commands = current_list!(app).set_target(&app.view, target);
-                for command in commands {
-                    let _ = app.tx.send(command);
-                }
+                current_list!(app).set_target(&app.view, target);
             }
             Action::SelectObject(object_id) => {
                 app.tabs[app.current_tab_index].list.selected = Some(object_id)
             }
             Action::ToggleMute => {
-                let commands = current_list!(app).toggle_mute(&app.view);
-                for command in commands {
-                    let _ = app.tx.send(command);
-                }
+                current_list!(app).toggle_mute(&app.view);
             }
             Action::SetAbsoluteVolume(volume) => {
-                let commands =
-                    current_list!(app).set_absolute_volume(&app.view, volume);
-                let mut handled = false;
-                for command in commands {
-                    match command {
-                        Command::NodeVolumes(_, ref volumes)
-                        | Command::DeviceVolumes(_, _, _, ref volumes) => {
-                            if !app.config.are_volumes_valid(volumes) {
-                                continue;
-                            }
-                        }
-                        _ => {}
-                    }
-                    let _ = app.tx.send(command);
-                    handled = true;
-                }
-                return Ok(handled);
+                let max = app
+                    .config
+                    .enforce_max_volume
+                    .then_some(app.config.max_volume_percent);
+                current_list!(app).set_absolute_volume(&app.view, volume, max);
+                return Ok(current_list!(app)
+                    .set_absolute_volume(&app.view, volume, max));
             }
             Action::SetRelativeVolume(volume) => {
-                let commands =
-                    current_list!(app).set_relative_volume(&app.view, volume);
-                let mut handled = false;
-                for command in commands {
-                    match command {
-                        Command::NodeVolumes(_, ref volumes)
-                        | Command::DeviceVolumes(_, _, _, ref volumes) => {
-                            // Relative decreases are always allowed.
-                            if volume > 0.00
-                                && !app.config.are_volumes_valid(volumes)
-                            {
-                                continue;
-                            }
-                        }
-                        _ => {}
-                    }
-                    let _ = app.tx.send(command);
-                    handled = true;
-                }
-                return Ok(handled);
+                // Relative decreases have no maximum.
+                let max = (volume > 0.0 && app.config.enforce_max_volume)
+                    .then_some(app.config.max_volume_percent);
+                return Ok(current_list!(app)
+                    .set_relative_volume(&app.view, volume, max));
             }
             Action::SetDefault => {
-                let commands = current_list!(app).set_default(&app.view);
-                for command in commands {
-                    let _ = app.tx.send(command);
-                }
+                current_list!(app).set_default(&app.view);
             }
             Action::Exit => {
                 app.exit(None);
@@ -633,17 +603,6 @@ impl Handle for MonitorEvent {
 impl Handle for StateEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
         app.state.update(&mut app.capture_manager, self);
-        for command in app.capture_manager.flush() {
-            // Filter out capture commands if capture is disabled
-            match command {
-                Command::NodeCaptureStart(..)
-                | Command::NodeCaptureStop(..)
-                    if app.config.peaks == Peaks::Off => {}
-                command => {
-                    let _ = app.tx.send(command);
-                }
-            }
-        }
         Ok(true)
     }
 }
@@ -666,9 +625,9 @@ impl Handle for String {
     }
 }
 
-pub struct AppWidget<'a> {
+pub struct AppWidget<'a, 'b> {
     current_tab_index: usize,
-    view: &'a View,
+    view: &'a View<'b>,
     config: &'a Config,
 }
 
@@ -678,7 +637,7 @@ pub struct AppWidgetState<'a> {
     help_position: &'a mut Option<u16>,
 }
 
-impl<'a> StatefulWidget for AppWidget<'a> {
+impl<'a> StatefulWidget for AppWidget<'a, '_> {
     type State = AppWidgetState<'a>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -795,10 +754,11 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock;
     use crate::monitor::PropertyStore;
     use strum::IntoEnumIterator;
 
-    fn fixture(command_tx: &pipewire::channel::Sender<Command>) -> App {
+    fn fixture(monitor: &mock::MonitorHandle) -> App {
         let (_, event_rx) = mpsc::channel();
 
         let config = Config {
@@ -816,7 +776,7 @@ mod tests {
             tab: Default::default(),
         };
 
-        let mut app = App::new(command_tx, event_rx, config);
+        let mut app = App::new(monitor, event_rx, config);
 
         // Create a node for testing
         let obj_id = ObjectId::from_raw_id(0);
@@ -838,7 +798,7 @@ mod tests {
         for event in events {
             assert!(event.handle(&mut app).unwrap());
         }
-        app.view = View::from(&app.state, &app.config.names);
+        app.view = View::from(monitor, &app.state, &app.config.names);
 
         // Select the node
         assert!(Action::SelectObject(obj_id).handle(&mut app).unwrap());
@@ -848,8 +808,8 @@ mod tests {
 
     #[test]
     fn select_tab_bounds() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
 
         let _ = Action::SelectTab(app.tabs.len()).handle(&mut app);
         assert!(app.current_tab_index < app.tabs.len());
@@ -859,7 +819,7 @@ mod tests {
     fn key_modifiers() {
         use crossterm::event::{KeyCode, KeyModifiers};
         use std::collections::HashMap;
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let monitor = mock::MonitorHandle::default();
         let (_, event_rx) = mpsc::channel();
 
         let x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
@@ -883,7 +843,7 @@ mod tests {
             names: Default::default(),
             tab: Default::default(),
         };
-        let mut app = App::new(&command_tx, event_rx, config);
+        let mut app = App::new(&monitor, event_rx, config);
 
         let _ = x.handle(&mut app);
         assert_eq!(app.current_tab_index, 2);
@@ -899,8 +859,8 @@ mod tests {
     /// into the tab Vec.
     #[test]
     fn tab_enum_order_matches_tab_vec() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let app = fixture(&monitor);
 
         assert_eq!(TabKind::iter().count(), app.tabs.len());
 
@@ -917,8 +877,8 @@ mod tests {
 
     #[test]
     fn help_underflow() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -929,8 +889,8 @@ mod tests {
 
     #[test]
     fn help_up_down() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -944,8 +904,8 @@ mod tests {
 
     #[test]
     fn help_toggle() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -956,8 +916,8 @@ mod tests {
 
     #[test]
     fn help_ignore_other_actions() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
 
         assert!(Action::SetDefault.handle(&mut app).unwrap());
 
@@ -969,8 +929,8 @@ mod tests {
 
     #[test]
     fn volume_limit_not_enforcing() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = false;
 
@@ -987,8 +947,8 @@ mod tests {
 
     #[test]
     fn volume_limit_at_max() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = true;
 
@@ -1008,8 +968,8 @@ mod tests {
 
     #[test]
     fn volume_limit_above_max() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
         app.config.max_volume_percent = 95.0;
         app.config.enforce_max_volume = true;
 
@@ -1029,8 +989,8 @@ mod tests {
 
     #[test]
     fn volume_limit_below_max() {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
-        let mut app = fixture(&command_tx);
+        let monitor = mock::MonitorHandle::default();
+        let mut app = fixture(&monitor);
         app.config.max_volume_percent = 105.0;
         app.config.enforce_max_volume = true;
 

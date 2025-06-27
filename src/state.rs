@@ -375,10 +375,13 @@ impl State {
 mod tests {
     use super::*;
 
+    use crate::mock;
+
     #[test]
     fn state_metadata_insert() {
         let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
@@ -396,7 +399,8 @@ mod tests {
     #[test]
     fn state_metadata_remove() {
         let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
@@ -428,7 +432,8 @@ mod tests {
     #[test]
     fn state_metadata_clear_property() {
         let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
@@ -480,7 +485,8 @@ mod tests {
     #[test]
     fn state_metadata_clear_all_properties() {
         let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(

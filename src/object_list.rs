@@ -14,7 +14,7 @@ use crate::config::Config;
 use crate::device_kind::DeviceKind;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
-use crate::monitor::{Command, ObjectId};
+use crate::monitor::ObjectId;
 use crate::node_widget::NodeWidget;
 use crate::view::{self, ListKind, VolumeAdjustment};
 
@@ -95,94 +95,89 @@ impl ObjectList {
             .map(|(target, _)| target)
     }
 
-    pub fn dropdown_activate(&mut self, view: &view::View) -> Vec<Command> {
+    pub fn dropdown_activate(&mut self, view: &view::View) {
         // Just open the dropdown if it's not showing yet.
         if self.list_state.selected().is_none() {
             self.dropdown_open(view);
-            return Vec::default();
+            return;
         }
 
-        let commands = self
-            .selected
-            .zip(self.selected_target())
-            .map(|(object_id, &target)| view.set_target(object_id, target))
-            .into_iter()
-            .flatten()
-            .collect();
+        if let (Some(object_id), Some(&target)) =
+            (self.selected, self.selected_target())
+        {
+            view.set_target(object_id, target);
+        };
+
         self.list_state.select(None);
-        commands
     }
 
     pub fn dropdown_close(&mut self) {
         self.list_state.select(None);
     }
 
-    pub fn set_target(
-        &mut self,
-        view: &view::View,
-        target: view::Target,
-    ) -> Vec<Command> {
+    pub fn set_target(&mut self, view: &view::View, target: view::Target) {
         self.list_state.select(None);
-        self.selected
-            .map(|object_id| view.set_target(object_id, target))
-            .into_iter()
-            .flatten()
-            .collect()
+        if let Some(object_id) = self.selected {
+            view.set_target(object_id, target);
+        };
     }
 
-    pub fn toggle_mute(&mut self, view: &view::View) -> Vec<Command> {
+    pub fn toggle_mute(&mut self, view: &view::View) {
         if matches!(self.list_kind, ListKind::Device) {
-            return Vec::new();
+            return;
         }
-        self.selected
-            .and_then(|node_id| view.mute(node_id))
-            .into_iter()
-            .collect()
+        if let Some(node_id) = self.selected {
+            view.mute(node_id);
+        }
     }
 
     pub fn set_absolute_volume(
         &mut self,
         view: &view::View,
         volume: f32,
-    ) -> Vec<Command> {
+        max: Option<f32>,
+    ) -> bool {
         if matches!(self.list_kind, ListKind::Device) {
-            return Vec::new();
+            return false;
         }
-        self.selected
-            .and_then(|node_id| {
-                view.volume(node_id, VolumeAdjustment::Absolute(volume))
-            })
-            .into_iter()
-            .collect()
+        if let Some(node_id) = self.selected {
+            return view.volume(
+                node_id,
+                VolumeAdjustment::Absolute(volume),
+                max,
+            );
+        }
+        false
     }
 
     pub fn set_relative_volume(
         &mut self,
         view: &view::View,
         volume: f32,
-    ) -> Vec<Command> {
+        max: Option<f32>,
+    ) -> bool {
         if matches!(self.list_kind, ListKind::Device) {
-            return Vec::new();
+            return false;
         }
-        self.selected
-            .and_then(|node_id| {
-                view.volume(node_id, VolumeAdjustment::Relative(volume))
-            })
-            .into_iter()
-            .collect()
+        if let Some(node_id) = self.selected {
+            return view.volume(
+                node_id,
+                VolumeAdjustment::Relative(volume),
+                max,
+            );
+        }
+        false
     }
 
-    pub fn set_default(&mut self, view: &view::View) -> Vec<Command> {
+    pub fn set_default(&mut self, view: &view::View) {
         if matches!(self.list_kind, ListKind::Device) {
-            return Vec::new();
+            return;
         }
-        self.selected
-            .zip(self.device_kind)
-            .and_then(|(node_id, device_kind)| {
-                view.set_default(node_id, device_kind)
-            })
-            .into_iter()
-            .collect()
+        if let (Some(node_id), Some(device_kind)) =
+            (self.selected, self.device_kind)
+        {
+            view.set_default(node_id, device_kind);
+        }
     }
 
     fn selected_index(&self, view: &view::View) -> Option<usize> {
@@ -257,9 +252,9 @@ impl ObjectList {
     }
 }
 
-pub struct ObjectListWidget<'a> {
+pub struct ObjectListWidget<'a, 'b> {
     pub object_list: &'a mut ObjectList,
-    pub view: &'a view::View,
+    pub view: &'a view::View<'b>,
     pub config: &'a Config,
 }
 
@@ -269,7 +264,7 @@ struct ObjectListRenderContext<'a> {
     objects_visible: usize,
 }
 
-impl ObjectListWidget<'_> {
+impl ObjectListWidget<'_, '_> {
     fn render_node_list(
         &mut self,
         node_kind: view::NodeKind,
@@ -384,7 +379,7 @@ impl ObjectListWidget<'_> {
     }
 }
 
-impl StatefulWidget for &mut ObjectListWidget<'_> {
+impl StatefulWidget for &mut ObjectListWidget<'_, '_> {
     type State = Vec<MouseArea>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
@@ -509,13 +504,15 @@ mod tests {
     use super::*;
     use crate::capture_manager::CaptureManager;
     use crate::config;
+    use crate::mock;
     use crate::monitor::{PropertyStore, StateEvent};
     use crate::state::State;
     use crate::view::{ListKind, NodeKind, View};
 
-    fn init() -> (State, CaptureManager) {
+    fn init() -> (State, mock::MonitorHandle) {
         let mut state = State::default();
-        let mut capture_manager = CaptureManager::default();
+        let monitor = mock::MonitorHandle::default();
+        let mut capture_manager = CaptureManager::new(&monitor, false);
 
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
@@ -540,13 +537,13 @@ mod tests {
             }
         }
 
-        (state, capture_manager)
+        (state, monitor)
     }
 
     #[test]
     fn object_list_up_overflow() {
-        let (state, _) = init();
-        let view = View::from(&state, &config::Names::default());
+        let (state, monitor) = init();
+        let view = View::from(&monitor, &state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -566,8 +563,8 @@ mod tests {
 
     #[test]
     fn object_list_down_overflow() {
-        let (state, _) = init();
-        let view = View::from(&state, &config::Names::default());
+        let (state, monitor) = init();
+        let view = View::from(&monitor, &state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
