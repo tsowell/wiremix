@@ -9,11 +9,10 @@ use crossterm::{
 };
 
 use wiremix::app;
-use wiremix::command::Command;
 use wiremix::config::Config;
 use wiremix::event::Event;
 use wiremix::input;
-use wiremix::monitor;
+use wiremix::monitor::{self, Command};
 use wiremix::opt::Opt;
 
 fn main() -> Result<()> {

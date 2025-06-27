@@ -25,11 +25,10 @@ use serde::Deserialize;
 use smallvec::{smallvec, SmallVec};
 
 use crate::capture_manager::CaptureManager;
-use crate::command::Command;
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
-use crate::monitor::ObjectId;
+use crate::monitor::{Command, ObjectId};
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::{State, StateDirty};
 use crate::view::{self, ListKind, View};
@@ -173,7 +172,7 @@ pub type MouseArea =
 pub struct App {
     /// If set, tells the main loop it's time to exit
     exit: bool,
-    /// [`Command`](`crate::command::Command`) channel
+    /// [`Command`] channel
     tx: pipewire::channel::Sender<Command>,
     /// [`Event`](`crate::event::Event`) channel
     rx: mpsc::Receiver<Event>,
@@ -839,12 +838,12 @@ mod tests {
         node_props.set_object_serial(0);
         let node_props = node_props;
         let events = vec![
-            MonitorEvent::NodeProperties(obj_id, node_props),
-            MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
-            MonitorEvent::NodePositions(obj_id, vec![0, 1]),
-            MonitorEvent::NodeRate(obj_id, 44100),
-            MonitorEvent::NodeVolumes(obj_id, vec![1.0, 1.0]),
-            MonitorEvent::NodeMute(obj_id, false),
+            StateEvent::NodeProperties(obj_id, node_props),
+            StateEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
+            StateEvent::NodePositions(obj_id, vec![0, 1]),
+            StateEvent::NodeRate(obj_id, 44100),
+            StateEvent::NodeVolumes(obj_id, vec![1.0, 1.0]),
+            StateEvent::NodeMute(obj_id, false),
         ];
         for event in events {
             assert!(event.handle(&mut app).unwrap());

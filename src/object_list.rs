@@ -10,12 +10,11 @@ use crossterm::event::{MouseButton, MouseEventKind};
 use smallvec::smallvec;
 
 use crate::app::{Action, MouseArea};
-use crate::command::Command;
 use crate::config::Config;
 use crate::device_kind::DeviceKind;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
-use crate::monitor::ObjectId;
+use crate::monitor::{Command, ObjectId};
 use crate::node_widget::NodeWidget;
 use crate::view::{self, ListKind, VolumeAdjustment};
 

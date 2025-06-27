@@ -5,11 +5,10 @@ use std::collections::HashMap;
 
 use serde_json::json;
 
-use crate::command::Command;
 use crate::config;
 use crate::device_kind::DeviceKind;
 use crate::media_class;
-use crate::monitor::ObjectId;
+use crate::monitor::{Command, ObjectId};
 use crate::state;
 
 /// A view for transforming [`State`](`crate::state::State`) into a better
@@ -26,9 +25,8 @@ use crate::state;
 /// get the initial state from PipeWire. Peak updates happen very frequently
 /// though, hence the optimization.
 ///
-/// There are also functions like [`Self::mute()`] for returning
-/// [`Command`](`crate::command::Command`)s which can be sent to the
-/// [`monitor`](`crate::monitor`).
+/// There are also functions like [`Self::mute()`] for returning [`Command`]s
+/// which can be sent to the [`monitor`](`crate::monitor`).
 #[derive(Debug, Default)]
 pub struct View {
     pub nodes: HashMap<ObjectId, Node>,
@@ -81,8 +79,8 @@ pub struct Node {
 
     /// If this is a device/endpoint node, store the (device_id, route_index,
     /// card_device) here because they are needed for the
-    /// [`DeviceVolume`](`crate::command::Command::DeviceVolumes`) and
-    /// [`DeviceMute`](`crate::command::Command::DeviceMute`) commands.
+    /// [`DeviceVolume`](`Command::DeviceVolumes`) and
+    /// [`DeviceMute`](`Command::DeviceMute`) commands.
     pub device_info: Option<(ObjectId, i32, i32)>,
 
     pub is_default_sink: bool,

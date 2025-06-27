@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
-use crate::command::Command;
-use crate::monitor::{stream, EventSender, ProxyRegistry, StreamRegistry};
+use crate::monitor::{
+    stream, Command, EventSender, ProxyRegistry, StreamRegistry,
+};
 
 use pipewire::{core::Core, device::Device, node::Node};
 

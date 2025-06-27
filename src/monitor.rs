@@ -3,6 +3,7 @@
 //! [`spawn()`] starts a PipeWire monitoring thread.
 
 mod client;
+mod command;
 mod deserialize;
 mod device;
 mod event;
@@ -18,6 +19,7 @@ mod stream;
 mod stream_registry;
 mod sync_registry;
 
+pub use command::Command;
 pub use event::{Event, StateEvent};
 pub use object_id::ObjectId;
 pub use property_store::PropertyStore;
@@ -36,7 +38,6 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::command::Command;
 use crate::monitor::{
     event_sender::{EventHandler, EventSender},
     proxy_registry::ProxyRegistry,
@@ -46,8 +47,8 @@ use crate::monitor::{
 
 /// Spawns a thread to monitor the PipeWire instance.
 ///
-/// [`Event`]s from PipeWire are sent to the provided `handler`.
-/// [`Command`](`crate::command::Command`)s sent to `rx` will be executed.
+/// [`Event`]s from PipeWire are sent to the provided `handler`. [`Command`]s
+/// sent to `rx` will be executed.
 ///
 /// Returns a [`MonitorHandle`] to automatically clean up the thread.
 pub fn spawn<F: EventHandler>(
