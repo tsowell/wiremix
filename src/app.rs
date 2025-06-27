@@ -33,9 +33,6 @@ use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::state::{State, StateDirty};
 use crate::view::{self, ListKind, View};
 
-#[cfg(feature = "trace")]
-use crate::{trace, trace_dbg};
-
 /// A UI action.
 ///
 /// Used internally as the result of input events.
@@ -265,9 +262,6 @@ impl<'a> App<'a> {
     }
 
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
-        #[cfg(feature = "trace")]
-        trace::initialize_logging()?;
-
         // Wait until we've received all initial data from PipeWire
         let _ = terminal.draw(|frame| {
             frame.render_widget(Line::from("Initializing..."), frame.area());
@@ -293,9 +287,6 @@ impl<'a> App<'a> {
                 _ => {}
             }
             self.state.dirty = StateDirty::Clean;
-
-            #[cfg(feature = "trace")]
-            trace_dbg!(&self.view);
 
             if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
