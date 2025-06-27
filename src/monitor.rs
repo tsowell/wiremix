@@ -53,11 +53,12 @@ use crate::monitor::{
 /// Returns a [`MonitorHandle`] to automatically clean up the thread.
 pub fn spawn<F: EventHandler>(
     remote: Option<String>,
-    rx: pipewire::channel::Receiver<Command>,
     handler: F,
 ) -> Result<MonitorHandle> {
     let shutdown_fd =
         Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
+
+    let (tx, rx) = pipewire::channel::channel::<Command>();
 
     let handle = thread::spawn({
         let shutdown_fd = Arc::clone(&shutdown_fd);
@@ -69,6 +70,7 @@ pub fn spawn<F: EventHandler>(
     Ok(MonitorHandle {
         fd: Some(shutdown_fd),
         handle: Some(handle),
+        tx,
     })
 }
 
@@ -105,6 +107,8 @@ fn run<F: EventHandler>(
 pub struct MonitorHandle {
     fd: Option<Arc<EventFd>>,
     handle: Option<thread::JoinHandle<()>>,
+    /// Channel for sending [`Command`]s to be executed
+    pub tx: pipewire::channel::Sender<Command>,
 }
 
 impl Drop for MonitorHandle {

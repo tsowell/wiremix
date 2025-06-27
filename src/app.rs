@@ -169,11 +169,11 @@ pub type MouseArea =
 ///
 /// This runs the main loop to process PipeWire events and terminal input and
 /// to render the main tabs of the application.
-pub struct App {
+pub struct App<'a> {
     /// If set, tells the main loop it's time to exit
     exit: bool,
     /// [`Command`] channel
-    tx: pipewire::channel::Sender<Command>,
+    tx: &'a pipewire::channel::Sender<Command>,
     /// [`Event`](`crate::event::Event`) channel
     rx: mpsc::Receiver<Event>,
     /// An error message to return on exit
@@ -209,9 +209,9 @@ macro_rules! current_list {
     };
 }
 
-impl App {
+impl<'a> App<'a> {
     pub fn new(
-        tx: pipewire::channel::Sender<Command>,
+        tx: &'a pipewire::channel::Sender<Command>,
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
@@ -807,8 +807,7 @@ mod tests {
     use crate::monitor::PropertyStore;
     use strum::IntoEnumIterator;
 
-    fn fixture() -> App {
-        let (command_tx, _) = pipewire::channel::channel::<Command>();
+    fn fixture(command_tx: &pipewire::channel::Sender<Command>) -> App {
         let (_, event_rx) = mpsc::channel();
 
         let config = Config {
@@ -858,7 +857,8 @@ mod tests {
 
     #[test]
     fn select_tab_bounds() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
 
         let _ = Action::SelectTab(app.tabs.len()).handle(&mut app);
         assert!(app.current_tab_index < app.tabs.len());
@@ -892,7 +892,7 @@ mod tests {
             names: Default::default(),
             tab: Default::default(),
         };
-        let mut app = App::new(command_tx, event_rx, config);
+        let mut app = App::new(&command_tx, event_rx, config);
 
         let _ = x.handle(&mut app);
         assert_eq!(app.current_tab_index, 2);
@@ -908,7 +908,8 @@ mod tests {
     /// into the tab Vec.
     #[test]
     fn tab_enum_order_matches_tab_vec() {
-        let app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let app = fixture(&command_tx);
 
         assert_eq!(TabKind::iter().count(), app.tabs.len());
 
@@ -925,7 +926,8 @@ mod tests {
 
     #[test]
     fn help_underflow() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -936,7 +938,8 @@ mod tests {
 
     #[test]
     fn help_up_down() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -950,7 +953,8 @@ mod tests {
 
     #[test]
     fn help_toggle() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -961,7 +965,8 @@ mod tests {
 
     #[test]
     fn help_ignore_other_actions() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
 
         assert!(Action::SetDefault.handle(&mut app).unwrap());
 
@@ -973,7 +978,8 @@ mod tests {
 
     #[test]
     fn volume_limit_not_enforcing() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = false;
 
@@ -990,7 +996,8 @@ mod tests {
 
     #[test]
     fn volume_limit_at_max() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = true;
 
@@ -1010,7 +1017,8 @@ mod tests {
 
     #[test]
     fn volume_limit_above_max() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
         app.config.max_volume_percent = 95.0;
         app.config.enforce_max_volume = true;
 
@@ -1030,7 +1038,8 @@ mod tests {
 
     #[test]
     fn volume_limit_below_max() {
-        let mut app = fixture();
+        let (command_tx, _) = pipewire::channel::channel::<Command>();
+        let mut app = fixture(&command_tx);
         app.config.max_volume_percent = 105.0;
         app.config.enforce_max_volume = true;
 

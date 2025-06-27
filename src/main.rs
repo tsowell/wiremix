@@ -12,16 +12,13 @@ use wiremix::app;
 use wiremix::config::Config;
 use wiremix::event::Event;
 use wiremix::input;
-use wiremix::monitor::{self, Command};
+use wiremix::monitor;
 use wiremix::opt::Opt;
 
 fn main() -> Result<()> {
     // Event channel for sending PipeWire and input events to the UI
     let (event_tx, event_rx) = mpsc::channel();
     let event_tx = Arc::new(event_tx);
-
-    // Command channel for the UI to send commands to control PipeWire
-    let (command_tx, command_rx) = pipewire::channel::channel::<Command>();
 
     // Parse command-line arguments
     let opt = Opt::parse();
@@ -38,8 +35,7 @@ fn main() -> Result<()> {
         move |event| event_tx.send(Event::Monitor(event)).is_ok()
     };
     // Spawn the PipeWire monitor
-    let _monitor_handle =
-        monitor::spawn(config.remote.clone(), command_rx, event_handler)?;
+    let monitor_handle = monitor::spawn(config.remote.clone(), event_handler)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     #[cfg(debug_assertions)]
@@ -65,7 +61,7 @@ fn main() -> Result<()> {
     }
     let mut terminal = ratatui::init();
     let app_result =
-        app::App::new(command_tx, event_rx, config).run(&mut terminal);
+        app::App::new(&monitor_handle.tx, event_rx, config).run(&mut terminal);
     ratatui::restore();
     if support_mouse {
         stdout().execute(DisableMouseCapture)?;
