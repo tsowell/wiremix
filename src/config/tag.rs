@@ -85,7 +85,7 @@ impl std::str::FromStr for Tag {
             "client:application.process.binary" => {
                 Ok(Tag::Client(ClientTag::ApplicationProcessBinary))
             }
-            _ => Err(format!("\"{}\" is not implemented", s)),
+            _ => Err(format!("\"{s}\" is not implemented")),
         }
     }
 }

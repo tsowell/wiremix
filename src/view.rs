@@ -459,10 +459,7 @@ impl View {
                     Some((Target::Node(node.id), title))
                 } else if node.media_class.as_ref()?.is_sink() {
                     let title = names.resolve(state, node)?;
-                    Some((
-                        Target::Node(node.id),
-                        format!("Monitor of {}", title),
-                    ))
+                    Some((Target::Node(node.id), format!("Monitor of {title}")))
                 } else {
                     None
                 }
@@ -799,7 +796,7 @@ impl View {
                 targets
                     .iter()
                     .find(|(target, _)| *target == default)
-                    .map(|(_, name)| format!("Default: {}", name))
+                    .map(|(_, name)| format!("Default: {name}"))
             })
             .unwrap_or(String::from("Default: No default"));
         // Sort targets by name

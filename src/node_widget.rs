@@ -285,7 +285,7 @@ impl StatefulWidget for NodeWidget<'_> {
             let percent = (volume * 100.0).round() as u32;
 
             Line::from(Span::styled(
-                format!("{}%", percent),
+                format!("{percent}%"),
                 self.config.theme.volume,
             ))
             .alignment(Alignment::Right)

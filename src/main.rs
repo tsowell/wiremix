@@ -45,9 +45,9 @@ fn main() -> Result<()> {
         for received in event_rx {
             use wiremix::event::Event;
             match received {
-                Event::Monitor(event) => print!("{:?}\r\n", event),
+                Event::Monitor(event) => print!("{event:?}\r\n"),
                 event => {
-                    print!("{:?}\r\n", event);
+                    print!("{event:?}\r\n");
                 }
             }
         }
