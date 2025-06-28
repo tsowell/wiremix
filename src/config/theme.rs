@@ -283,10 +283,9 @@ mod tests {
         for (builtin_key, builtin) in Theme::defaults().iter() {
             let config = format!(
                 r#"
-            inherit = "{}"
+            inherit = "{builtin_key}"
             tab_selected = {{ }}
-            "#,
-                builtin_key
+            "#
             );
 
             let overlay = toml::from_str::<ThemeOverlay>(&config).unwrap();

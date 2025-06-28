@@ -380,10 +380,9 @@ mod tests {
         for (builtin_key, builtin) in CharSet::defaults().iter() {
             let config = format!(
                 r#"
-            inherit = "{}"
+            inherit = "{builtin_key}"
             meter_right_active = "$"
-            "#,
-                builtin_key
+            "#
             );
 
             let overlay = toml::from_str::<CharSetOverlay>(&config).unwrap();
