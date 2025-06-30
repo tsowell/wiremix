@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add "git describe" information to --version output.
+
 ## [0.5.0] - 2025-06-26
 
 ### Changed

@@ -11,6 +11,10 @@ keywords = ["mixer", "pipewire", "volume", "audio", "tui"]
 edition = "2021"
 rust-version = "1.74.1"
 include = ["src/**/*", "Cargo.toml", "LICENSE*", "README.md", "wiremix.toml"]
+build = "build.rs"
+
+[build-dependencies]
+vergen-git2 = "1.0.1"
 
 [dependencies]
 anyhow = "1.0.95"

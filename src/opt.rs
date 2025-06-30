@@ -9,7 +9,7 @@ use crate::config;
 
 #[derive(Parser)]
 #[clap(name = "wiremix", about = "PipeWire mixer")]
-#[command(version)]
+#[command(version = env!("VERGEN_GIT_DESCRIBE"))] // Emitted by build.rs
 pub struct Opt {
     #[clap(
         short = 'c',
