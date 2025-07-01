@@ -68,7 +68,7 @@ pub fn spawn<F: EventHandler>(
     });
 
     Ok(MonitorHandle {
-        fd: Some(shutdown_fd),
+        fd: shutdown_fd,
         handle: Some(handle),
         tx,
     })
@@ -105,7 +105,7 @@ fn run<F: EventHandler>(
 /// be notified to [`quit()`](`pipewire::main_loop::MainLoop::quit()`), and the
 /// thread will be joined.
 pub struct MonitorHandle {
-    fd: Option<Arc<EventFd>>,
+    fd: Arc<EventFd>,
     handle: Option<thread::JoinHandle<()>>,
     /// Channel for sending [`Command`]s to be executed
     tx: pipewire::channel::Sender<Command>,
@@ -113,9 +113,7 @@ pub struct MonitorHandle {
 
 impl Drop for MonitorHandle {
     fn drop(&mut self) {
-        if let Some(fd) = self.fd.take() {
-            let _ = fd.arm();
-        }
+        let _ = self.fd.arm();
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
