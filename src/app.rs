@@ -30,7 +30,7 @@ use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
 use crate::monitor::ObjectId;
 use crate::object_list::{ObjectList, ObjectListWidget};
-use crate::state::{State, StateDirty};
+use crate::state::State;
 use crate::view::{self, ListKind, View};
 
 /// A UI action.
@@ -162,6 +162,14 @@ impl std::fmt::Display for TabKind {
 pub type MouseArea =
     (Rect, SmallVec<[MouseEventKind; 4]>, SmallVec<[Action; 4]>);
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum StateDirty {
+    #[default]
+    Clean,
+    PeaksOnly,
+    Everything,
+}
+
 /// Handles the main UI for the application.
 ///
 /// This runs the main loop to process PipeWire events and terminal input and
@@ -186,6 +194,8 @@ pub struct App<'a> {
     is_ready: bool,
     /// The current PipeWire state
     state: State,
+    /// How dirty is the PipeWire state?
+    state_dirty: StateDirty,
     /// Tracks the nodes being captured
     capture_manager: CaptureManager<'a>,
     /// A rendering view based on the current PipeWire state
@@ -253,6 +263,7 @@ impl<'a> App<'a> {
             mouse_areas: Vec::new(),
             is_ready: false,
             state: State::default(),
+            state_dirty: StateDirty::default(),
             capture_manager: CaptureManager::new(
                 monitor,
                 config.peaks != Peaks::Off,
@@ -280,7 +291,7 @@ impl<'a> App<'a> {
 
         while !self.exit {
             // Update view if needed
-            match self.state.dirty {
+            match self.state_dirty {
                 StateDirty::Everything => {
                     self.view = View::from(
                         self.monitor,
@@ -293,7 +304,7 @@ impl<'a> App<'a> {
                 }
                 _ => {}
             }
-            self.state.dirty = StateDirty::Clean;
+            self.state_dirty = StateDirty::Clean;
 
             if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
@@ -602,7 +613,22 @@ impl Handle for MonitorEvent {
 
 impl Handle for StateEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
+        // Peaks updates are very frequent and easy to merge, so track if those
+        // are the only updates done since the state was last Clean.
+        match (app.state_dirty, &self) {
+            (
+                StateDirty::Clean | StateDirty::PeaksOnly,
+                StateEvent::NodePeaks(..),
+            ) => {
+                app.state_dirty = StateDirty::PeaksOnly;
+            }
+            _ => {
+                app.state_dirty = StateDirty::Everything;
+            }
+        }
+
         app.state.update(&mut app.capture_manager, self);
+
         Ok(true)
     }
 }

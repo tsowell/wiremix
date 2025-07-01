@@ -102,14 +102,6 @@ pub struct Metadata {
     pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
-#[derive(Default, Debug, Clone, Copy)]
-pub enum StateDirty {
-    #[default]
-    Clean,
-    PeaksOnly,
-    Everything,
-}
-
 #[derive(Default, Debug)]
 /// PipeWire state, maintained from [`StateEvent`]s from the
 /// [`monitor`](`crate::monitor`) module.
@@ -127,8 +119,6 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
-    /// Used to optimize view rebuilding based on what has changed
-    pub dirty: StateDirty,
 }
 
 impl State {
@@ -140,21 +130,6 @@ impl State {
         capture_manager: &mut CaptureManager,
         event: StateEvent,
     ) {
-        // Peaks updates are very frequent and easy to merge, so track if those
-        // are the only updates done since the state was last Clean.
-        match (self.dirty, &event) {
-            (
-                StateDirty::Clean | StateDirty::PeaksOnly,
-                StateEvent::NodePeaks(..),
-            ) => {
-                self.dirty = StateDirty::PeaksOnly;
-            }
-            _ => {
-                self.dirty = StateDirty::Everything;
-            }
-        }
-
-        // Update
         match event {
             StateEvent::ClientProperties(id, props) => {
                 self.client_entry(id).props = props;
