@@ -60,9 +60,41 @@ pub struct Node {
     pub positions: Option<Vec<u32>>,
 }
 
+/// Trait for processing peaks in order to implement effects like ballistics.
+pub trait PeakProcessor {
+    fn process_peak(
+        &self,
+        current_peak: f32,
+        previous_peak: f32,
+        sample_count: u32,
+        sample_rate: u32,
+    ) -> f32;
+}
+
+impl<F> PeakProcessor for F
+where
+    F: Fn(f32, f32, u32, u32) -> f32,
+{
+    fn process_peak(
+        &self,
+        current_peak: f32,
+        previous_peak: f32,
+        sample_count: u32,
+        sample_rate: u32,
+    ) -> f32 {
+        self(current_peak, previous_peak, sample_count, sample_rate)
+    }
+}
+
 impl Node {
-    /// Update peaks with VU-meter-style ballistics
-    pub fn update_peaks(&mut self, peaks: &Vec<f32>, samples: u32) {
+    /// Update peaks with an optional peak processor for ballistics or other
+    /// effects.
+    pub fn update_peaks(
+        &mut self,
+        peaks: &Vec<f32>,
+        samples: u32,
+        peak_processor: Option<&dyn PeakProcessor>,
+    ) {
         let Some(rate) = self.rate else {
             return;
         };
@@ -76,14 +108,20 @@ impl Node {
         // Make sure it's the right size.
         peaks_ref.resize(peaks.len(), 0.0);
 
-        // Attack/release time of 300 ms
-        let time_constant = 0.3;
-        let coef =
-            1.0 - (-(samples as f32) / (time_constant * rate as f32)).exp();
-
-        // Update the peaks in-place.
         for (current_peak, new_peak) in peaks_ref.iter_mut().zip(peaks) {
-            *current_peak += (new_peak - *current_peak) * coef
+            match peak_processor {
+                Some(peak_processor) => {
+                    *current_peak = peak_processor.process_peak(
+                        *current_peak,
+                        *new_peak,
+                        rate,
+                        samples,
+                    );
+                }
+                None => {
+                    *current_peak = *new_peak;
+                }
+            }
         }
     }
 }
@@ -102,7 +140,7 @@ pub struct Metadata {
     pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 /// PipeWire state, maintained from [`StateEvent`]s from the
 /// [`monitor`](`crate::monitor`) module.
 ///
@@ -119,9 +157,18 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
+    peak_processor: Option<Box<dyn PeakProcessor>>,
 }
 
 impl State {
+    pub fn with_peak_processor(
+        mut self,
+        peak_processor: Box<dyn PeakProcessor>,
+    ) -> Self {
+        self.peak_processor = Some(peak_processor);
+        self
+    }
+
     /// Update the state based on the supplied event. Also invokes callbacks on
     /// a [`CaptureManager`](`crate::capture_manager::CaptureManager`) for
     /// managing stream capturing.
@@ -210,7 +257,12 @@ impl State {
                 self.node_entry(id).mute = Some(mute);
             }
             StateEvent::NodePeaks(id, peaks, samples) => {
-                self.node_entry(id).update_peaks(&peaks, samples);
+                let node = self.nodes.entry(id).or_insert_with(|| Node {
+                    id,
+                    ..Default::default()
+                });
+                let peak_processor = self.peak_processor.as_deref();
+                node.update_peaks(&peaks, samples, peak_processor);
             }
             StateEvent::NodeRate(id, rate) => {
                 self.node_entry(id).rate = Some(rate);

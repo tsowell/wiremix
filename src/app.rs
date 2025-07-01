@@ -253,6 +253,17 @@ impl<'a> App<'a> {
                 ObjectList::new(ListKind::Device, None),
             ),
         ];
+
+        // Update peaks with VU-meter-style ballistics
+        let peak_processor = |current_peak, new_peak, rate, samples| {
+            // Attack/release time of 300 ms
+            let time_constant = 0.3;
+            let coef =
+                1.0 - (-(samples as f32) / (time_constant * rate as f32)).exp();
+
+            current_peak + (new_peak - current_peak) * coef
+        };
+
         App {
             exit: false,
             monitor,
@@ -262,7 +273,8 @@ impl<'a> App<'a> {
             current_tab_index: config.tab.index(),
             mouse_areas: Vec::new(),
             is_ready: false,
-            state: State::default(),
+            state: State::default()
+                .with_peak_processor(Box::new(peak_processor)),
             state_dirty: StateDirty::default(),
             capture_manager: CaptureManager::new(
                 monitor,
