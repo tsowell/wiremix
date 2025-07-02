@@ -12,7 +12,7 @@ use wiremix::app;
 use wiremix::config::Config;
 use wiremix::event::Event;
 use wiremix::input;
-use wiremix::monitor;
+use wiremix::monitor::Client;
 use wiremix::opt::Opt;
 
 fn main() -> Result<()> {
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         move |event| event_tx.send(Event::Monitor(event)).is_ok()
     };
     // Spawn the PipeWire monitor
-    let monitor_handle = monitor::spawn(config.remote.clone(), event_handler)?;
+    let client = Client::spawn(config.remote.clone(), event_handler)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     #[cfg(debug_assertions)]
@@ -61,7 +61,7 @@ fn main() -> Result<()> {
     }
     let mut terminal = ratatui::init();
     let app_result =
-        app::App::new(&monitor_handle, event_rx, config).run(&mut terminal);
+        app::App::new(&client, event_rx, config).run(&mut terminal);
     ratatui::restore();
     if support_mouse {
         stdout().execute(DisableMouseCapture)?;

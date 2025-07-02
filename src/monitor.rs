@@ -1,6 +1,6 @@
 //! Setup and teardown of PipeWire monitoring.
 //!
-//! [`spawn()`] starts a PipeWire monitoring thread.
+//! [`Client::spawn()`] starts a PipeWire monitoring thread.
 
 mod client;
 mod command;
@@ -45,33 +45,47 @@ use crate::monitor::{
     sync_registry::SyncRegistry,
 };
 
-/// Spawns a thread to monitor the PipeWire instance.
+/// Handle for a PipeWire monitoring thread.
 ///
-/// [`Event`]s from PipeWire are sent to the provided `handler`. [`Command`]s
-/// sent to `rx` will be executed.
-///
-/// Returns a [`MonitorHandle`] to automatically clean up the thread.
-pub fn spawn<F: EventHandler>(
-    remote: Option<String>,
-    handler: F,
-) -> Result<MonitorHandle> {
-    let shutdown_fd =
-        Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
+/// On cleanup, the PipeWire [`MainLoop`](`pipewire::main_loop::MainLoop`) will
+/// be notified to [`quit()`](`pipewire::main_loop::MainLoop::quit()`), and the
+/// thread will be joined.
+pub struct Client {
+    fd: Arc<EventFd>,
+    handle: Option<thread::JoinHandle<()>>,
+    /// Channel for sending [`Command`]s to be executed
+    tx: pipewire::channel::Sender<Command>,
+}
 
-    let (tx, rx) = pipewire::channel::channel::<Command>();
+impl Client {
+    /// Spawns a thread to monitor the PipeWire instance.
+    ///
+    /// [`Event`]s from PipeWire are sent to the provided `handler`.
+    ///
+    /// Returns a [`Client`] handle for sending commands and for automatically
+    /// cleaning up the thread.
+    pub fn spawn<F: EventHandler>(
+        remote: Option<String>,
+        handler: F,
+    ) -> Result<Self> {
+        let shutdown_fd =
+            Arc::new(EventFd::from_value_and_flags(0, EfdFlags::EFD_NONBLOCK)?);
 
-    let handle = thread::spawn({
-        let shutdown_fd = Arc::clone(&shutdown_fd);
-        move || {
-            let _ = run(remote, rx, handler, shutdown_fd);
-        }
-    });
+        let (tx, rx) = pipewire::channel::channel::<Command>();
 
-    Ok(MonitorHandle {
-        fd: shutdown_fd,
-        handle: Some(handle),
-        tx,
-    })
+        let handle = thread::spawn({
+            let shutdown_fd = Arc::clone(&shutdown_fd);
+            move || {
+                let _ = run(remote, rx, handler, shutdown_fd);
+            }
+        });
+
+        Ok(Self {
+            fd: shutdown_fd,
+            handle: Some(handle),
+            tx,
+        })
+    }
 }
 
 /// Wrapper for handling PipeWire initialization/deinitialization.
@@ -99,19 +113,7 @@ fn run<F: EventHandler>(
     Ok(())
 }
 
-/// Handle for a PipeWire monitoring thread.
-///
-/// On cleanup, the PipeWire [`MainLoop`](`pipewire::main_loop::MainLoop`) will
-/// be notified to [`quit()`](`pipewire::main_loop::MainLoop::quit()`), and the
-/// thread will be joined.
-pub struct MonitorHandle {
-    fd: Arc<EventFd>,
-    handle: Option<thread::JoinHandle<()>>,
-    /// Channel for sending [`Command`]s to be executed
-    tx: pipewire::channel::Sender<Command>,
-}
-
-impl Drop for MonitorHandle {
+impl Drop for Client {
     fn drop(&mut self) {
         let _ = self.fd.arm();
         if let Some(handle) = self.handle.take() {
@@ -120,7 +122,7 @@ impl Drop for MonitorHandle {
     }
 }
 
-impl CommandSender for MonitorHandle {
+impl CommandSender for Client {
     fn node_capture_start(
         &self,
         obj_id: ObjectId,
