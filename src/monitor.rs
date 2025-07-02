@@ -123,6 +123,10 @@ impl Drop for Client {
 }
 
 impl CommandSender for Client {
+    fn send(&self, command: Command) {
+        let _ = self.tx.send(command);
+    }
+
     fn node_capture_start(
         &self,
         obj_id: ObjectId,

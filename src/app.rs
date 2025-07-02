@@ -24,7 +24,6 @@ use crossterm::event::{
 use serde::Deserialize;
 use smallvec::{smallvec, SmallVec};
 
-use crate::capture_manager::CaptureManager;
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
@@ -196,8 +195,6 @@ pub struct App<'a> {
     state: State,
     /// How dirty is the PipeWire state?
     state_dirty: StateDirty,
-    /// Tracks the nodes being captured
-    capture_manager: CaptureManager<'a>,
     /// A rendering view based on the current PipeWire state
     view: View<'a>,
     /// The application configuration
@@ -264,6 +261,10 @@ impl<'a> App<'a> {
             current_peak + (new_peak - current_peak) * coef
         };
 
+        let state = State::default()
+            .with_peak_processor(Box::new(peak_processor))
+            .with_capture(config.peaks != Peaks::Off);
+
         App {
             exit: false,
             monitor,
@@ -273,13 +274,8 @@ impl<'a> App<'a> {
             current_tab_index: config.tab.index(),
             mouse_areas: Vec::new(),
             is_ready: false,
-            state: State::default()
-                .with_peak_processor(Box::new(peak_processor)),
+            state,
             state_dirty: StateDirty::default(),
-            capture_manager: CaptureManager::new(
-                monitor,
-                config.peaks != Peaks::Off,
-            ),
             view: View::new(monitor),
             config,
             drag_row: None,
@@ -639,7 +635,7 @@ impl Handle for StateEvent {
             }
         }
 
-        app.state.update(&mut app.capture_manager, self);
+        app.state.update(app.monitor, self);
 
         Ok(true)
     }

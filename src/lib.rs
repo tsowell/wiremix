@@ -1,5 +1,4 @@
 pub mod app;
-pub mod capture_manager;
 pub mod config;
 pub mod device_kind;
 pub mod device_widget;
@@ -22,12 +21,13 @@ pub mod trace;
 
 #[cfg(test)]
 mod mock {
-    use crate::monitor::{CommandSender, ObjectId};
+    use crate::monitor::{Command, CommandSender, ObjectId};
 
     #[derive(Default)]
     pub struct MonitorHandle {}
 
     impl CommandSender for MonitorHandle {
+        fn send(&self, _command: Command) {}
         fn node_capture_start(
             &self,
             _obj_id: ObjectId,

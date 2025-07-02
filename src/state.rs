@@ -1,9 +1,11 @@
 //! Representation of PipeWire state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use crate::capture_manager::CaptureManager;
-use crate::monitor::{ObjectId, PropertyStore, StateEvent};
+use crate::media_class;
+use crate::monitor::{
+    Command, CommandSender, ObjectId, PropertyStore, StateEvent,
+};
 
 #[derive(Debug)]
 pub struct Profile {
@@ -145,8 +147,7 @@ pub struct Metadata {
 /// [`monitor`](`crate::monitor`) module.
 ///
 /// This is primarily for maintaining a representation of the PipeWire state,
-/// but [`Self::update()`] also invokes callbacks on a
-/// [`CaptureManager`](`crate::capture_manager::CaptureManager`) for starting
+/// but [`Self::update()`] also handles capture management for starting
 /// and stopping streaming because the [`monitor`](`crate::monitor`) callbacks
 /// don't individually have enough information to determine when that should
 /// happen.
@@ -158,9 +159,11 @@ pub struct State {
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
     peak_processor: Option<Box<dyn PeakProcessor>>,
+    capturing: Option<HashSet<ObjectId>>,
 }
 
 impl State {
+    /// Provide a peak processor for setting peak levels.
     pub fn with_peak_processor(
         mut self,
         peak_processor: Box<dyn PeakProcessor>,
@@ -169,14 +172,17 @@ impl State {
         self
     }
 
-    /// Update the state based on the supplied event. Also invokes callbacks on
-    /// a [`CaptureManager`](`crate::capture_manager::CaptureManager`) for
-    /// managing stream capturing.
-    pub fn update(
-        &mut self,
-        capture_manager: &mut CaptureManager,
-        event: StateEvent,
-    ) {
+    /// Enable stream capturing.
+    pub fn with_capture(mut self, enable: bool) -> Self {
+        self.capturing = enable.then_some(Default::default());
+        self
+    }
+
+    /// Update the state based on the supplied event. Also handles capture
+    /// management for starting and stopping streaming.
+    pub fn update(&mut self, monitor: &dyn CommandSender, event: StateEvent) {
+        let mut commands = Vec::<Command>::new();
+
         match event {
             StateEvent::ClientProperties(id, props) => {
                 self.client_entry(id).props = props;
@@ -250,7 +256,7 @@ impl State {
                 self.node_entry(id).props = props;
 
                 if let Some(node) = self.nodes.get(&id) {
-                    capture_manager.on_node(node);
+                    commands.extend(self.on_node(node));
                 }
             }
             StateEvent::NodeMute(id, mute) => {
@@ -274,7 +280,7 @@ impl State {
                         .as_ref()
                         .is_some_and(|p| *p != positions);
                     if changed {
-                        capture_manager.on_positions_changed(node);
+                        commands.extend(self.on_positions_changed(node));
                     }
                 }
                 self.node_entry(id).positions = Some(positions);
@@ -285,7 +291,7 @@ impl State {
             StateEvent::Link(id, output, input) => {
                 if !self.inputs(input).contains(&output) {
                     if let Some(node) = self.nodes.get(&input) {
-                        capture_manager.on_link(node);
+                        commands.extend(self.on_link(node));
                     }
                 }
 
@@ -323,7 +329,7 @@ impl State {
                 if let Some(Link { input, .. }) = self.links.remove(&id) {
                     if self.inputs(input).len() == 1 {
                         if let Some(node) = self.nodes.get(&input) {
-                            capture_manager.on_removed(node);
+                            commands.extend(self.on_removed(node));
                         }
                     }
                 }
@@ -331,13 +337,29 @@ impl State {
                 self.devices.remove(&id);
                 self.clients.remove(&id);
                 if let Some(node) = self.nodes.remove(&id) {
-                    capture_manager.on_removed(&node);
+                    commands.extend(self.on_removed(&node));
                 }
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
                         self.metadatas_by_name.remove(&metadata_name);
                     }
+                }
+            }
+        }
+
+        if let Some(capturing) = &mut self.capturing {
+            for command in commands.into_iter() {
+                match command {
+                    Command::NodeCaptureStart(node_id, _, _) => {
+                        capturing.insert(node_id);
+                        monitor.send(command);
+                    }
+                    Command::NodeCaptureStop(node_id) => {
+                        capturing.remove(&node_id);
+                        monitor.send(command);
+                    }
+                    _ => {}
                 }
             }
         }
@@ -396,6 +418,96 @@ impl State {
             .map(|(_key, l)| l.output)
             .collect()
     }
+
+    /// Call when a node's capture eligibility might have changed.
+    fn on_node(&self, node: &Node) -> Option<Command> {
+        self.capturing.as_ref()?;
+
+        if !node
+            .props
+            .media_class()
+            .as_ref()
+            .is_some_and(|media_class| {
+                media_class::is_source(media_class)
+                    || media_class::is_sink_input(media_class)
+                    || media_class::is_source_output(media_class)
+            })
+        {
+            return None;
+        }
+
+        node.props.object_serial()?;
+
+        if self.capturing.as_ref()?.contains(&node.id) {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node gets a new input link.
+    fn on_link(&self, node: &Node) -> Option<Command> {
+        self.capturing.as_ref()?;
+
+        if !node
+            .props
+            .media_class()
+            .as_ref()
+            .is_some_and(|media_class| {
+                media_class::is_sink(media_class)
+                    || media_class::is_source(media_class)
+                    || media_class::is_sink_input(media_class)
+                    || media_class::is_source_output(media_class)
+            })
+        {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node's output positions have changed.
+    fn on_positions_changed(&self, node: &Node) -> Option<Command> {
+        if !self.capturing.as_ref()?.contains(&node.id) {
+            return None;
+        }
+
+        self.start_capture_command(node)
+    }
+
+    /// Call when a node has no more input links.
+    fn on_removed(&self, node: &Node) -> Option<Command> {
+        self.capturing.as_ref()?;
+
+        self.stop_capture_command(node)
+    }
+
+    fn start_capture_command(&self, node: &Node) -> Option<Command> {
+        self.capturing.as_ref()?;
+
+        let object_serial = node.props.object_serial()?;
+
+        let capture_sink =
+            node.props
+                .media_class()
+                .as_ref()
+                .is_some_and(|media_class| {
+                    media_class::is_sink(media_class)
+                        || media_class::is_source(media_class)
+                });
+
+        Some(Command::NodeCaptureStart(
+            node.id,
+            *object_serial,
+            capture_sink,
+        ))
+    }
+
+    fn stop_capture_command(&self, node: &Node) -> Option<Command> {
+        self.capturing.as_ref()?;
+
+        Some(Command::NodeCaptureStop(node.id))
+    }
 }
 
 #[cfg(test)]
@@ -408,11 +520,10 @@ mod tests {
     fn state_metadata_insert() {
         let mut state = State::default();
         let monitor = mock::MonitorHandle::default();
-        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -427,15 +538,14 @@ mod tests {
     fn state_metadata_remove() {
         let mut state = State::default();
         let monitor = mock::MonitorHandle::default();
-        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
-        state.update(&mut capture_manager, StateEvent::Removed(obj_id));
+        state.update(&monitor, StateEvent::Removed(obj_id));
 
         assert!(!state.metadatas.contains_key(&obj_id));
         assert!(!state.metadatas_by_name.contains_key(&metadata_name));
@@ -460,11 +570,10 @@ mod tests {
     fn state_metadata_clear_property() {
         let mut state = State::default();
         let monitor = mock::MonitorHandle::default();
-        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -472,7 +581,7 @@ mod tests {
         let value = String::from("value");
 
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(
                 obj_id,
                 0,
@@ -481,7 +590,7 @@ mod tests {
             ),
         );
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(
                 obj_id,
                 1,
@@ -499,7 +608,7 @@ mod tests {
         );
 
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(obj_id, 0, Some(key.clone()), None),
         );
         assert_eq!(get_metadata_properties(&state, &obj_id, 0).get(&key), None);
@@ -513,11 +622,10 @@ mod tests {
     fn state_metadata_clear_all_properties() {
         let mut state = State::default();
         let monitor = mock::MonitorHandle::default();
-        let mut capture_manager = CaptureManager::new(&monitor, false);
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -525,7 +633,7 @@ mod tests {
         let value = String::from("value");
 
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(
                 obj_id,
                 0,
@@ -534,7 +642,7 @@ mod tests {
             ),
         );
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(
                 obj_id,
                 1,
@@ -546,7 +654,7 @@ mod tests {
         assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
 
         state.update(
-            &mut capture_manager,
+            &monitor,
             StateEvent::MetadataProperty(obj_id, 0, None, None),
         );
 

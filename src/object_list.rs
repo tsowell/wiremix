@@ -502,7 +502,6 @@ impl StatefulWidget for &mut ObjectListWidget<'_, '_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capture_manager::CaptureManager;
     use crate::config;
     use crate::mock;
     use crate::monitor::{PropertyStore, StateEvent};
@@ -512,7 +511,6 @@ mod tests {
     fn init() -> (State, mock::MonitorHandle) {
         let mut state = State::default();
         let monitor = mock::MonitorHandle::default();
-        let mut capture_manager = CaptureManager::new(&monitor, false);
 
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
@@ -533,7 +531,7 @@ mod tests {
                 StateEvent::NodeMute(obj_id, false),
             ];
             for event in events {
-                state.update(&mut capture_manager, event);
+                state.update(&monitor, event);
             }
         }
 

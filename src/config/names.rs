@@ -203,7 +203,6 @@ impl TagResolver for state::Client {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::capture_manager::CaptureManager;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::mock;
     use crate::monitor::{ObjectId, PropertyStore, StateEvent};
@@ -227,19 +226,17 @@ mod tests {
         let _ = Names::default_device();
     }
 
-    struct Fixture<'a> {
+    struct Fixture {
         state: State,
-        capture_manager: CaptureManager<'a>,
         device_id: ObjectId,
         node_id: ObjectId,
         client_id: ObjectId,
         node_props: PropertyStore,
     }
 
-    impl<'a> Fixture<'a> {
-        fn new(monitor: &'a mock::MonitorHandle) -> Self {
+    impl Fixture {
+        fn new(monitor: &mock::MonitorHandle) -> Self {
             let mut state = State::default();
-            let mut capture_manager = CaptureManager::new(monitor, false);
 
             let device_id = ObjectId::from_raw_id(0);
             let node_id = ObjectId::from_raw_id(1);
@@ -266,12 +263,11 @@ mod tests {
             ];
 
             for event in events {
-                state.update(&mut capture_manager, event);
+                state.update(monitor, event);
             }
 
             Self {
                 state,
-                capture_manager,
                 device_id,
                 node_id,
                 client_id,
@@ -289,7 +285,7 @@ mod tests {
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -312,7 +308,7 @@ mod tests {
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -353,7 +349,7 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -377,7 +373,7 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -401,7 +397,7 @@ mod tests {
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -438,7 +434,7 @@ mod tests {
 
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
-            &mut fixture.capture_manager,
+            &monitor,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
