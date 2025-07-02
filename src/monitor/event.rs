@@ -1,4 +1,13 @@
+use pipewire::link::LinkInfoRef;
+
 use crate::monitor::{ObjectId, PropertyStore};
+
+#[derive(Debug)]
+pub enum Event {
+    State(StateEvent),
+    Error(String),
+    Ready,
+}
 
 #[derive(Debug)]
 pub enum StateEvent {
@@ -27,9 +36,12 @@ pub enum StateEvent {
     Removed(ObjectId),
 }
 
-#[derive(Debug)]
-pub enum Event {
-    State(StateEvent),
-    Error(String),
-    Ready,
+impl From<&LinkInfoRef> for StateEvent {
+    fn from(link_info: &LinkInfoRef) -> Self {
+        StateEvent::Link(
+            ObjectId::from_raw_id(link_info.id()),
+            ObjectId::from_raw_id(link_info.output_node_id()),
+            ObjectId::from_raw_id(link_info.input_node_id()),
+        )
+    }
 }
