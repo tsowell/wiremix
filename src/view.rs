@@ -8,11 +8,10 @@ use serde_json::json;
 use crate::config;
 use crate::device_kind::DeviceKind;
 use crate::media_class;
-use crate::monitor::{CommandSender, ObjectId};
-use crate::state;
+use crate::monitor::{state, CommandSender, ObjectId};
 
-/// A view for transforming [`State`](`crate::state::State`) into a better
-/// format for rendering.
+/// A view for transforming [`State`](`state::State`) into a better format for
+/// rendering.
 ///
 /// This is done in only two ways:
 ///

@@ -504,8 +504,7 @@ mod tests {
     use super::*;
     use crate::config;
     use crate::mock;
-    use crate::monitor::{PropertyStore, StateEvent};
-    use crate::state::State;
+    use crate::monitor::{state::State, PropertyStore, StateEvent};
     use crate::view::{ListKind, NodeKind, View};
 
     fn init() -> (State, mock::MonitorHandle) {

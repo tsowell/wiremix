@@ -12,7 +12,6 @@ pub mod monitor;
 pub mod node_widget;
 pub mod object_list;
 pub mod opt;
-pub mod state;
 pub mod truncate;
 pub mod view;
 

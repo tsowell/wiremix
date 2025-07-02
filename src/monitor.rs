@@ -15,6 +15,7 @@ mod node;
 mod object_id;
 mod property_store;
 mod proxy_registry;
+pub mod state;
 mod stream;
 mod stream_registry;
 mod sync_registry;

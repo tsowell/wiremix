@@ -2,7 +2,7 @@
 //! templates and handles resolving templates into strings.
 
 use crate::config;
-use crate::state;
+use crate::monitor::state;
 
 pub use crate::config::name_template::NameTemplate;
 pub use crate::config::tag::Tag;
@@ -205,8 +205,7 @@ mod tests {
     use super::*;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::mock;
-    use crate::monitor::{ObjectId, PropertyStore, StateEvent};
-    use crate::state::State;
+    use crate::monitor::{state::State, ObjectId, PropertyStore, StateEvent};
 
     #[test]
     fn default_stream() {

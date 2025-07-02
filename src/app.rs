@@ -27,9 +27,8 @@ use smallvec::{smallvec, SmallVec};
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
-use crate::monitor::ObjectId;
+use crate::monitor::{state::State, ObjectId};
 use crate::object_list::{ObjectList, ObjectListWidget};
-use crate::state::State;
 use crate::view::{self, ListKind, View};
 
 /// A UI action.
