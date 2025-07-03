@@ -4,7 +4,7 @@ use pipewire::main_loop::WeakMainLoop;
 
 use crate::monitor::{Event, StateEvent};
 
-/// Trait for handling [`Event`]s from [`EventSender`].
+/// Trait for handling [`Event`]s.
 ///
 /// Returns `true` if the event was handled successfully, `false` if the
 /// monitor should shut down.

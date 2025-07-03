@@ -23,6 +23,7 @@ mod sync_registry;
 
 pub use command::{Command, CommandSender};
 pub use event::{Event, StateEvent};
+pub use event_sender::EventHandler;
 pub use object_id::ObjectId;
 pub use property_store::PropertyStore;
 
@@ -41,10 +42,8 @@ use pipewire::{
 };
 
 use crate::monitor::{
-    event_sender::{EventHandler, EventSender},
-    proxy_registry::ProxyRegistry,
-    stream_registry::StreamRegistry,
-    sync_registry::SyncRegistry,
+    event_sender::EventSender, proxy_registry::ProxyRegistry,
+    stream_registry::StreamRegistry, sync_registry::SyncRegistry,
 };
 
 /// Handle for a PipeWire monitoring thread.
