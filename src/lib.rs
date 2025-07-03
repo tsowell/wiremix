@@ -6,7 +6,6 @@ pub mod dropdown_widget;
 pub mod event;
 pub mod help;
 pub mod input;
-pub mod media_class;
 pub mod meter;
 pub mod monitor;
 pub mod node_widget;

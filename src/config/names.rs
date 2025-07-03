@@ -7,7 +7,7 @@ use crate::monitor::state;
 pub use crate::config::name_template::NameTemplate;
 pub use crate::config::tag::Tag;
 use crate::config::Names;
-use crate::media_class;
+use crate::wirehose::media_class;
 
 impl Names {
     pub fn default_stream() -> Vec<NameTemplate> {

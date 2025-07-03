@@ -2,9 +2,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::media_class;
 use crate::monitor::{
-    Command, CommandSender, ObjectId, PropertyStore, StateEvent,
+    media_class, Command, CommandSender, ObjectId, PropertyStore, StateEvent,
 };
 
 #[derive(Debug)]

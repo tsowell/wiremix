@@ -10,6 +10,7 @@ mod event;
 mod event_sender;
 mod execute;
 mod link;
+mod media_class;
 mod metadata;
 mod node;
 mod object_id;
