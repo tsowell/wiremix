@@ -1,6 +1,6 @@
 //! Setup and teardown of PipeWire monitoring.
 //!
-//! [`Client::spawn()`] starts a PipeWire monitoring thread.
+//! [`Session::spawn()`] starts a PipeWire monitoring thread.
 
 mod client;
 mod command;
@@ -51,19 +51,19 @@ use crate::monitor::{
 /// On cleanup, the PipeWire [`MainLoop`](`pipewire::main_loop::MainLoop`) will
 /// be notified to [`quit()`](`pipewire::main_loop::MainLoop::quit()`), and the
 /// thread will be joined.
-pub struct Client {
+pub struct Session {
     fd: Arc<EventFd>,
     handle: Option<thread::JoinHandle<()>>,
     /// Channel for sending [`Command`]s to be executed
     tx: pipewire::channel::Sender<Command>,
 }
 
-impl Client {
+impl Session {
     /// Spawns a thread to monitor the PipeWire instance.
     ///
     /// [`Event`]s from PipeWire are sent to the provided `handler`.
     ///
-    /// Returns a [`Client`] handle for sending commands and for automatically
+    /// Returns a [`Session`] handle for sending commands and for automatically
     /// cleaning up the thread.
     pub fn spawn<F: EventHandler>(
         remote: Option<String>,
@@ -114,7 +114,7 @@ fn run<F: EventHandler>(
     Ok(())
 }
 
-impl Drop for Client {
+impl Drop for Session {
     fn drop(&mut self) {
         let _ = self.fd.arm();
         if let Some(handle) = self.handle.take() {
@@ -123,7 +123,7 @@ impl Drop for Client {
     }
 }
 
-impl CommandSender for Client {
+impl CommandSender for Session {
     fn send(&self, command: Command) {
         let _ = self.tx.send(command);
     }

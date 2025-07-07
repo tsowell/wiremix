@@ -12,7 +12,7 @@ use wiremix::app;
 use wiremix::config::Config;
 use wiremix::event::Event;
 use wiremix::input;
-use wiremix::monitor::Client;
+use wiremix::monitor::Session;
 use wiremix::opt::Opt;
 
 fn main() -> Result<()> {
@@ -35,7 +35,7 @@ fn main() -> Result<()> {
         move |event| event_tx.send(Event::Monitor(event)).is_ok()
     };
     // Spawn the PipeWire monitor
-    let client = Client::spawn(config.remote.clone(), event_handler)?;
+    let client = Session::spawn(config.remote.clone(), event_handler)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
     #[cfg(debug_assertions)]
