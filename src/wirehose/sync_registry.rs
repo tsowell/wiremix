@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use libspa::utils::result::AsyncSeq;
 use pipewire::core::Core;
 
-/// Track pending syncs in order to determine when the monitor has all initial
+/// Track pending syncs in order to determine when wirehose has all initial
 /// information and is waiting for new events.
 #[derive(Default)]
 pub struct SyncRegistry {

@@ -1,6 +1,6 @@
-//! PipeWire controls which can be executed by the monitor module.
+//! PipeWire controls which can be executed by wirehose.
 
-use crate::monitor::ObjectId;
+use crate::wirehose::ObjectId;
 
 #[derive(Debug)]
 pub enum Command {

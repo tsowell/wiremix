@@ -16,7 +16,7 @@ use pipewire::{
     types::ObjectType,
 };
 
-use crate::monitor::{
+use crate::wirehose::{
     client, device, event_sender::EventSender, execute, link, metadata, node,
     proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
     sync_registry::SyncRegistry, Command, CommandSender, EventHandler,
@@ -38,8 +38,8 @@ pub struct Session {
 impl Session {
     /// Spawns a thread to monitor the PipeWire instance.
     ///
-    /// [`crate::monitor::event::Event`]s from PipeWire are sent to the
-    /// provided `handler`.
+    /// [`Event`](`crate::wirehose::event::Event`)s from PipeWire are sent to
+    /// the provided `handler`.
     ///
     /// Returns a [`Session`] handle for sending commands and for automatically
     /// cleaning up the thread.

@@ -7,7 +7,7 @@ use serde_json::json;
 
 use crate::config;
 use crate::device_kind::DeviceKind;
-use crate::monitor::{media_class, state, CommandSender, ObjectId};
+use crate::wirehose::{media_class, state, CommandSender, ObjectId};
 
 /// A view for transforming [`State`](`state::State`) into a better format for
 /// rendering.
@@ -24,9 +24,9 @@ use crate::monitor::{media_class, state, CommandSender, ObjectId};
 /// though, hence the optimization.
 ///
 /// There are also functions like [`Self::mute()`] for executing commands
-/// against the [`monitor`](`crate::monitor`).
+/// against [`wirehose`](`crate::wirehose`).
 pub struct View<'a> {
-    monitor: &'a dyn CommandSender,
+    wirehose: &'a dyn CommandSender,
     pub nodes: HashMap<ObjectId, Node>,
     pub devices: HashMap<ObjectId, Device>,
 
@@ -77,7 +77,7 @@ pub struct Node {
 
     /// If this is a device/endpoint node, store the (device_id, route_index,
     /// card_device) here because they are needed for changing volumes and
-    /// muting via [`monitor`](`crate::monitor`).
+    /// muting via [`wirehose`](`crate::wirehose`).
     pub device_info: Option<(ObjectId, i32, i32)>,
 
     pub is_default_sink: bool,
@@ -408,9 +408,9 @@ fn has_target(state: &state::State, node_id: ObjectId) -> bool {
 }
 
 impl<'a> View<'a> {
-    pub fn new(monitor: &'a dyn CommandSender) -> View<'a> {
+    pub fn new(wirehose: &'a dyn CommandSender) -> View<'a> {
         Self {
-            monitor,
+            wirehose,
             nodes: Default::default(),
             devices: Default::default(),
             nodes_all: Default::default(),
@@ -429,7 +429,7 @@ impl<'a> View<'a> {
 
     /// Create a View from scratch from a provided State.
     pub fn from(
-        monitor: &'a dyn CommandSender,
+        wirehose: &'a dyn CommandSender,
         state: &state::State,
         names: &config::Names,
     ) -> View<'a> {
@@ -551,7 +551,7 @@ impl<'a> View<'a> {
             .collect();
 
         Self {
-            monitor,
+            wirehose,
             nodes,
             devices,
             nodes_all,
@@ -600,7 +600,7 @@ impl<'a> View<'a> {
             DeviceKind::Sink => "default.configured.audio.sink",
         };
 
-        self.monitor.metadata_set_property(
+        self.wirehose.metadata_set_property(
             metadata_id,
             0,
             String::from(key),
@@ -617,14 +617,14 @@ impl<'a> View<'a> {
 
         match target {
             Target::Default => {
-                self.monitor.metadata_set_property(
+                self.wirehose.metadata_set_property(
                     metadata_id,
                     node_id.into(),
                     String::from("target.object"),
                     Some(String::from("Spa:Id")),
                     Some(String::from("-1")),
                 );
-                self.monitor.metadata_set_property(
+                self.wirehose.metadata_set_property(
                     metadata_id,
                     node_id.into(),
                     String::from("target.node"),
@@ -633,14 +633,14 @@ impl<'a> View<'a> {
                 );
             }
             Target::Node(target_id) => {
-                self.monitor.metadata_set_property(
+                self.wirehose.metadata_set_property(
                     metadata_id,
                     node_id.into(),
                     String::from("target.object"),
                     None,
                     None,
                 );
-                self.monitor.metadata_set_property(
+                self.wirehose.metadata_set_property(
                     metadata_id,
                     node_id.into(),
                     String::from("target.node"),
@@ -649,14 +649,14 @@ impl<'a> View<'a> {
                 );
             }
             Target::Route(device_id, route_index, route_device) => {
-                self.monitor.device_set_route(
+                self.wirehose.device_set_route(
                     device_id,
                     route_index,
                     route_device,
                 );
             }
             Target::Profile(device_id, profile_index) => {
-                self.monitor.device_set_profile(device_id, profile_index);
+                self.wirehose.device_set_profile(device_id, profile_index);
             }
         }
     }
@@ -670,14 +670,14 @@ impl<'a> View<'a> {
         let mute = !node.mute;
 
         if let Some((device_id, route_index, route_device)) = node.device_info {
-            self.monitor.device_mute(
+            self.wirehose.device_mute(
                 device_id,
                 route_index,
                 route_device,
                 mute,
             );
         } else {
-            self.monitor.node_mute(node_id, mute);
+            self.wirehose.node_mute(node_id, mute);
         }
     }
 
@@ -719,14 +719,14 @@ impl<'a> View<'a> {
         }
 
         if let Some((device_id, route_index, route_device)) = node.device_info {
-            self.monitor.device_volumes(
+            self.wirehose.device_volumes(
                 device_id,
                 route_index,
                 route_device,
                 volumes,
             );
         } else {
-            self.monitor.node_volumes(node_id, volumes);
+            self.wirehose.node_volumes(node_id, volumes);
         }
 
         true

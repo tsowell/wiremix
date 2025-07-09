@@ -1,14 +1,14 @@
 //! Input events for the application.
 //!
-//! These come from [`monitor`](`crate::monitor`) (PipeWire events) and from
+//! These come from [`wirehose`](`crate::wirehose`) (PipeWire events) and from
 //! [`input`](`crate::input`) (terminal input events).
 
-use crate::monitor::Event as MonitorEvent;
+use crate::wirehose::Event as PipewireEvent;
 
 #[derive(Debug)]
 pub enum Event {
     Input(crossterm::event::Event),
-    Monitor(MonitorEvent),
+    Pipewire(PipewireEvent),
 }
 
 impl From<crossterm::event::Event> for Event {

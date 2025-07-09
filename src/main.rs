@@ -12,8 +12,8 @@ use wiremix::app;
 use wiremix::config::Config;
 use wiremix::event::Event;
 use wiremix::input;
-use wiremix::monitor::Session;
 use wiremix::opt::Opt;
+use wiremix::wirehose::Session;
 
 fn main() -> Result<()> {
     // Event channel for sending PipeWire and input events to the UI
@@ -28,13 +28,13 @@ fn main() -> Result<()> {
 
     let config = Config::try_new(config_path, &opt)?;
 
-    // Handler for events from the PipeWire monitor - just wrap them and put
-    // them on the event channel.
+    // Handler for events from PipeWire - just wrap them and put them on the
+    // event channel.
     let event_handler = {
         let event_tx = Arc::clone(&event_tx);
-        move |event| event_tx.send(Event::Monitor(event)).is_ok()
+        move |event| event_tx.send(Event::Pipewire(event)).is_ok()
     };
-    // Spawn the PipeWire monitor
+    // Spawn the wirehose thread to monitor PipeWire
     let client = Session::spawn(config.remote.clone(), event_handler)?;
     let _input_handle = input::spawn(Arc::clone(&event_tx));
 
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         for received in event_rx {
             use wiremix::event::Event;
             match received {
-                Event::Monitor(event) => print!("{event:?}\r\n"),
+                Event::Pipewire(event) => print!("{event:?}\r\n"),
                 event => {
                     print!("{event:?}\r\n");
                 }

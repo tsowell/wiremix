@@ -7,24 +7,24 @@ pub mod event;
 pub mod help;
 pub mod input;
 pub mod meter;
-pub mod monitor;
 pub mod node_widget;
 pub mod object_list;
 pub mod opt;
 pub mod truncate;
 pub mod view;
+pub mod wirehose;
 
 #[cfg(feature = "trace")]
 pub mod trace;
 
 #[cfg(test)]
 mod mock {
-    use crate::monitor::{Command, CommandSender, ObjectId};
+    use crate::wirehose::{Command, CommandSender, ObjectId};
 
     #[derive(Default)]
-    pub struct MonitorHandle {}
+    pub struct WirehoseHandle {}
 
-    impl CommandSender for MonitorHandle {
+    impl CommandSender for WirehoseHandle {
         fn send(&self, _command: Command) {}
         fn node_capture_start(
             &self,

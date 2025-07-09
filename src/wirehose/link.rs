@@ -8,8 +8,8 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::monitor::event_sender::EventSender;
-use crate::monitor::StateEvent;
+use crate::wirehose::event_sender::EventSender;
+use crate::wirehose::StateEvent;
 
 pub fn monitor_link(
     registry: &Registry,

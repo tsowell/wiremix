@@ -5,7 +5,7 @@ use libspa::utils::dict::DictRef;
 
 use anyhow::{anyhow, Result};
 
-use crate::monitor::ObjectId;
+use crate::wirehose::ObjectId;
 
 #[derive(Debug, Clone)]
 enum PropertyValue {

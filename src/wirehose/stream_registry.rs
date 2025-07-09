@@ -7,7 +7,7 @@ use nix::sys::eventfd::{EfdFlags, EventFd};
 
 use pipewire::stream::{Stream, StreamListener};
 
-use crate::monitor::ObjectId;
+use crate::wirehose::ObjectId;
 
 /// Storage for keeping streams and their listeners alive
 pub struct StreamRegistry<D> {
@@ -22,8 +22,9 @@ pub struct StreamRegistry<D> {
     /// Track garbage node IDs so [`Self::collect_garbage()`] can report on who
     /// was collected.
     garbage_ids: HashSet<ObjectId>,
-    /// EventFd for signalling to [`crate::monitor`] that objects are pending
-    /// deletion and that [`Self::collect_garbage()`] needs to be called
+    /// EventFd for signalling to [`wirehose`](`crate::wirehose`) that objects
+    /// are pending deletion and that [`Self::collect_garbage()`] needs to be
+    /// called
     pub gc_fd: EventFd,
 }
 

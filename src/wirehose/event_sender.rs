@@ -2,12 +2,12 @@ use std::cell::RefCell;
 
 use pipewire::main_loop::WeakMainLoop;
 
-use crate::monitor::{Event, StateEvent};
+use crate::wirehose::{Event, StateEvent};
 
 /// Trait for handling [`Event`]s.
 ///
 /// Returns `true` if the event was handled successfully, `false` if the
-/// monitor should shut down.
+/// wirehose thread should shut down.
 pub trait EventHandler: Send + 'static {
     fn handle_event(&mut self, event: Event) -> bool;
 }

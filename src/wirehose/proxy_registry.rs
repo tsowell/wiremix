@@ -14,7 +14,7 @@ use pipewire::{
     proxy::{Listener, ProxyListener, ProxyT},
 };
 
-use crate::monitor::ObjectId;
+use crate::wirehose::ObjectId;
 
 /// Storage for keeping proxies and their listeners alive
 pub struct ProxyRegistry {
@@ -34,8 +34,9 @@ pub struct ProxyRegistry {
     garbage_proxies_t: Vec<Rc<dyn ProxyT>>,
     /// Listeners pending deletion
     garbage_listeners: Vec<Box<dyn Listener>>,
-    /// EventFd for signalling to [`crate::monitor`] that objects are pending
-    /// deletion and that [`Self::collect_garbage()`] needs to be called
+    /// EventFd for signalling to [`wirehose`](`crate::wirehose`) that objects
+    /// are pending deletion and that [`Self::collect_garbage()`] needs to be
+    /// called
     pub gc_fd: EventFd,
 }
 

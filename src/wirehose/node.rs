@@ -12,8 +12,8 @@ use libspa::{
     utils::dict::DictRef,
 };
 
-use crate::monitor::event_sender::EventSender;
-use crate::monitor::{
+use crate::wirehose::event_sender::EventSender;
+use crate::wirehose::{
     deserialize::deserialize, ObjectId, PropertyStore, StateEvent,
 };
 

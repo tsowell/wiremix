@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::monitor::{
+use crate::wirehose::{
     media_class, Command, CommandSender, ObjectId, PropertyStore, StateEvent,
 };
 
@@ -143,13 +143,13 @@ pub struct Metadata {
 
 #[derive(Default)]
 /// PipeWire state, maintained from [`StateEvent`]s from the
-/// [`monitor`](`crate::monitor`) module.
+/// [`wirehose`](`crate::wirehose`) module.
 ///
 /// This is primarily for maintaining a representation of the PipeWire state,
 /// but [`Self::update()`] also handles capture management for starting
-/// and stopping streaming because the [`monitor`](`crate::monitor`) callbacks
-/// don't individually have enough information to determine when that should
-/// happen.
+/// and stopping streaming because the [`wirehose`](`crate::wirehose`)
+/// callbacks don't individually have enough information to determine when that
+/// should happen.
 pub struct State {
     pub clients: HashMap<ObjectId, Client>,
     pub nodes: HashMap<ObjectId, Node>,
@@ -179,7 +179,7 @@ impl State {
 
     /// Update the state based on the supplied event. Also handles capture
     /// management for starting and stopping streaming.
-    pub fn update(&mut self, monitor: &dyn CommandSender, event: StateEvent) {
+    pub fn update(&mut self, wirehose: &dyn CommandSender, event: StateEvent) {
         let mut commands = Vec::<Command>::new();
 
         match event {
@@ -352,11 +352,11 @@ impl State {
                 match command {
                     Command::NodeCaptureStart(node_id, _, _) => {
                         capturing.insert(node_id);
-                        monitor.send(command);
+                        wirehose.send(command);
                     }
                     Command::NodeCaptureStop(node_id) => {
                         capturing.remove(&node_id);
-                        monitor.send(command);
+                        wirehose.send(command);
                     }
                     _ => {}
                 }
@@ -518,11 +518,11 @@ mod tests {
     #[test]
     fn state_metadata_insert() {
         let mut state = State::default();
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -536,15 +536,15 @@ mod tests {
     #[test]
     fn state_metadata_remove() {
         let mut state = State::default();
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
-        state.update(&monitor, StateEvent::Removed(obj_id));
+        state.update(&wirehose, StateEvent::Removed(obj_id));
 
         assert!(!state.metadatas.contains_key(&obj_id));
         assert!(!state.metadatas_by_name.contains_key(&metadata_name));
@@ -568,11 +568,11 @@ mod tests {
     #[test]
     fn state_metadata_clear_property() {
         let mut state = State::default();
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -580,7 +580,7 @@ mod tests {
         let value = String::from("value");
 
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(
                 obj_id,
                 0,
@@ -589,7 +589,7 @@ mod tests {
             ),
         );
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(
                 obj_id,
                 1,
@@ -607,7 +607,7 @@ mod tests {
         );
 
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(obj_id, 0, Some(key.clone()), None),
         );
         assert_eq!(get_metadata_properties(&state, &obj_id, 0).get(&key), None);
@@ -620,11 +620,11 @@ mod tests {
     #[test]
     fn state_metadata_clear_all_properties() {
         let mut state = State::default();
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
         let obj_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
         );
 
@@ -632,7 +632,7 @@ mod tests {
         let value = String::from("value");
 
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(
                 obj_id,
                 0,
@@ -641,7 +641,7 @@ mod tests {
             ),
         );
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(
                 obj_id,
                 1,
@@ -653,7 +653,7 @@ mod tests {
         assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
 
         state.update(
-            &monitor,
+            &wirehose,
             StateEvent::MetadataProperty(obj_id, 0, None, None),
         );
 

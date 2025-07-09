@@ -14,9 +14,9 @@ use crate::config::Config;
 use crate::device_kind::DeviceKind;
 use crate::device_widget::DeviceWidget;
 use crate::dropdown_widget::DropdownWidget;
-use crate::monitor::ObjectId;
 use crate::node_widget::NodeWidget;
 use crate::view::{self, ListKind, VolumeAdjustment};
+use crate::wirehose::ObjectId;
 
 /// ObjectList stores information for filtering and displaying a subset of
 /// objects from a [`View`](`crate::view::View`).
@@ -504,12 +504,12 @@ mod tests {
     use super::*;
     use crate::config;
     use crate::mock;
-    use crate::monitor::{state::State, PropertyStore, StateEvent};
     use crate::view::{ListKind, NodeKind, View};
+    use crate::wirehose::{state::State, PropertyStore, StateEvent};
 
-    fn init() -> (State, mock::MonitorHandle) {
+    fn init() -> (State, mock::WirehoseHandle) {
         let mut state = State::default();
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
 
         for i in 0..10 {
             let obj_id = ObjectId::from_raw_id(i);
@@ -530,17 +530,17 @@ mod tests {
                 StateEvent::NodeMute(obj_id, false),
             ];
             for event in events {
-                state.update(&monitor, event);
+                state.update(&wirehose, event);
             }
         }
 
-        (state, monitor)
+        (state, wirehose)
     }
 
     #[test]
     fn object_list_up_overflow() {
-        let (state, monitor) = init();
-        let view = View::from(&monitor, &state, &config::Names::default());
+        let (state, wirehose) = init();
+        let view = View::from(&wirehose, &state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -560,8 +560,8 @@ mod tests {
 
     #[test]
     fn object_list_down_overflow() {
-        let (state, monitor) = init();
-        let view = View::from(&monitor, &state, &config::Names::default());
+        let (state, wirehose) = init();
+        let view = View::from(&wirehose, &state, &config::Names::default());
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer

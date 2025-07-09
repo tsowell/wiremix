@@ -2,7 +2,7 @@
 //! templates and handles resolving templates into strings.
 
 use crate::config;
-use crate::monitor::state;
+use crate::wirehose::state;
 
 pub use crate::config::name_template::NameTemplate;
 pub use crate::config::tag::Tag;
@@ -205,7 +205,7 @@ mod tests {
     use super::*;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::mock;
-    use crate::monitor::{state::State, ObjectId, PropertyStore, StateEvent};
+    use crate::wirehose::{state::State, ObjectId, PropertyStore, StateEvent};
 
     #[test]
     fn default_stream() {
@@ -234,7 +234,7 @@ mod tests {
     }
 
     impl Fixture {
-        fn new(monitor: &mock::MonitorHandle) -> Self {
+        fn new(wirehose: &mock::WirehoseHandle) -> Self {
             let mut state = State::default();
 
             let device_id = ObjectId::from_raw_id(0);
@@ -262,7 +262,7 @@ mod tests {
             ];
 
             for event in events {
-                state.update(monitor, event);
+                state.update(wirehose, event);
             }
 
             Self {
@@ -277,14 +277,14 @@ mod tests {
 
     #[test]
     fn render_endpoint() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -300,14 +300,14 @@ mod tests {
 
     #[test]
     fn render_endpoint_missing_tag() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -324,8 +324,8 @@ mod tests {
 
     #[test]
     fn render_device_missing_tag() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             device: vec!["{device:device.description}".parse().unwrap()],
@@ -340,15 +340,15 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -364,15 +364,15 @@ mod tests {
 
     #[test]
     fn render_endpoint_linked_device_missing_tag() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -389,14 +389,14 @@ mod tests {
 
     #[test]
     fn render_endpoint_no_linked_device() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture
             .node_props
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -413,8 +413,8 @@ mod tests {
 
     #[test]
     fn render_stream() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             stream: vec!["{node:node.nick}".parse().unwrap()],
@@ -428,12 +428,12 @@ mod tests {
 
     #[test]
     fn render_stream_linked_client() {
-        let monitor = mock::MonitorHandle::default();
-        let mut fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new(&wirehose);
 
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
-            &monitor,
+            &wirehose,
             StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
         );
 
@@ -449,8 +449,8 @@ mod tests {
 
     #[test]
     fn render_precedence() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             stream: vec![
@@ -467,8 +467,8 @@ mod tests {
 
     #[test]
     fn render_override_match() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -490,8 +490,8 @@ mod tests {
 
     #[test]
     fn render_override_type_mismatch() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -510,8 +510,8 @@ mod tests {
 
     #[test]
     fn render_override_value_mismatch() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             overrides: vec![NameOverride {
@@ -530,8 +530,8 @@ mod tests {
 
     #[test]
     fn render_override_empty_templates() {
-        let monitor = mock::MonitorHandle::default();
-        let fixture = Fixture::new(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new(&wirehose);
 
         let names = Names {
             overrides: vec![NameOverride {

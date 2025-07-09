@@ -4,7 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
-use crate::monitor::{CommandSender, Event as MonitorEvent, StateEvent};
+use crate::wirehose::{CommandSender, Event as PipewireEvent, StateEvent};
 
 use anyhow::{anyhow, Result};
 
@@ -27,9 +27,9 @@ use smallvec::{smallvec, SmallVec};
 use crate::device_kind::DeviceKind;
 use crate::event::Event;
 use crate::help::{HelpWidget, HelpWidgetState};
-use crate::monitor::{state::State, ObjectId};
 use crate::object_list::{ObjectList, ObjectListWidget};
 use crate::view::{self, ListKind, View};
+use crate::wirehose::{state::State, ObjectId};
 
 /// A UI action.
 ///
@@ -175,8 +175,8 @@ pub enum StateDirty {
 pub struct App<'a> {
     /// If set, tells the main loop it's time to exit
     exit: bool,
-    /// PipeWire monitor handle, for sending commands
-    monitor: &'a dyn CommandSender,
+    /// wirehose handle, for sending commands
+    wirehose: &'a dyn CommandSender,
     /// [`Event`](`crate::event::Event`) channel
     rx: mpsc::Receiver<Event>,
     /// An error message to return on exit
@@ -188,7 +188,7 @@ pub struct App<'a> {
     /// Areas populated during rendering which define actions corresponding to
     /// mouse activity
     mouse_areas: Vec<MouseArea>,
-    /// The monitor has received all initial information
+    /// wirehose has received all initial information
     is_ready: bool,
     /// The current PipeWire state
     state: State,
@@ -214,7 +214,7 @@ macro_rules! current_list {
 
 impl<'a> App<'a> {
     pub fn new(
-        monitor: &'a dyn CommandSender,
+        wirehose: &'a dyn CommandSender,
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
@@ -266,7 +266,7 @@ impl<'a> App<'a> {
 
         App {
             exit: false,
-            monitor,
+            wirehose,
             rx,
             error_message: None,
             tabs,
@@ -275,7 +275,7 @@ impl<'a> App<'a> {
             is_ready: false,
             state,
             state_dirty: StateDirty::default(),
-            view: View::new(monitor),
+            view: View::new(wirehose),
             config,
             drag_row: None,
             help_position: None,
@@ -301,7 +301,7 @@ impl<'a> App<'a> {
             match self.state_dirty {
                 StateDirty::Everything => {
                     self.view = View::from(
-                        self.monitor,
+                        self.wirehose,
                         &self.state,
                         &self.config.names,
                     );
@@ -426,7 +426,7 @@ impl Handle for Event {
     fn handle(self, app: &mut App) -> Result<bool> {
         match self {
             Event::Input(event) => event.handle(app),
-            Event::Monitor(event) => event.handle(app),
+            Event::Pipewire(event) => event.handle(app),
         }
     }
 }
@@ -592,17 +592,17 @@ impl Handle for MouseEvent {
     }
 }
 
-impl Handle for MonitorEvent {
+impl Handle for PipewireEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
         match self {
-            MonitorEvent::Ready => {
+            PipewireEvent::Ready => {
                 app.is_ready = true;
                 Ok(true)
             }
-            MonitorEvent::Error(message) => {
+            PipewireEvent::Error(message) => {
                 match message {
-                    // These happen when objects are removed while the monitor
-                    // is still in the process of setting up listeners
+                    // These happen when objects are removed while wirehose is
+                    // still in the process of setting up listeners
                     error if error.starts_with("no global ") => {}
                     error if error.starts_with("unknown resource ") => {}
                     // I see this one when disconnecting a Bluetooth sink
@@ -613,7 +613,7 @@ impl Handle for MonitorEvent {
                 }
                 Ok(false) // This makes sense for now
             }
-            MonitorEvent::State(event) => event.handle(app),
+            PipewireEvent::State(event) => event.handle(app),
         }
     }
 }
@@ -634,7 +634,7 @@ impl Handle for StateEvent {
             }
         }
 
-        app.state.update(app.monitor, self);
+        app.state.update(app.wirehose, self);
 
         Ok(true)
     }
@@ -644,8 +644,8 @@ impl Handle for String {
     fn handle(self, app: &mut App) -> Result<bool> {
         // Handle errors
         match self {
-            // These happen when objects are removed while the monitor
-            // is still in the process of setting up listeners
+            // These happen when objects are removed while wirehose is still in
+            // the process of setting up listeners
             error if error.starts_with("no global ") => {}
             error if error.starts_with("unknown resource ") => {}
             // I see this one when disconnecting a Bluetooth sink
@@ -788,10 +788,10 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
 mod tests {
     use super::*;
     use crate::mock;
-    use crate::monitor::PropertyStore;
+    use crate::wirehose::PropertyStore;
     use strum::IntoEnumIterator;
 
-    fn fixture(monitor: &mock::MonitorHandle) -> App {
+    fn fixture(wirehose: &mock::WirehoseHandle) -> App {
         let (_, event_rx) = mpsc::channel();
 
         let config = Config {
@@ -809,7 +809,7 @@ mod tests {
             tab: Default::default(),
         };
 
-        let mut app = App::new(monitor, event_rx, config);
+        let mut app = App::new(wirehose, event_rx, config);
 
         // Create a node for testing
         let obj_id = ObjectId::from_raw_id(0);
@@ -831,7 +831,7 @@ mod tests {
         for event in events {
             assert!(event.handle(&mut app).unwrap());
         }
-        app.view = View::from(monitor, &app.state, &app.config.names);
+        app.view = View::from(wirehose, &app.state, &app.config.names);
 
         // Select the node
         assert!(Action::SelectObject(obj_id).handle(&mut app).unwrap());
@@ -841,8 +841,8 @@ mod tests {
 
     #[test]
     fn select_tab_bounds() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
 
         let _ = Action::SelectTab(app.tabs.len()).handle(&mut app);
         assert!(app.current_tab_index < app.tabs.len());
@@ -852,7 +852,7 @@ mod tests {
     fn key_modifiers() {
         use crossterm::event::{KeyCode, KeyModifiers};
         use std::collections::HashMap;
-        let monitor = mock::MonitorHandle::default();
+        let wirehose = mock::WirehoseHandle::default();
         let (_, event_rx) = mpsc::channel();
 
         let x = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE);
@@ -876,7 +876,7 @@ mod tests {
             names: Default::default(),
             tab: Default::default(),
         };
-        let mut app = App::new(&monitor, event_rx, config);
+        let mut app = App::new(&wirehose, event_rx, config);
 
         let _ = x.handle(&mut app);
         assert_eq!(app.current_tab_index, 2);
@@ -892,8 +892,8 @@ mod tests {
     /// into the tab Vec.
     #[test]
     fn tab_enum_order_matches_tab_vec() {
-        let monitor = mock::MonitorHandle::default();
-        let app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let app = fixture(&wirehose);
 
         assert_eq!(TabKind::iter().count(), app.tabs.len());
 
@@ -910,8 +910,8 @@ mod tests {
 
     #[test]
     fn help_underflow() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -922,8 +922,8 @@ mod tests {
 
     #[test]
     fn help_up_down() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -937,8 +937,8 @@ mod tests {
 
     #[test]
     fn help_toggle() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
 
         assert!(Action::Help.handle(&mut app).unwrap());
         assert_eq!(app.help_position, Some(0));
@@ -949,8 +949,8 @@ mod tests {
 
     #[test]
     fn help_ignore_other_actions() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
 
         assert!(Action::SetDefault.handle(&mut app).unwrap());
 
@@ -962,8 +962,8 @@ mod tests {
 
     #[test]
     fn volume_limit_not_enforcing() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = false;
 
@@ -980,8 +980,8 @@ mod tests {
 
     #[test]
     fn volume_limit_at_max() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
         app.config.max_volume_percent = 100.0;
         app.config.enforce_max_volume = true;
 
@@ -1001,8 +1001,8 @@ mod tests {
 
     #[test]
     fn volume_limit_above_max() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
         app.config.max_volume_percent = 95.0;
         app.config.enforce_max_volume = true;
 
@@ -1022,8 +1022,8 @@ mod tests {
 
     #[test]
     fn volume_limit_below_max() {
-        let monitor = mock::MonitorHandle::default();
-        let mut app = fixture(&monitor);
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
         app.config.max_volume_percent = 105.0;
         app.config.enforce_max_volume = true;
 
