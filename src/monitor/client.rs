@@ -8,7 +8,8 @@ use pipewire::{
 
 use libspa::utils::dict::DictRef;
 
-use crate::monitor::{EventSender, ObjectId, PropertyStore, StateEvent};
+use crate::monitor::event_sender::EventSender;
+use crate::monitor::{ObjectId, PropertyStore, StateEvent};
 
 pub fn monitor_client(
     registry: &Registry,

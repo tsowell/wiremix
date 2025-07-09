@@ -12,8 +12,9 @@ use libspa::{
     utils::dict::DictRef,
 };
 
+use crate::monitor::event_sender::EventSender;
 use crate::monitor::{
-    deserialize::deserialize, EventSender, ObjectId, PropertyStore, StateEvent,
+    deserialize::deserialize, ObjectId, PropertyStore, StateEvent,
 };
 
 pub fn monitor_node(

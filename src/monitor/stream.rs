@@ -14,7 +14,8 @@ use libspa::{
     pod::{Object, Pod},
 };
 
-use crate::monitor::{EventSender, ObjectId, StateEvent};
+use crate::monitor::event_sender::EventSender;
+use crate::monitor::{ObjectId, StateEvent};
 
 #[derive(Default)]
 pub struct StreamData {
