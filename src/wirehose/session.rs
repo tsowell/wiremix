@@ -17,10 +17,10 @@ use pipewire::{
 };
 
 use crate::wirehose::{
-    client, device, event_sender::EventSender, execute, link, metadata, node,
-    proxy_registry::ProxyRegistry, stream_registry::StreamRegistry,
-    sync_registry::SyncRegistry, Command, CommandSender, EventHandler,
-    ObjectId, StateEvent,
+    client, command::Command, device, event_sender::EventSender, execute, link,
+    metadata, node, proxy_registry::ProxyRegistry,
+    stream_registry::StreamRegistry, sync_registry::SyncRegistry,
+    CommandSender, EventHandler, ObjectId, StateEvent,
 };
 
 /// Handle for a PipeWire monitoring thread.
@@ -102,10 +102,6 @@ impl Drop for Session {
 }
 
 impl CommandSender for Session {
-    fn send(&self, command: Command) {
-        let _ = self.tx.send(command);
-    }
-
     fn node_capture_start(
         &self,
         obj_id: ObjectId,

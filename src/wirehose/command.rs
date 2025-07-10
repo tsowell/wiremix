@@ -16,7 +16,6 @@ pub enum Command {
 }
 
 pub trait CommandSender {
-    fn send(&self, command: Command);
     fn node_capture_start(
         &self,
         obj_id: ObjectId,

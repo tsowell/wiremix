@@ -19,13 +19,12 @@ pub mod trace;
 
 #[cfg(test)]
 mod mock {
-    use crate::wirehose::{Command, CommandSender, ObjectId};
+    use crate::wirehose::{CommandSender, ObjectId};
 
     #[derive(Default)]
     pub struct WirehoseHandle {}
 
     impl CommandSender for WirehoseHandle {
-        fn send(&self, _command: Command) {}
         fn node_capture_start(
             &self,
             _obj_id: ObjectId,
