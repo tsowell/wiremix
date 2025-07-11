@@ -314,6 +314,103 @@ impl Config {
 }
 
 #[cfg(test)]
+/// Parse a config file without applying any defaults.
+pub mod strict {
+    use super::*;
+
+    use serde::de::Error;
+
+    use crate::config::char_set::CharSetOverlay;
+    use crate::config::theme::ThemeOverlay;
+
+    #[derive(Deserialize, Debug, PartialEq)]
+    #[serde(deny_unknown_fields)]
+    pub struct ConfigFile {
+        remote: Option<String>,
+        fps: Option<f32>,
+        mouse: bool,
+        peaks: Option<Peaks>,
+        char_set: String,
+        theme: String,
+        #[serde(deserialize_with = "keybindings")]
+        keybindings: HashMap<KeyEvent, Action>,
+        names: Names,
+        #[serde(deserialize_with = "charsets")]
+        char_sets: HashMap<String, CharSet>,
+        #[serde(deserialize_with = "themes")]
+        themes: HashMap<String, Theme>,
+        tab: Option<TabKind>,
+    }
+
+    impl From<ConfigFile> for super::ConfigFile {
+        fn from(strict: ConfigFile) -> Self {
+            super::ConfigFile {
+                remote: strict.remote,
+                fps: strict.fps,
+                mouse: strict.mouse,
+                peaks: strict.peaks,
+                char_set: strict.char_set,
+                theme: strict.theme,
+                keybindings: strict.keybindings,
+                names: strict.names,
+                char_sets: strict.char_sets,
+                themes: strict.themes,
+                tab: strict.tab,
+            }
+        }
+    }
+
+    fn keybindings<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<KeyEvent, Action>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Vec::<Keybinding>::deserialize(deserializer)?
+            .into_iter()
+            .map(|keybinding| {
+                (
+                    KeyEvent::new(keybinding.key, keybinding.modifiers),
+                    keybinding.action,
+                )
+            })
+            .collect::<HashMap<KeyEvent, Action>>())
+    }
+
+    fn charsets<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<String, CharSet>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        HashMap::<String, CharSetOverlay>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(key, value)| {
+                CharSet::try_from(value)
+                    .map_err(D::Error::custom)
+                    .map(move |charset| (key, charset))
+            })
+            .collect::<Result<HashMap<String, CharSet>, D::Error>>()
+    }
+
+    fn themes<'de, D>(
+        deserializer: D,
+    ) -> Result<HashMap<String, Theme>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        HashMap::<String, ThemeOverlay>::deserialize(deserializer)?
+            .into_iter()
+            .map(|(key, value)| {
+                Theme::try_from(value)
+                    .map_err(D::Error::custom)
+                    .map(move |charset| (key, charset))
+            })
+            .collect::<Result<HashMap<String, Theme>, D::Error>>()
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -358,9 +455,9 @@ mod tests {
     #[test]
     fn example_config_file_matches_default_config_file() {
         let toml_str = include_str!("../wiremix.toml");
-        let example: ConfigFile = toml::from_str(toml_str).unwrap();
+        let example: strict::ConfigFile = toml::from_str(toml_str).unwrap();
         let default: ConfigFile = toml::from_str("").unwrap();
 
-        assert_eq!(default, example);
+        assert_eq!(default, example.into());
     }
 }
