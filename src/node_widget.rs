@@ -292,7 +292,8 @@ impl StatefulWidget for NodeWidget<'_> {
             .render(volume_label, buf);
 
             let count = ((volume.clamp(0.0, 1.5) / 1.5)
-                * volume_bar.width as f32) as usize;
+                * volume_bar.width as f32)
+                .round() as usize;
 
             let filled = self.config.char_set.volume_filled.repeat(count);
             let blank = self

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "git describe" information in --version output.
 - Keybinding help menu.
 
+### Fixed
+
+- Volume slider rendering when volume slider is full.
+
 ## [0.5.0] - 2025-06-26
 
 ### Changed
