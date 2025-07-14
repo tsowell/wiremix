@@ -94,6 +94,18 @@ impl TabKind {
     }
 }
 
+impl std::fmt::Display for TabKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TabKind::Playback => write!(f, "Playback"),
+            TabKind::Recording => write!(f, "Recording"),
+            TabKind::Output => write!(f, "Output Devices"),
+            TabKind::Input => write!(f, "Input Devices"),
+            TabKind::Configuration => write!(f, "Configuration"),
+        }
+    }
+}
+
 // Mouse events matching one of the MouseEventKinds within the Rect will
 // perform the Actions.
 pub type MouseArea =
@@ -149,32 +161,32 @@ impl App {
     ) -> Self {
         let tabs = vec![
             Tab::new(
-                String::from("Playback"),
+                TabKind::Playback.to_string(),
                 ObjectList::new(ListKind::Node(view::NodeKind::Playback), None),
             ),
             Tab::new(
-                String::from("Recording"),
+                TabKind::Recording.to_string(),
                 ObjectList::new(
                     ListKind::Node(view::NodeKind::Recording),
                     None,
                 ),
             ),
             Tab::new(
-                String::from("Output Devices"),
+                TabKind::Output.to_string(),
                 ObjectList::new(
                     ListKind::Node(view::NodeKind::Output),
                     Some(DeviceKind::Sink),
                 ),
             ),
             Tab::new(
-                String::from("Input Devices"),
+                TabKind::Input.to_string(),
                 ObjectList::new(
                     ListKind::Node(view::NodeKind::Input),
                     Some(DeviceKind::Source),
                 ),
             ),
             Tab::new(
-                String::from("Configuration"),
+                TabKind::Configuration.to_string(),
                 ObjectList::new(ListKind::Device, None),
             ),
         ];
