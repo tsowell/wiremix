@@ -37,6 +37,8 @@ pub struct CharSetOverlay {
     dropdown_selector: Option<String>,
     dropdown_more: Option<String>,
     dropdown_border: Option<BorderTypeDef>,
+    help_more: Option<String>,
+    help_border: Option<BorderTypeDef>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -119,9 +121,14 @@ impl TryFrom<CharSetOverlay> for CharSet {
         validate_and_set!(dropdown_icon, 1);
         validate_and_set!(dropdown_selector, 1);
         validate_and_set!(dropdown_more, 0);
+        validate_and_set!(help_more, 0);
 
         if let Some(dropdown_border) = overlay.dropdown_border {
             char_set.dropdown_border = dropdown_border.into();
+        }
+
+        if let Some(help_border) = overlay.help_border {
+            char_set.help_border = help_border.into();
         }
 
         Ok(char_set)
@@ -155,6 +162,8 @@ impl Default for CharSet {
             dropdown_selector: String::from(">"),
             dropdown_more: String::from("•••"),
             dropdown_border: BorderType::Rounded,
+            help_more: String::from("•••"),
+            help_border: BorderType::Rounded,
         }
     }
 }
@@ -194,6 +203,8 @@ impl CharSet {
             dropdown_selector: String::from(">"),
             dropdown_more: String::from("•••"),
             dropdown_border: BorderType::Plain,
+            help_more: String::from("•••"),
+            help_border: BorderType::Plain,
         }
     }
 
@@ -223,6 +234,8 @@ impl CharSet {
             dropdown_selector: String::from(">"),
             dropdown_more: String::from("~~~"),
             dropdown_border: BorderType::Plain,
+            help_more: String::from("~~~"),
+            help_border: BorderType::Plain,
         }
     }
 

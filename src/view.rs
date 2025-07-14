@@ -51,7 +51,7 @@ pub struct View {
     pub metadata_id: Option<ObjectId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Target {
     Node(ObjectId),
     Route(ObjectId, i32, i32),

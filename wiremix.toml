@@ -107,6 +107,8 @@ keybindings = [
  { key = { Char = "8" }, action = { SetAbsoluteVolume = 0.80 } },
  { key = { Char = "9" }, action = { SetAbsoluteVolume = 0.90 } },
  { key = { Char = "0" }, action = { SetAbsoluteVolume = 1.00 } },
+ # Open the help menu
+ { key = { Char = "?" }, action = "Help" },
  # There are two actions which don't have default bindings:
  # 1. "Nothing": Do nothing - can effectively delete a default keybinding
  # 2. { SelectTab = N }: Open the Nth tab
@@ -283,6 +285,12 @@ dropdown_item = { }
 dropdown_selected = { fg = "LightCyan", add_modifier = "REVERSED" }
 # The symbol at the top/bottom of a dropdown indicating that there are more items
 dropdown_more = { fg = "DarkGray" }
+# Border around help menu
+help_border = { }
+# The name of an item in a the help menu
+help_item = { }
+# The symbol at the top/bottom of the help menu indicating that there are more items
+help_more = { fg = "DarkGray" }
 
 
 # Character Sets
@@ -348,6 +356,11 @@ dropdown_more = "•••"
 # Border around dropdowns
 # One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside"
 dropdown_border = "Rounded"
+# Displayed at the top/bottom of the help menu when there are more items
+help_more = "•••"
+# Border around help menu
+# One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside"
+help_border = "Rounded"
 
 
 # Appendix A
@@ -379,6 +392,9 @@ dropdown_border = { }
 dropdown_item = { }
 dropdown_selected = { add_modifier = "BOLD | REVERSED" }
 dropdown_more = { }
+help_border = { }
+help_item = { }
+help_more = { }
 
 [themes.plain]
 default_device = { }
@@ -405,6 +421,9 @@ dropdown_border = { }
 dropdown_item = { }
 dropdown_selected = { }
 dropdown_more = { }
+help_border = { }
+help_item = { }
+help_more = { }
 
 [char_sets.compat]
 default_device = "◊"
@@ -431,6 +450,8 @@ dropdown_icon = "▼"
 dropdown_selector = ">"
 dropdown_more = "•••"
 dropdown_border = "Plain"
+help_more = "•••"
+help_border = "Plain"
 
 [char_sets.extracompat]
 default_device = "*"
@@ -457,3 +478,5 @@ dropdown_icon = "\\"
 dropdown_selector = ">"
 dropdown_more = "~~~"
 dropdown_border = "Plain"
+help_more = "~~~"
+help_border = "Plain"

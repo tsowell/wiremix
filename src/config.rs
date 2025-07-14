@@ -1,6 +1,7 @@
 //! Mixer configuration.
 
 mod char_set;
+mod help;
 mod keybinding;
 mod name_template;
 mod names;
@@ -32,6 +33,7 @@ pub struct Config {
     pub char_set: CharSet,
     pub theme: Theme,
     pub keybindings: HashMap<KeyEvent, Action>,
+    pub help: help::Help,
     pub names: Names,
     pub tab: TabKind,
 }
@@ -147,6 +149,8 @@ pub struct CharSet {
     pub dropdown_selector: String,
     pub dropdown_more: String,
     pub dropdown_border: BorderType,
+    pub help_more: String,
+    pub help_border: BorderType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -176,6 +180,9 @@ pub struct Theme {
     pub dropdown_item: Style,
     pub dropdown_selected: Style,
     pub dropdown_more: Style,
+    pub help_border: Style,
+    pub help_item: Style,
+    pub help_more: Style,
 }
 
 fn default_mouse() -> bool {
@@ -252,6 +259,13 @@ impl TryFrom<ConfigFile> for Config {
             anyhow::bail!("theme '{}' does not exist", &config_file.theme);
         };
 
+        let help = help::Help::from(&config_file.keybindings);
+
+        // Emulate signals. This is intentionally done after generating help.
+        config_file
+            .keybindings
+            .extend(Keybinding::control_char_keybindings());
+
         Ok(Self {
             remote: config_file.remote,
             fps: config_file.fps,
@@ -260,6 +274,7 @@ impl TryFrom<ConfigFile> for Config {
             char_set,
             theme,
             keybindings: config_file.keybindings,
+            help,
             names: config_file.names,
             tab: config_file.tab.unwrap_or_default(),
         })
@@ -303,10 +318,6 @@ impl Config {
         };
         // Override with command-line options
         config_file.apply_opt(opt);
-        // Emulate signals
-        config_file
-            .keybindings
-            .extend(Keybinding::control_char_keybindings());
         let config_file = config_file;
 
         Self::try_from(config_file)

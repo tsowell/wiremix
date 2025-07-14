@@ -47,6 +47,7 @@ impl Keybinding {
             (event(KeyCode::Char('8')), Action::SetAbsoluteVolume(0.80)),
             (event(KeyCode::Char('9')), Action::SetAbsoluteVolume(0.90)),
             (event(KeyCode::Char('0')), Action::SetAbsoluteVolume(1.00)),
+            (event(KeyCode::Char('?')), Action::Help),
         ])
     }
 

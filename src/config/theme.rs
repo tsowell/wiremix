@@ -34,6 +34,9 @@ pub struct ThemeOverlay {
     dropdown_item: Option<StyleDef>,
     dropdown_selected: Option<StyleDef>,
     dropdown_more: Option<StyleDef>,
+    help_border: Option<StyleDef>,
+    help_item: Option<StyleDef>,
+    help_more: Option<StyleDef>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -110,6 +113,9 @@ impl TryFrom<ThemeOverlay> for Theme {
         set!(dropdown_item);
         set!(dropdown_selected);
         set!(dropdown_more);
+        set!(help_border);
+        set!(help_item);
+        set!(help_more);
 
         Ok(theme)
     }
@@ -144,6 +150,9 @@ impl Default for Theme {
                 .fg(Color::LightCyan)
                 .add_modifier(Modifier::REVERSED),
             dropdown_more: Style::default().fg(Color::DarkGray),
+            help_border: Style::default(),
+            help_item: Style::default(),
+            help_more: Style::default().fg(Color::DarkGray),
         }
     }
 }
@@ -184,6 +193,9 @@ impl Theme {
             dropdown_selected: Style::default()
                 .add_modifier(Modifier::REVERSED | Modifier::BOLD),
             dropdown_more: Style::default(),
+            help_border: Style::default(),
+            help_item: Style::default(),
+            help_more: Style::default(),
         }
     }
 
@@ -213,6 +225,9 @@ impl Theme {
             dropdown_item: Style::default(),
             dropdown_selected: Style::default(),
             dropdown_more: Style::default(),
+            help_border: Style::default(),
+            help_item: Style::default(),
+            help_more: Style::default(),
         }
     }
 

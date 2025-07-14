@@ -6,6 +6,7 @@ pub mod device_kind;
 pub mod device_widget;
 pub mod dropdown_widget;
 pub mod event;
+pub mod help;
 pub mod input;
 pub mod media_class;
 pub mod meter;

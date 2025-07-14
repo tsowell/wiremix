@@ -38,6 +38,7 @@ Then install wiremix with `cargo install wiremix`
 
 1. Run `wiremix` to launch with default settings
 2. Use mouse and keyboard bindings to operate the mixer
+   - ? to display keyboard bindings
    - Arrow keys or hjkl to navigate and adjust volume
    - Tab or HL to change tabs
    - c to open a dropdown to route audio to a different destination
@@ -103,6 +104,7 @@ less-intuitive mouse controls are:
 | 8             | Set volume 80%          |
 | 9             | Set volume 90%          |
 | 0             | Set volume 100%         |
+| ?             | Toggle help screen      |
 
 ## Configuration
 
