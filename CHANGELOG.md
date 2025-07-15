@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Volume slider rendering when volume slider is full.
+- Peak capturing after a node's object id is reused.
 
 ## [0.5.0] - 2025-06-26
 

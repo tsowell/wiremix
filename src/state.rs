@@ -367,7 +367,9 @@ impl State {
 
                 self.devices.remove(&id);
                 self.clients.remove(&id);
-                self.nodes.remove(&id);
+                if let Some(node) = self.nodes.remove(&id) {
+                    capture_manager.on_removed(&node);
+                }
 
                 if let Some(metadata) = self.metadatas.remove(&id) {
                     if let Some(metadata_name) = metadata.metadata_name {
