@@ -12,7 +12,7 @@ const VERSION: &str = match option_env!("VERGEN_GIT_DESCRIBE") {
     Some(version) => version,
     // VERGEN_GIT_DESCRIBE won't be avilable when publishing, so fall back to
     // the cargo version.
-    None => env!("CARGO_PKG_VERSION"),
+    None => concat!("v", env!("CARGO_PKG_VERSION")),
 };
 
 #[derive(Parser)]
