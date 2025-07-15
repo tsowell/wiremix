@@ -32,6 +32,8 @@ pub struct Config {
     pub peaks: Peaks,
     pub char_set: CharSet,
     pub theme: Theme,
+    pub max_volume_percent: f32,
+    pub enforce_max_volume: bool,
     pub keybindings: HashMap<KeyEvent, Action>,
     pub help: help::Help,
     pub names: Names,
@@ -54,6 +56,10 @@ struct ConfigFile {
     char_set: String,
     #[serde(default = "default_theme_name")]
     theme: String,
+    #[serde(default = "default_max_volume_percent")]
+    max_volume_percent: Option<f32>,
+    #[serde(default = "default_enforce_max_volume")]
+    enforce_max_volume: bool,
     #[serde(
         default = "Keybinding::defaults",
         deserialize_with = "Keybinding::merge"
@@ -205,6 +211,14 @@ fn default_theme_name() -> String {
     String::from("default")
 }
 
+fn default_max_volume_percent() -> Option<f32> {
+    Some(150.0)
+}
+
+fn default_enforce_max_volume() -> bool {
+    false
+}
+
 impl ConfigFile {
     /// Override configuration with command-line arguments.
     pub fn apply_opt(&mut self, opt: &Opt) {
@@ -239,6 +253,18 @@ impl ConfigFile {
         if let Some(tab) = &opt.tab {
             self.tab = Some(*tab);
         }
+
+        if let Some(max_volume_percent) = &opt.max_volume_percent {
+            self.max_volume_percent = Some(*max_volume_percent);
+        }
+
+        if opt.no_enforce_max_volume {
+            self.enforce_max_volume = false;
+        }
+
+        if opt.enforce_max_volume {
+            self.enforce_max_volume = true;
+        }
     }
 }
 
@@ -261,6 +287,14 @@ impl TryFrom<ConfigFile> for Config {
 
         let help = help::Help::from(&config_file.keybindings);
 
+        if let Some(max_volume_percent) = config_file.max_volume_percent {
+            if max_volume_percent < 0.0 {
+                anyhow::bail!(
+                    "max_volume_percent {max_volume_percent} is negative"
+                );
+            }
+        }
+
         // Emulate signals. This is intentionally done after generating help.
         config_file
             .keybindings
@@ -271,6 +305,10 @@ impl TryFrom<ConfigFile> for Config {
             fps: config_file.fps,
             mouse: config_file.mouse,
             peaks: config_file.peaks.unwrap_or_default(),
+            max_volume_percent: config_file
+                .max_volume_percent
+                .unwrap_or_default(),
+            enforce_max_volume: config_file.enforce_max_volume,
             char_set,
             theme,
             keybindings: config_file.keybindings,
@@ -322,6 +360,14 @@ impl Config {
 
         Self::try_from(config_file)
     }
+
+    /// Check if volumes are less than max_volume (if enforcing)
+    pub fn are_volumes_valid(&self, volumes: &[f32]) -> bool {
+        !self.enforce_max_volume
+            || volumes.iter().all(|volume| {
+                (volume.cbrt() * 100.0).round() <= self.max_volume_percent
+            })
+    }
 }
 
 #[cfg(test)]
@@ -343,6 +389,8 @@ pub mod strict {
         peaks: Option<Peaks>,
         char_set: String,
         theme: String,
+        max_volume_percent: Option<f32>,
+        enforce_max_volume: bool,
         #[serde(deserialize_with = "keybindings")]
         keybindings: HashMap<KeyEvent, Action>,
         names: Names,
@@ -362,6 +410,8 @@ pub mod strict {
                 peaks: strict.peaks,
                 char_set: strict.char_set,
                 theme: strict.theme,
+                max_volume_percent: strict.max_volume_percent,
+                enforce_max_volume: strict.enforce_max_volume,
                 keybindings: strict.keybindings,
                 names: strict.names,
                 char_sets: strict.char_sets,

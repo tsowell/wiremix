@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - "git describe" information in --version output.
 - Keybinding help menu.
+- max_volume_percent option to set the upper range of volume sliders.
+- enforce_max_volume option to prevent increasing volume above
+  max_volume_percent.
 
 ### Fixed
 

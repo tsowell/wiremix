@@ -32,6 +32,12 @@ theme = "default"
 # Initial tab
 tab = "playback"
 
+# Maximum percentage for volume sliders
+max_volume_percent = 150.0
+
+# Whether to prevent increasing volume past max_volume
+enforce_max_volume = false
+
 
 # Keybindings
 #

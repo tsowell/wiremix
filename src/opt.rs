@@ -73,6 +73,28 @@ pub struct Opt {
     )]
     pub tab: Option<TabKind>,
 
+    #[clap(
+        short = 'm',
+        long,
+        value_name = "PERCENT",
+        help = "Maximum volume for volume sliders"
+    )]
+    pub max_volume_percent: Option<f32>,
+
+    #[clap(
+        long,
+        conflicts_with = "enforce_max_volume",
+        help = "Allow increasing volume past max-volume-percent"
+    )]
+    pub no_enforce_max_volume: bool,
+
+    #[clap(
+        long,
+        conflicts_with = "no_enforce_max_volume",
+        help = "Prevent increasing volume past max-volume-percent"
+    )]
+    pub enforce_max_volume: bool,
+
     #[cfg(debug_assertions)]
     #[clap(short, long, help = "Dump events without showing interface")]
     pub dump_events: bool,

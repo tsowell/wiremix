@@ -104,6 +104,8 @@ impl StatefulWidget for NodeWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let mouse_areas = state;
 
+        let max_volume = self.config.max_volume_percent / 100.0;
+
         mouse_areas.push((
             area,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
@@ -291,7 +293,7 @@ impl StatefulWidget for NodeWidget<'_> {
             .alignment(Alignment::Right)
             .render(volume_label, buf);
 
-            let count = ((volume.clamp(0.0, 1.5) / 1.5)
+            let count = ((volume.clamp(0.0, max_volume) / max_volume)
                 * volume_bar.width as f32)
                 .round() as usize;
 
@@ -326,7 +328,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 volume_bar.height,
             );
 
-            let volume_step = 1.5 / volume_bar.width as f32;
+            let volume_step = max_volume / volume_bar.width as f32;
             let volume = volume_step * i as f32;
             // Make the volume sticky around 100%. Otherwise it's often not
             // possible to select by mouse.

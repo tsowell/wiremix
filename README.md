@@ -53,17 +53,20 @@ PipeWire mixer
 Usage: wiremix [OPTIONS]
 
 Options:
-  -c, --config <FILE>    Override default config file path
-  -r, --remote <NAME>    The name of the remote to connect to
-  -f, --fps <FPS>        Target frames per second (or 0 for unlimited)
-  -s, --char-set <NAME>  Character set to use [built-in sets: default, compat, extracompat]
-  -t, --theme <NAME>     Theme to use [built-in themes: default, nocolor, plain]
-  -p, --peaks <PEAKS>    Audio peak meters [possible values: off, mono, auto]
-      --no-mouse         Disable mouse support
-      --mouse            Enable mouse support
-  -v, --tab <TAB>        Initial tab view [possible values: playback, recording, output, input, configuration]
-  -h, --help             Print help
-  -V, --version          Print version
+  -c, --config <FILE>                 Override default config file path
+  -r, --remote <NAME>                 The name of the remote to connect to
+  -f, --fps <FPS>                     Target frames per second (or 0 for unlimited)
+  -s, --char-set <NAME>               Character set to use [built-in sets: default, compat, extracompat]
+  -t, --theme <NAME>                  Theme to use [built-in themes: default, nocolor, plain]
+  -p, --peaks <PEAKS>                 Audio peak meters [possible values: off, mono, auto]
+      --no-mouse                      Disable mouse support
+      --mouse                         Enable mouse support
+  -v, --tab <TAB>                     Initial tab view [possible values: playback, recording, output, input, configuration]
+  -m, --max-volume-percent <PERCENT>  Maximum volume for volume sliders
+      --no-enforce-max-volume         Allow increasing volume past max-volume-percent
+      --enforce-max-volume            Prevent increasing volume past max-volume-percent
+  -h, --help                          Print help
+  -V, --version                       Print version
 ```
 
 Command-line options override corresponding settings in the configuration file.

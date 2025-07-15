@@ -524,16 +524,43 @@ impl Handle for Action {
             Action::SetAbsoluteVolume(volume) => {
                 let commands =
                     current_list!(app).set_absolute_volume(&app.view, volume);
+                let mut handled = false;
                 for command in commands {
+                    match command {
+                        Command::NodeVolumes(_, ref volumes)
+                        | Command::DeviceVolumes(_, _, _, ref volumes) => {
+                            if !app.config.are_volumes_valid(volumes) {
+                                continue;
+                            }
+                        }
+                        _ => {}
+                    }
                     let _ = app.tx.send(command);
+                    handled = true;
                 }
+                return Ok(handled);
             }
             Action::SetRelativeVolume(volume) => {
                 let commands =
                     current_list!(app).set_relative_volume(&app.view, volume);
+                let mut handled = false;
                 for command in commands {
+                    match command {
+                        Command::NodeVolumes(_, ref volumes)
+                        | Command::DeviceVolumes(_, _, _, ref volumes) => {
+                            // Relative decreases are always allowed.
+                            if volume > 0.00
+                                && !app.config.are_volumes_valid(volumes)
+                            {
+                                continue;
+                            }
+                        }
+                        _ => {}
+                    }
                     let _ = app.tx.send(command);
+                    handled = true;
                 }
+                return Ok(handled);
             }
             Action::SetDefault => {
                 let commands = current_list!(app).set_default(&app.view);
@@ -757,6 +784,7 @@ impl<'a> StatefulWidget for AppWidget<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::media_class::MediaClass;
     use strum::IntoEnumIterator;
 
     fn fixture() -> App {
@@ -770,12 +798,42 @@ mod tests {
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
+            max_volume_percent: Default::default(),
+            enforce_max_volume: Default::default(),
             keybindings: Default::default(),
             help: Default::default(),
             names: Default::default(),
             tab: Default::default(),
         };
-        App::new(command_tx, event_rx, config)
+
+        let mut app = App::new(command_tx, event_rx, config);
+
+        // Create a node for testing
+        let obj_id = ObjectId::from_raw_id(0);
+        let events = vec![
+            MonitorEvent::NodeDescription(obj_id, String::from("Test node")),
+            MonitorEvent::NodeMediaClass(
+                obj_id,
+                MediaClass::from("Stream/Output/Audio"),
+            ),
+            MonitorEvent::NodeMediaName(obj_id, String::from("Media name")),
+            MonitorEvent::NodeName(obj_id, String::from("Node name")),
+            MonitorEvent::NodeObjectSerial(obj_id, 0),
+            MonitorEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
+            MonitorEvent::NodePositions(obj_id, vec![0, 1]),
+            MonitorEvent::NodeRate(obj_id, 44100),
+            MonitorEvent::NodeVolumes(obj_id, vec![1.0, 1.0]),
+            MonitorEvent::NodeMute(obj_id, false),
+        ];
+        for event in events {
+            assert!(event.handle(&mut app).unwrap());
+        }
+        app.view = View::from(&app.state, &app.config.names);
+
+        // Select the node
+        assert!(Action::SelectObject(obj_id).handle(&mut app).unwrap());
+
+        app
     }
 
     #[test]
@@ -807,6 +865,8 @@ mod tests {
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
+            max_volume_percent: Default::default(),
+            enforce_max_volume: Default::default(),
             keybindings,
             help: Default::default(),
             names: Default::default(),
@@ -889,5 +949,83 @@ mod tests {
         assert_eq!(app.help_position, Some(0));
 
         assert!(!Action::SetDefault.handle(&mut app).unwrap());
+    }
+
+    #[test]
+    fn volume_limit_not_enforcing() {
+        let mut app = fixture();
+        app.config.max_volume_percent = 100.0;
+        app.config.enforce_max_volume = false;
+
+        // The current volume is 100%
+
+        // 110% is allowed
+        assert!(Action::SetRelativeVolume(0.10).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(1.10).handle(&mut app).unwrap());
+
+        // 90% is allowed
+        assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
+    }
+
+    #[test]
+    fn volume_limit_at_max() {
+        let mut app = fixture();
+        app.config.max_volume_percent = 100.0;
+        app.config.enforce_max_volume = true;
+
+        // The current volume is 100%
+
+        // 110% is not allowed
+        assert!(!Action::SetRelativeVolume(0.10).handle(&mut app).unwrap());
+        assert!(!Action::SetAbsoluteVolume(1.10).handle(&mut app).unwrap());
+
+        // 90% is allowed
+        assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
+
+        // 100% is allowed
+        assert!(Action::SetAbsoluteVolume(1.00).handle(&mut app).unwrap());
+    }
+
+    #[test]
+    fn volume_limit_above_max() {
+        let mut app = fixture();
+        app.config.max_volume_percent = 95.0;
+        app.config.enforce_max_volume = true;
+
+        // The current volume is 100.0
+
+        // 110% is not allowed
+        assert!(!Action::SetRelativeVolume(0.10).handle(&mut app).unwrap());
+        assert!(!Action::SetAbsoluteVolume(1.10).handle(&mut app).unwrap());
+
+        // 90% is allowed
+        assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
+
+        // 95% is allowed
+        assert!(Action::SetAbsoluteVolume(0.95).handle(&mut app).unwrap());
+    }
+
+    #[test]
+    fn volume_limit_below_max() {
+        let mut app = fixture();
+        app.config.max_volume_percent = 105.0;
+        app.config.enforce_max_volume = true;
+
+        // The current volume is 100.0
+
+        // 110% is not allowed
+        assert!(!Action::SetRelativeVolume(0.10).handle(&mut app).unwrap());
+        assert!(!Action::SetAbsoluteVolume(1.10).handle(&mut app).unwrap());
+
+        // 105% is allowed
+        assert!(Action::SetRelativeVolume(0.05).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(1.05).handle(&mut app).unwrap());
+
+        // 90% is allowed
+        assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
+        assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
     }
 }
