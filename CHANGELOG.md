@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - enforce_max_volume option to prevent increasing volume above
   max_volume_percent.
 
+### Changed
+
+- Command-line help text wraps to terminal size.
+
 ### Fixed
 
 - Volume slider rendering when volume slider is full.
