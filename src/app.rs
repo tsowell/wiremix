@@ -762,7 +762,7 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
                 .saturating_add(2)
                 .try_into()
                 .unwrap_or(u16::MAX)
-                .min(((help_area.height as f32) * 0.80) as u16);
+                .min(((help_area.height as f32) * 0.90) as u16);
             let [help_area] = Layout::vertical([Constraint::Length(height)])
                 .flex(Flex::Center)
                 .areas(help_area);
