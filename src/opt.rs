@@ -7,9 +7,17 @@ use clap::Parser;
 use crate::app::TabKind;
 use crate::config;
 
+// VERGEN_GIT_DESCRIBE is emitted by build.rs.
+const VERSION: &str = match option_env!("VERGEN_GIT_DESCRIBE") {
+    Some(version) => version,
+    // VERGEN_GIT_DESCRIBE won't be avilable when publishing, so fall back to
+    // the cargo version.
+    None => env!("CARGO_PKG_VERSION"),
+};
+
 #[derive(Parser)]
 #[clap(name = "wiremix", about = "PipeWire mixer")]
-#[command(version = env!("VERGEN_GIT_DESCRIBE"))] // Emitted by build.rs
+#[command(version = VERSION)]
 pub struct Opt {
     #[clap(
         short = 'c',
