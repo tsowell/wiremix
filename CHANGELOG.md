@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-07-14
+
 ### Fixed
 
 - Fall back to cargo version string for --version when publishing crate.
