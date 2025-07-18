@@ -27,33 +27,38 @@ mod mock {
     impl CommandSender for WirehoseHandle {
         fn node_capture_start(
             &self,
-            _obj_id: ObjectId,
+            _object_id: ObjectId,
             _object_serial: u64,
             _capture_sink: bool,
         ) {
         }
-        fn node_capture_stop(&self, _obj_id: ObjectId) {}
-        fn node_mute(&self, _obj_id: ObjectId, _mute: bool) {}
-        fn node_volumes(&self, _obj_id: ObjectId, _volumes: Vec<f32>) {}
+        fn node_capture_stop(&self, _object_id: ObjectId) {}
+        fn node_mute(&self, _object_id: ObjectId, _mute: bool) {}
+        fn node_volumes(&self, _object_id: ObjectId, _volumes: Vec<f32>) {}
         fn device_mute(
             &self,
-            _obj_id: ObjectId,
+            _object_id: ObjectId,
             _route_index: i32,
             _route_device: i32,
             _mute: bool,
         ) {
         }
-        fn device_set_profile(&self, _obj_id: ObjectId, _profile_index: i32) {}
+        fn device_set_profile(
+            &self,
+            _object_id: ObjectId,
+            _profile_index: i32,
+        ) {
+        }
         fn device_set_route(
             &self,
-            _obj_id: ObjectId,
+            _object_id: ObjectId,
             _route_index: i32,
             _route_device: i32,
         ) {
         }
         fn device_volumes(
             &self,
-            _obj_id: ObjectId,
+            _object_id: ObjectId,
             _route_index: i32,
             _route_device: i32,
             _volumes: Vec<f32>,
@@ -61,7 +66,7 @@ mod mock {
         }
         fn metadata_set_property(
             &self,
-            _obj_id: ObjectId,
+            _object_id: ObjectId,
             _subject: u32,
             _key: String,
             _type_: Option<String>,

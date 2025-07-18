@@ -109,20 +109,23 @@ impl StatefulWidget for NodeWidget<'_> {
         mouse_areas.push((
             area,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
-            smallvec![Action::SelectObject(self.node.id)],
+            smallvec![Action::SelectObject(self.node.object_id)],
         ));
 
         mouse_areas.push((
             area,
             smallvec![MouseEventKind::Down(MouseButton::Right)],
-            smallvec![Action::SelectObject(self.node.id), Action::SetDefault],
+            smallvec![
+                Action::SelectObject(self.node.object_id),
+                Action::SetDefault
+            ],
         ));
 
         mouse_areas.push((
             area,
             smallvec![MouseEventKind::ScrollLeft],
             smallvec![
-                Action::SelectObject(self.node.id),
+                Action::SelectObject(self.node.object_id),
                 Action::SetRelativeVolume(-0.01),
             ],
         ));
@@ -131,7 +134,7 @@ impl StatefulWidget for NodeWidget<'_> {
             area,
             smallvec![MouseEventKind::ScrollRight],
             smallvec![
-                Action::SelectObject(self.node.id),
+                Action::SelectObject(self.node.object_id),
                 Action::SetRelativeVolume(0.01),
             ],
         ));
@@ -221,7 +224,7 @@ impl StatefulWidget for NodeWidget<'_> {
             header_right,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
             smallvec![
-                Action::SelectObject(self.node.id),
+                Action::SelectObject(self.node.object_id),
                 Action::ActivateDropdown
             ],
         ));
@@ -316,7 +319,10 @@ impl StatefulWidget for NodeWidget<'_> {
         mouse_areas.push((
             volume_label,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
-            smallvec![Action::SelectObject(self.node.id), Action::ToggleMute],
+            smallvec![
+                Action::SelectObject(self.node.object_id),
+                Action::ToggleMute
+            ],
         ));
 
         // Add mouse areas for setting volume
@@ -345,7 +351,7 @@ impl StatefulWidget for NodeWidget<'_> {
                     MouseEventKind::Drag(MouseButton::Left),
                 ],
                 smallvec![
-                    Action::SelectObject(self.node.id),
+                    Action::SelectObject(self.node.object_id),
                     Action::SetAbsoluteVolume(sticky_volume),
                 ],
             ));

@@ -256,9 +256,18 @@ mod tests {
             let client_props = client_props;
 
             let events = vec![
-                StateEvent::DeviceProperties(device_id, device_props.clone()),
-                StateEvent::NodeProperties(node_id, node_props.clone()),
-                StateEvent::ClientProperties(client_id, client_props.clone()),
+                StateEvent::DeviceProperties {
+                    object_id: device_id,
+                    props: device_props.clone(),
+                },
+                StateEvent::NodeProperties {
+                    object_id: node_id,
+                    props: node_props.clone(),
+                },
+                StateEvent::ClientProperties {
+                    object_id: client_id,
+                    props: client_props.clone(),
+                },
             ];
 
             for event in events {
@@ -285,7 +294,10 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {
@@ -308,7 +320,10 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {
@@ -349,7 +364,10 @@ mod tests {
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {
@@ -373,7 +391,10 @@ mod tests {
         fixture.node_props.set_device_id(fixture.device_id);
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {
@@ -397,7 +418,10 @@ mod tests {
             .set_media_class(String::from("Audio/Sink"));
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {
@@ -434,7 +458,10 @@ mod tests {
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(
             &wirehose,
-            StateEvent::NodeProperties(fixture.node_id, fixture.node_props),
+            StateEvent::NodeProperties {
+                object_id: fixture.node_id,
+                props: fixture.node_props,
+            },
         );
 
         let names = Names {

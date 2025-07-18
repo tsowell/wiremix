@@ -81,7 +81,7 @@ impl StatefulWidget for DeviceWidget<'_> {
         mouse_areas.push((
             area,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
-            smallvec![Action::SelectObject(self.device.id)],
+            smallvec![Action::SelectObject(self.device.object_id)],
         ));
 
         let layout = Layout::default()
@@ -156,7 +156,7 @@ impl StatefulWidget for DeviceWidget<'_> {
             target_area,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
             smallvec![
-                Action::SelectObject(self.device.id),
+                Action::SelectObject(self.device.object_id),
                 Action::ActivateDropdown
             ],
         ));

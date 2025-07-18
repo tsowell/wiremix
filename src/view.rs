@@ -57,7 +57,7 @@ pub enum Target {
 
 #[derive(Debug)]
 pub struct Node {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub object_serial: u64,
     pub name: String,
     pub title: String,
@@ -86,7 +86,7 @@ pub struct Node {
 
 #[derive(Debug)]
 pub struct Device {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub object_serial: u64,
     pub title: String,
 
@@ -161,7 +161,7 @@ fn route_targets(
                     format!("{} (unavailable)", route.description)
                 };
                 Some((
-                    Target::Route(device.id, route.index, *route_device),
+                    Target::Route(device.object_id, route.index, *route_device),
                     title,
                 ))
             })
@@ -194,7 +194,7 @@ impl Node {
         default_source_name: &Option<String>,
         node: &state::Node,
     ) -> Option<Node> {
-        let id = node.id;
+        let object_id = node.object_id;
 
         let media_class = node.props.media_class()?.clone();
         let title = names.resolve(state, node)?;
@@ -245,7 +245,7 @@ impl Node {
                     };
                     (
                         Some(Target::Route(
-                            device.id,
+                            device.object_id,
                             route.index,
                             card_device,
                         )),
@@ -258,12 +258,12 @@ impl Node {
             (Some(routes), target, target_title)
         } else if media_class::is_sink_input(&media_class) {
             // Targets for output streams are sinks.
-            let outputs = state.outputs(id);
+            let outputs = state.outputs(object_id);
             let sink = sinks.iter().find(|(target, _)| {
                 matches!(target, Target::Node(sink_id)
                     if outputs.contains(sink_id))
             });
-            let (target, target_title) = if !has_target(state, node.id) {
+            let (target, target_title) = if !has_target(state, node.object_id) {
                 (
                     Some(Target::Default),
                     sink.map(|(_, title)| title.clone())
@@ -278,12 +278,12 @@ impl Node {
             (None, target, target_title)
         } else if media_class::is_source_output(&media_class) {
             // Targets for input streams are sources.
-            let inputs = state.inputs(id);
+            let inputs = state.inputs(object_id);
             let source = sources.iter().find(|(target, _)| {
                 matches!(target, Target::Node(source_id)
                     if inputs.contains(source_id))
             });
-            let (target, target_title) = if !has_target(state, node.id) {
+            let (target, target_title) = if !has_target(state, node.object_id) {
                 (
                     Some(Target::Default),
                     source
@@ -302,7 +302,7 @@ impl Node {
         };
 
         Some(Self {
-            id,
+            object_id,
             object_serial: *node.props.object_serial()?,
             name: node.props.node_name()?.clone(),
             title,
@@ -330,7 +330,7 @@ impl Device {
         device: &state::Device,
         names: &config::Names,
     ) -> Option<Device> {
-        let id = device.id;
+        let object_id = device.object_id;
 
         let title = names.resolve(state, device)?;
 
@@ -349,7 +349,7 @@ impl Device {
         profiles.sort_by_key(|&(index, _)| index);
         let profiles = profiles
             .into_iter()
-            .map(|(index, title)| (Target::Profile(id, index), title))
+            .map(|(index, title)| (Target::Profile(object_id, index), title))
             .collect();
 
         let target_profile = device.profiles.get(&device.profile_index?)?;
@@ -359,12 +359,12 @@ impl Device {
             format!("{} (unavailable)", target_profile.description)
         };
 
-        let target = Some(Target::Profile(id, device.profile_index?));
+        let target = Some(Target::Profile(object_id, device.profile_index?));
 
         let object_serial = *device.props.object_serial()?;
 
         Some(Device {
-            id,
+            object_id,
             object_serial,
             title,
             profiles,
@@ -377,8 +377,8 @@ impl Device {
 fn default_for(state: &state::State, which: &str) -> Option<String> {
     let metadata = state.get_metadata_by_name("default")?;
     let json = metadata.properties.get(&0)?.get(which)?;
-    let obj = serde_json::from_str::<serde_json::Value>(json).ok()?;
-    Some(String::from(obj["name"].as_str()?))
+    let object = serde_json::from_str::<serde_json::Value>(json).ok()?;
+    Some(String::from(object["name"].as_str()?))
 }
 
 fn target_node(state: &state::State, node_id: ObjectId) -> Option<i64> {
@@ -444,7 +444,7 @@ impl<'a> View<'a> {
                     .find(|node| {
                         node.props.node_name() == Some(default_sink_name)
                     })
-                    .map(|node| Target::Node(node.id))
+                    .map(|node| Target::Node(node.object_id))
             });
 
         let default_source =
@@ -457,7 +457,7 @@ impl<'a> View<'a> {
                         .find(|node| {
                             node.props.node_name() == Some(default_source_name)
                         })
-                        .map(|node| Target::Node(node.id))
+                        .map(|node| Target::Node(node.object_id))
                 });
 
         let mut sinks: Vec<_> = state
@@ -465,7 +465,10 @@ impl<'a> View<'a> {
             .values()
             .filter_map(|node| {
                 if media_class::is_sink(node.props.media_class()?) {
-                    Some((Target::Node(node.id), names.resolve(state, node)?))
+                    Some((
+                        Target::Node(node.object_id),
+                        names.resolve(state, node)?,
+                    ))
                 } else {
                     None
                 }
@@ -480,10 +483,13 @@ impl<'a> View<'a> {
             .filter_map(|node| {
                 if media_class::is_source(node.props.media_class()?) {
                     let title = names.resolve(state, node)?;
-                    Some((Target::Node(node.id), title))
+                    Some((Target::Node(node.object_id), title))
                 } else if media_class::is_sink(node.props.media_class()?) {
                     let title = names.resolve(state, node)?;
-                    Some((Target::Node(node.id), format!("Monitor of {title}")))
+                    Some((
+                        Target::Node(node.object_id),
+                        format!("Monitor of {title}"),
+                    ))
                 } else {
                     None
                 }
@@ -506,14 +512,14 @@ impl<'a> View<'a> {
                     node,
                 )
             })
-            .map(|node| (node.id, node))
+            .map(|node| (node.object_id, node))
             .collect();
 
         let devices: HashMap<ObjectId, Device> = state
             .devices
             .values()
             .filter_map(|device| Device::from(state, device, names))
-            .map(|device| (device.id, device))
+            .map(|device| (device.object_id, device))
             .collect();
 
         let mut nodes_all = Vec::new();
@@ -571,7 +577,7 @@ impl<'a> View<'a> {
     /// Update just the peaks of an existing State.
     pub fn update_peaks(&mut self, state: &state::State) {
         for state_node in state.nodes.values() {
-            if let Some(node) = self.nodes.get_mut(&state_node.id) {
+            if let Some(node) = self.nodes.get_mut(&state_node.object_id) {
                 match &state_node.peaks {
                     Some(peaks) => {
                         let peaks_ref =
@@ -732,7 +738,7 @@ impl<'a> View<'a> {
         true
     }
 
-    fn ids(&self, node_kind: ListKind) -> &[ObjectId] {
+    fn object_ids(&self, node_kind: ListKind) -> &[ObjectId] {
         match node_kind {
             ListKind::Node(NodeKind::Playback) => &self.nodes_playback,
             ListKind::Node(NodeKind::Recording) => &self.nodes_recording,
@@ -745,7 +751,7 @@ impl<'a> View<'a> {
 
     /// Gets all the nodes without filtering.
     pub fn full_nodes(&self, node_kind: NodeKind) -> Vec<&Node> {
-        let node_ids = self.ids(ListKind::Node(node_kind));
+        let node_ids = self.object_ids(ListKind::Node(node_kind));
         node_ids
             .iter()
             .filter_map(|node_id| self.nodes.get(node_id))
@@ -754,7 +760,7 @@ impl<'a> View<'a> {
 
     /// Gets all the devices without filtering.
     pub fn full_devices(&self) -> Vec<&Device> {
-        let device_ids = self.ids(ListKind::Device);
+        let device_ids = self.object_ids(ListKind::Device);
         device_ids
             .iter()
             .filter_map(|device_id| self.devices.get(device_id))
@@ -767,7 +773,7 @@ impl<'a> View<'a> {
         list_kind: ListKind,
         object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let objects = self.ids(list_kind);
+        let objects = self.object_ids(list_kind);
         let next_index = match object_id {
             Some(object_id) => objects
                 .iter()
@@ -784,7 +790,7 @@ impl<'a> View<'a> {
         list_kind: ListKind,
         object_id: Option<ObjectId>,
     ) -> Option<ObjectId> {
-        let objects = self.ids(list_kind);
+        let objects = self.object_ids(list_kind);
         let next_index = match object_id {
             Some(object_id) => objects
                 .iter()
@@ -801,12 +807,14 @@ impl<'a> View<'a> {
         list_kind: ListKind,
         object_id: ObjectId,
     ) -> Option<usize> {
-        self.ids(list_kind).iter().position(|&id| id == object_id)
+        self.object_ids(list_kind)
+            .iter()
+            .position(|&id| id == object_id)
     }
 
     /// Returns length of the list_kind.
     pub fn len(&self, list_kind: ListKind) -> usize {
-        self.ids(list_kind).len()
+        self.object_ids(list_kind).len()
     }
 
     /// Returns the possible targets for a node.

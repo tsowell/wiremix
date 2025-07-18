@@ -71,8 +71,8 @@ impl std::fmt::Display for Action {
             Action::TabRight => write!(f, "Select next tab"),
             Action::CloseDropdown => write!(f, "Close menu"),
             Action::ActivateDropdown => write!(f, "Open menu"),
-            Action::SelectObject(obj_id) => {
-                write!(f, "Select object {obj_id:?}")
+            Action::SelectObject(object_id) => {
+                write!(f, "Select object {object_id:?}")
             }
             Action::SetTarget(_) => write!(f, "Set target"),
             Action::ToggleMute => write!(f, "Toggle mute"),
@@ -625,7 +625,7 @@ impl Handle for StateEvent {
         match (app.state_dirty, &self) {
             (
                 StateDirty::Clean | StateDirty::PeaksOnly,
-                StateEvent::NodePeaks(..),
+                StateEvent::NodePeaks { .. },
             ) => {
                 app.state_dirty = StateDirty::PeaksOnly;
             }
@@ -812,21 +812,37 @@ mod tests {
         let mut app = App::new(wirehose, event_rx, config);
 
         // Create a node for testing
-        let obj_id = ObjectId::from_raw_id(0);
-        let mut node_props = PropertyStore::default();
-        node_props.set_node_description(String::from("Test node"));
-        node_props.set_media_class(String::from("Stream/Output/Audio"));
-        node_props.set_media_name(String::from("Media name"));
-        node_props.set_node_name(String::from("Node name"));
-        node_props.set_object_serial(0);
-        let node_props = node_props;
+        let object_id = ObjectId::from_raw_id(0);
+        let mut props = PropertyStore::default();
+        props.set_node_description(String::from("Test node"));
+        props.set_media_class(String::from("Stream/Output/Audio"));
+        props.set_media_name(String::from("Media name"));
+        props.set_node_name(String::from("Node name"));
+        props.set_object_serial(0);
+        let props = props;
         let events = vec![
-            StateEvent::NodeProperties(obj_id, node_props),
-            StateEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
-            StateEvent::NodePositions(obj_id, vec![0, 1]),
-            StateEvent::NodeRate(obj_id, 44100),
-            StateEvent::NodeVolumes(obj_id, vec![1.0, 1.0]),
-            StateEvent::NodeMute(obj_id, false),
+            StateEvent::NodeProperties { object_id, props },
+            StateEvent::NodePeaks {
+                object_id,
+                peaks: vec![0.0, 0.0],
+                samples: 512,
+            },
+            StateEvent::NodePositions {
+                object_id,
+                positions: vec![0, 1],
+            },
+            StateEvent::NodeRate {
+                object_id,
+                rate: 44100,
+            },
+            StateEvent::NodeVolumes {
+                object_id,
+                volumes: vec![1.0, 1.0],
+            },
+            StateEvent::NodeMute {
+                object_id,
+                mute: false,
+            },
         ];
         for event in events {
             assert!(event.handle(&mut app).unwrap());
@@ -834,7 +850,7 @@ mod tests {
         app.view = View::from(wirehose, &app.state, &app.config.names);
 
         // Select the node
-        assert!(Action::SelectObject(obj_id).handle(&mut app).unwrap());
+        assert!(Action::SelectObject(object_id).handle(&mut app).unwrap());
 
         app
     }

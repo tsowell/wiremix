@@ -287,7 +287,7 @@ impl ObjectListWidget<'_, '_> {
             let selected = self
                 .object_list
                 .selected
-                .map(|id| id == object.id)
+                .map(|id| id == object.object_id)
                 .unwrap_or_default();
             NodeWidget::new(
                 object,
@@ -305,7 +305,7 @@ impl ObjectListWidget<'_, '_> {
                 objects_and_areas.iter().find(|(object, _)| {
                     self.object_list
                         .selected
-                        .map(|id| id == object.id)
+                        .map(|id| id == object.object_id)
                         .unwrap_or_default()
                 })
             {
@@ -344,7 +344,7 @@ impl ObjectListWidget<'_, '_> {
             let selected = self
                 .object_list
                 .selected
-                .map(|id| id == object.id)
+                .map(|id| id == object.object_id)
                 .unwrap_or_default();
             DeviceWidget::new(object, selected, self.config).render(
                 object_area,
@@ -360,7 +360,7 @@ impl ObjectListWidget<'_, '_> {
                 objects_and_areas.iter().find(|(object, _)| {
                     self.object_list
                         .selected
-                        .map(|id| id == object.id)
+                        .map(|id| id == object.object_id)
                         .unwrap_or_default()
                 })
             {
@@ -512,7 +512,7 @@ mod tests {
         let wirehose = mock::WirehoseHandle::default();
 
         for i in 0..10 {
-            let obj_id = ObjectId::from_raw_id(i);
+            let object_id = ObjectId::from_raw_id(i);
             let mut props = PropertyStore::default();
             props.set_node_description(String::from("Test node"));
             props.set_media_class(String::from("Stream/Output/Audio"));
@@ -522,12 +522,28 @@ mod tests {
             let props = props;
 
             let events = vec![
-                StateEvent::NodeProperties(obj_id, props),
-                StateEvent::NodePeaks(obj_id, vec![0.0, 0.0], 512),
-                StateEvent::NodePositions(obj_id, vec![0, 1]),
-                StateEvent::NodeRate(obj_id, 44100),
-                StateEvent::NodeVolumes(obj_id, vec![0.0, 0.0]),
-                StateEvent::NodeMute(obj_id, false),
+                StateEvent::NodeProperties { object_id, props },
+                StateEvent::NodePeaks {
+                    object_id,
+                    peaks: vec![0.0, 0.0],
+                    samples: 512,
+                },
+                StateEvent::NodePositions {
+                    object_id,
+                    positions: vec![0, 1],
+                },
+                StateEvent::NodeRate {
+                    object_id,
+                    rate: 44100,
+                },
+                StateEvent::NodeVolumes {
+                    object_id,
+                    volumes: vec![0.0, 0.0],
+                },
+                StateEvent::NodeMute {
+                    object_id,
+                    mute: false,
+                },
             ];
             for event in events {
                 state.update(&wirehose, event);
