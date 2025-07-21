@@ -5,10 +5,9 @@ use pipewire::main_loop::WeakMainLoop;
 use crate::wirehose::{Event, StateEvent};
 
 /// Trait for handling [`Event`]s.
-///
-/// Returns `true` if the event was handled successfully, `false` if the
-/// wirehose thread should shut down.
 pub trait EventHandler: Send + 'static {
+    /// Returns `true` if the event was handled successfully, `false` if the
+    /// wirehose thread should shut down.
     fn handle_event(&mut self, event: Event) -> bool;
 }
 
