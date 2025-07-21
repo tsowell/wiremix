@@ -2,14 +2,20 @@ use pipewire::link::LinkInfoRef;
 
 use crate::wirehose::{ObjectId, PropertyStore};
 
+/// Events emitted by the PipeWire monitoring thread.
 #[derive(Debug)]
 pub enum Event {
+    /// The PipeWire state has changed
     State(StateEvent),
+    /// An error occurred during monitoring
     Error(String),
+    /// The [StateEvent]s representing the PipeWire state at the time of
+    /// connection have been sent. wirehose is listening for changes now.
     Ready,
 }
 
 #[derive(Debug)]
+/// PipeWire state change events.
 pub enum StateEvent {
     DeviceEnumRoute {
         object_id: ObjectId,

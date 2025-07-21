@@ -15,6 +15,8 @@ pub enum Command {
     MetadataSetProperty(ObjectId, u32, String, Option<String>, Option<String>),
 }
 
+/// Trait for sending commands to control PipeWire. The trait exists to
+/// facilitate mocking.
 pub trait CommandSender {
     fn node_capture_start(
         &self,

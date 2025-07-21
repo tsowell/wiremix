@@ -3,6 +3,7 @@
 use libspa::utils::dict::DictRef;
 use pipewire::registry::GlobalObject;
 
+/// A PipeWire object ID.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ObjectId(u32);
 

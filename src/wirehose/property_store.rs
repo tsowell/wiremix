@@ -24,6 +24,10 @@ struct PropertyEntry {
 }
 
 /// Stores the "info.props" properties of a PipeWire object.
+///
+/// Provides typed accessors for supported standard PipeWire properties.
+/// [PropertyStore::raw] can be used to access any property (including
+/// unsupported ones) as an unparsed string.
 #[derive(Default, Debug, Clone)]
 pub struct PropertyStore {
     properties: HashMap<String, PropertyEntry>,

@@ -93,6 +93,7 @@ fn run<F: EventHandler>(
 }
 
 impl Drop for Session {
+    /// Shut down the PipeWire monitoring thread.
     fn drop(&mut self) {
         let _ = self.fd.arm();
         if let Some(handle) = self.handle.take() {
@@ -101,7 +102,10 @@ impl Drop for Session {
     }
 }
 
+/// Commands are sent asynchronously and are executed on the PipeWire monitoring thread.
 impl CommandSender for Session {
+    /// Start capturing peak levels for a node. Set `capture_sink` to capture
+    /// from a source or a sink.
     fn node_capture_start(
         &self,
         object_id: ObjectId,
@@ -115,18 +119,22 @@ impl CommandSender for Session {
         ));
     }
 
+    /// Stop capturing peak levels for a node.
     fn node_capture_stop(&self, object_id: ObjectId) {
         let _ = self.tx.send(Command::NodeCaptureStop(object_id));
     }
 
+    /// Mute a node.
     fn node_mute(&self, object_id: ObjectId, mute: bool) {
         let _ = self.tx.send(Command::NodeMute(object_id, mute));
     }
 
+    /// Set the volumes on a node's channels.
     fn node_volumes(&self, object_id: ObjectId, volumes: Vec<f32>) {
         let _ = self.tx.send(Command::NodeVolumes(object_id, volumes));
     }
 
+    /// Mute a device.
     fn device_mute(
         &self,
         object_id: ObjectId,
@@ -142,12 +150,14 @@ impl CommandSender for Session {
         ));
     }
 
+    /// Change a device's profile.
     fn device_set_profile(&self, object_id: ObjectId, profile_index: i32) {
         let _ = self
             .tx
             .send(Command::DeviceSetProfile(object_id, profile_index));
     }
 
+    /// Change a device's route.
     fn device_set_route(
         &self,
         object_id: ObjectId,
@@ -161,6 +171,7 @@ impl CommandSender for Session {
         ));
     }
 
+    /// Change the volumes of a device's channels.
     fn device_volumes(
         &self,
         object_id: ObjectId,
@@ -176,6 +187,8 @@ impl CommandSender for Session {
         ));
     }
 
+    /// Set a metadata property. Set `type_` to None to clear all metadata for
+    /// the subject. Set `value` to None to clear the metdata for the key.
     fn metadata_set_property(
         &self,
         object_id: ObjectId,

@@ -1,3 +1,4 @@
+//! Event-based wrapper around pipewire-rs.
 mod client;
 mod command;
 mod deserialize;
