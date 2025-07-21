@@ -13,10 +13,10 @@ use crate::wirehose::StateEvent;
 
 pub fn monitor_link(
     registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
+    object: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
 ) -> Option<(Rc<Link>, Box<dyn Listener>)> {
-    let link: Link = registry.bind(obj).ok()?;
+    let link: Link = registry.bind(object).ok()?;
     let link = Rc::new(link);
 
     let listener = link

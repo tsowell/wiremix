@@ -19,12 +19,12 @@ use crate::wirehose::{
 
 pub fn monitor_node(
     registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
+    object: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
 ) -> Option<(Rc<Node>, Box<dyn Listener>)> {
-    let obj_id = ObjectId::from(obj);
+    let object_id = ObjectId::from(object);
 
-    let props = obj.props?;
+    let props = object.props?;
     let media_class = props.get("media.class")?;
     match media_class {
         "Audio/Sink" => (),
@@ -43,7 +43,7 @@ pub fn monitor_node(
         _ => (),
     }
 
-    let node: Node = registry.bind(obj).ok()?;
+    let node: Node = registry.bind(object).ok()?;
     let node = Rc::new(node);
 
     let listener = node
@@ -56,7 +56,7 @@ pub fn monitor_node(
                 };
                 for change in info.change_mask().iter() {
                     if change == NodeChangeMask::PROPS {
-                        node_info_props(&sender, obj_id, info);
+                        node_info_props(&sender, object_id, info);
                     }
                 }
             }
@@ -70,10 +70,10 @@ pub fn monitor_node(
                 if let Some(param) = deserialize(param) {
                     match id {
                         ParamType::Props => {
-                            node_param_props(&sender, obj_id, param);
+                            node_param_props(&sender, object_id, param);
                         }
                         ParamType::PortConfig => {
-                            node_param_port_config(&sender, obj_id, param);
+                            node_param_port_config(&sender, object_id, param);
                         }
                         _ => {}
                     }
@@ -88,7 +88,7 @@ pub fn monitor_node(
 
 fn node_info_props(
     sender: &EventSender,
-    id: ObjectId,
+    object_id: ObjectId,
     node_info: &NodeInfoRef,
 ) {
     let Some(props) = node_info.props() else {
@@ -96,21 +96,30 @@ fn node_info_props(
     };
 
     let property_store = PropertyStore::from(props);
-    sender.send(StateEvent::NodeProperties(id, property_store));
+    sender.send(StateEvent::NodeProperties {
+        object_id,
+        props: property_store,
+    });
 }
 
-fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {
+fn node_param_props(sender: &EventSender, object_id: ObjectId, param: Object) {
     for prop in param.properties {
         match prop.key {
             libspa_sys::SPA_PROP_channelVolumes => {
                 if let Value::ValueArray(ValueArray::Float(value)) = prop.value
                 {
-                    sender.send(StateEvent::NodeVolumes(id, value));
+                    sender.send(StateEvent::NodeVolumes {
+                        object_id,
+                        volumes: value,
+                    });
                 }
             }
             libspa_sys::SPA_PROP_mute => {
                 if let Value::Bool(value) = prop.value {
-                    sender.send(StateEvent::NodeMute(id, value));
+                    sender.send(StateEvent::NodeMute {
+                        object_id,
+                        mute: value,
+                    });
                 }
             }
             _ => {}
@@ -118,7 +127,11 @@ fn node_param_props(sender: &EventSender, id: ObjectId, param: Object) {
     }
 }
 
-fn node_param_port_config(sender: &EventSender, id: ObjectId, param: Object) {
+fn node_param_port_config(
+    sender: &EventSender,
+    object_id: ObjectId,
+    param: Object,
+) {
     let Some(format_prop) = param
         .properties
         .into_iter()
@@ -143,5 +156,8 @@ fn node_param_port_config(sender: &EventSender, id: ObjectId, param: Object) {
     };
 
     let positions = value.into_iter().map(|x| x.0).collect();
-    sender.send(StateEvent::NodePositions(id, positions));
+    sender.send(StateEvent::NodePositions {
+        object_id,
+        positions,
+    });
 }

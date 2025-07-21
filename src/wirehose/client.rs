@@ -13,12 +13,12 @@ use crate::wirehose::{ObjectId, PropertyStore, StateEvent};
 
 pub fn monitor_client(
     registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
+    object: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
 ) -> Option<(Rc<Client>, Box<dyn Listener>)> {
-    let obj_id = ObjectId::from(obj);
+    let object_id = ObjectId::from(object);
 
-    let client: Client = registry.bind(obj).ok()?;
+    let client: Client = registry.bind(object).ok()?;
     let client = Rc::new(client);
 
     let listener = client
@@ -31,7 +31,7 @@ pub fn monitor_client(
                 };
                 for change in info.change_mask().iter() {
                     if change == ClientChangeMask::PROPS {
-                        client_info_props(&sender, obj_id, info);
+                        client_info_props(&sender, object_id, info);
                     }
                 }
             }
@@ -43,7 +43,7 @@ pub fn monitor_client(
 
 fn client_info_props(
     sender: &EventSender,
-    id: ObjectId,
+    object_id: ObjectId,
     client_info: &ClientInfoRef,
 ) {
     let Some(props) = client_info.props() else {
@@ -51,5 +51,8 @@ fn client_info_props(
     };
 
     let property_store = PropertyStore::from(props);
-    sender.send(StateEvent::ClientProperties(id, property_store));
+    sender.send(StateEvent::ClientProperties {
+        object_id,
+        props: property_store,
+    });
 }

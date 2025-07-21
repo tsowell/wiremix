@@ -19,19 +19,19 @@ use crate::wirehose::{
 
 pub fn monitor_device(
     registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
+    object: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
 ) -> Option<(Rc<Device>, Box<dyn Listener>)> {
-    let obj_id = ObjectId::from(obj);
+    let object_id = ObjectId::from(object);
 
-    let props = obj.props?;
+    let props = object.props?;
     let media_class = props.get("media.class")?;
     match media_class {
         "Audio/Device" => (),
         _ => return None,
     }
 
-    let device: Device = registry.bind(obj).ok()?;
+    let device: Device = registry.bind(object).ok()?;
     let device = Rc::new(device);
 
     let params = [
@@ -52,12 +52,12 @@ pub fn monitor_device(
                 if let Some(param) = deserialize(param) {
                     if let Some(event) = match id {
                         ParamType::EnumRoute => {
-                            device_enum_route(obj_id, param)
+                            device_enum_route(object_id, param)
                         }
-                        ParamType::Route => device_route(obj_id, param),
-                        ParamType::Profile => device_profile(obj_id, param),
+                        ParamType::Route => device_route(object_id, param),
+                        ParamType::Profile => device_profile(object_id, param),
                         ParamType::EnumProfile => {
-                            device_enum_profile(obj_id, param)
+                            device_enum_profile(object_id, param)
                         }
                         _ => None,
                     } {
@@ -75,7 +75,7 @@ pub fn monitor_device(
                 };
                 for change in info.change_mask().iter() {
                     if change == DeviceChangeMask::PROPS {
-                        device_info_props(&sender, obj_id, info);
+                        device_info_props(&sender, object_id, info);
                     }
                 }
 
@@ -94,7 +94,7 @@ pub fn monitor_device(
     Some((device, Box::new(listener)))
 }
 
-fn device_enum_route(id: ObjectId, param: Object) -> Option<StateEvent> {
+fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
@@ -133,17 +133,17 @@ fn device_enum_route(id: ObjectId, param: Object) -> Option<StateEvent> {
         }
     }
 
-    Some(StateEvent::DeviceEnumRoute(
-        id,
-        index?,
-        description?,
-        available?,
-        profiles?,
-        devices?,
-    ))
+    Some(StateEvent::DeviceEnumRoute {
+        object_id,
+        index: index?,
+        description: description?,
+        available: available?,
+        profiles: profiles?,
+        devices: devices?,
+    })
 }
 
-fn device_route(id: ObjectId, param: Object) -> Option<StateEvent> {
+fn device_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut device = None;
     let mut profiles = None;
@@ -206,23 +206,26 @@ fn device_route(id: ObjectId, param: Object) -> Option<StateEvent> {
         }
     }
 
-    Some(StateEvent::DeviceRoute(
-        id,
-        index?,
-        device?,
-        profiles?,
-        description?,
-        available?,
-        channel_volumes?,
-        mute?,
-    ))
+    Some(StateEvent::DeviceRoute {
+        object_id,
+        index: index?,
+        device: device?,
+        profiles: profiles?,
+        description: description?,
+        available: available?,
+        channel_volumes: channel_volumes?,
+        mute: mute?,
+    })
 }
 
-fn device_profile(id: ObjectId, param: Object) -> Option<StateEvent> {
+fn device_profile(object_id: ObjectId, param: Object) -> Option<StateEvent> {
     for prop in param.properties {
         if prop.key == libspa_sys::SPA_PARAM_ROUTE_index {
             if let Value::Int(value) = prop.value {
-                return Some(StateEvent::DeviceProfile(id, value));
+                return Some(StateEvent::DeviceProfile {
+                    object_id,
+                    index: value,
+                });
             }
         }
     }
@@ -242,7 +245,10 @@ fn parse_class(value: &Value) -> Option<(String, Vec<i32>)> {
     None
 }
 
-fn device_enum_profile(id: ObjectId, param: Object) -> Option<StateEvent> {
+fn device_enum_profile(
+    object_id: ObjectId,
+    param: Object,
+) -> Option<StateEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
@@ -285,24 +291,24 @@ fn device_enum_profile(id: ObjectId, param: Object) -> Option<StateEvent> {
         }
     }
 
-    Some(StateEvent::DeviceEnumProfile(
-        id,
-        index?,
-        description?,
-        available?,
-        classes?,
-    ))
+    Some(StateEvent::DeviceEnumProfile {
+        object_id,
+        index: index?,
+        description: description?,
+        available: available?,
+        classes: classes?,
+    })
 }
 
 fn device_info_props(
     sender: &EventSender,
-    id: ObjectId,
+    object_id: ObjectId,
     device_info: &DeviceInfoRef,
 ) {
     let Some(props) = device_info.props() else {
         return;
     };
 
-    let property_store = PropertyStore::from(props);
-    sender.send(StateEvent::DeviceProperties(id, property_store));
+    let props = PropertyStore::from(props);
+    sender.send(StateEvent::DeviceProperties { object_id, props });
 }

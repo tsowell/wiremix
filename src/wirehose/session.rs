@@ -104,58 +104,58 @@ impl Drop for Session {
 impl CommandSender for Session {
     fn node_capture_start(
         &self,
-        obj_id: ObjectId,
+        object_id: ObjectId,
         object_serial: u64,
         capture_sink: bool,
     ) {
         let _ = self.tx.send(Command::NodeCaptureStart(
-            obj_id,
+            object_id,
             object_serial,
             capture_sink,
         ));
     }
 
-    fn node_capture_stop(&self, obj_id: ObjectId) {
-        let _ = self.tx.send(Command::NodeCaptureStop(obj_id));
+    fn node_capture_stop(&self, object_id: ObjectId) {
+        let _ = self.tx.send(Command::NodeCaptureStop(object_id));
     }
 
-    fn node_mute(&self, obj_id: ObjectId, mute: bool) {
-        let _ = self.tx.send(Command::NodeMute(obj_id, mute));
+    fn node_mute(&self, object_id: ObjectId, mute: bool) {
+        let _ = self.tx.send(Command::NodeMute(object_id, mute));
     }
 
-    fn node_volumes(&self, obj_id: ObjectId, volumes: Vec<f32>) {
-        let _ = self.tx.send(Command::NodeVolumes(obj_id, volumes));
+    fn node_volumes(&self, object_id: ObjectId, volumes: Vec<f32>) {
+        let _ = self.tx.send(Command::NodeVolumes(object_id, volumes));
     }
 
     fn device_mute(
         &self,
-        obj_id: ObjectId,
+        object_id: ObjectId,
         route_index: i32,
         route_device: i32,
         mute: bool,
     ) {
         let _ = self.tx.send(Command::DeviceMute(
-            obj_id,
+            object_id,
             route_index,
             route_device,
             mute,
         ));
     }
 
-    fn device_set_profile(&self, obj_id: ObjectId, profile_index: i32) {
+    fn device_set_profile(&self, object_id: ObjectId, profile_index: i32) {
         let _ = self
             .tx
-            .send(Command::DeviceSetProfile(obj_id, profile_index));
+            .send(Command::DeviceSetProfile(object_id, profile_index));
     }
 
     fn device_set_route(
         &self,
-        obj_id: ObjectId,
+        object_id: ObjectId,
         route_index: i32,
         route_device: i32,
     ) {
         let _ = self.tx.send(Command::DeviceSetRoute(
-            obj_id,
+            object_id,
             route_index,
             route_device,
         ));
@@ -163,13 +163,13 @@ impl CommandSender for Session {
 
     fn device_volumes(
         &self,
-        obj_id: ObjectId,
+        object_id: ObjectId,
         route_index: i32,
         route_device: i32,
         volumes: Vec<f32>,
     ) {
         let _ = self.tx.send(Command::DeviceVolumes(
-            obj_id,
+            object_id,
             route_index,
             route_device,
             volumes,
@@ -178,14 +178,14 @@ impl CommandSender for Session {
 
     fn metadata_set_property(
         &self,
-        obj_id: ObjectId,
+        object_id: ObjectId,
         subject: u32,
         key: String,
         type_: Option<String>,
         value: Option<String>,
     ) {
         let _ = self.tx.send(Command::MetadataSetProperty(
-            obj_id, subject, key, type_, value,
+            object_id, subject, key, type_, value,
         ));
     }
 }
@@ -283,8 +283,8 @@ fn monitor_pipewire(
             move |_status| {
                 let collected = streams.borrow_mut().collect_garbage();
                 if let Some(sender) = sender_weak.upgrade() {
-                    for id in collected {
-                        sender.send(StateEvent::StreamStopped(id));
+                    for object_id in collected {
+                        sender.send(StateEvent::StreamStopped { object_id });
                     }
                 }
             }
@@ -299,8 +299,8 @@ fn monitor_pipewire(
             let sender_weak = Rc::downgrade(&sender);
             let streams_weak = Rc::downgrade(&streams);
             let syncs_weak = Rc::downgrade(&syncs);
-            move |obj| {
-                let obj_id = ObjectId::from(obj);
+            move |object| {
+                let object_id = ObjectId::from(object);
                 let Some(registry) = registry_weak.upgrade() else {
                     return;
                 };
@@ -321,13 +321,13 @@ fn monitor_pipewire(
                     return;
                 };
 
-                let proxy_spe = match obj.type_ {
+                let proxy_spe = match object.type_ {
                     ObjectType::Client => {
                         let result =
-                            client::monitor_client(&registry, obj, &sender);
+                            client::monitor_client(&registry, object, &sender);
                         if let Some((node, listener)) = result {
                             proxies.borrow_mut().add_client(
-                                obj_id,
+                                object_id,
                                 Rc::clone(&node),
                                 listener,
                             );
@@ -338,10 +338,10 @@ fn monitor_pipewire(
                     }
                     ObjectType::Node => {
                         let result =
-                            node::monitor_node(&registry, obj, &sender);
+                            node::monitor_node(&registry, object, &sender);
                         if let Some((node, listener)) = result {
                             proxies.borrow_mut().add_node(
-                                obj_id,
+                                object_id,
                                 Rc::clone(&node),
                                 listener,
                             );
@@ -352,11 +352,11 @@ fn monitor_pipewire(
                     }
                     ObjectType::Device => {
                         let result =
-                            device::monitor_device(&registry, obj, &sender);
+                            device::monitor_device(&registry, object, &sender);
                         match result {
                             Some((device, listener)) => {
                                 proxies.borrow_mut().add_device(
-                                    obj_id,
+                                    object_id,
                                     Rc::clone(&device),
                                     listener,
                                 );
@@ -367,11 +367,11 @@ fn monitor_pipewire(
                     }
                     ObjectType::Link => {
                         let result =
-                            link::monitor_link(&registry, obj, &sender);
+                            link::monitor_link(&registry, object, &sender);
                         match result {
                             Some((link, listener)) => {
                                 proxies.borrow_mut().add_link(
-                                    obj_id,
+                                    object_id,
                                     Rc::clone(&link),
                                     listener,
                                 );
@@ -381,12 +381,13 @@ fn monitor_pipewire(
                         }
                     }
                     ObjectType::Metadata => {
-                        let result =
-                            metadata::monitor_metadata(&registry, obj, &sender);
+                        let result = metadata::monitor_metadata(
+                            &registry, object, &sender,
+                        );
                         match result {
                             Some((metadata, listener)) => {
                                 proxies.borrow_mut().add_metadata(
-                                    obj_id,
+                                    object_id,
                                     Rc::clone(&metadata),
                                     listener,
                                 );
@@ -413,18 +414,18 @@ fn monitor_pipewire(
                     .add_listener_local()
                     .removed(move || {
                         if let Some(sender) = sender_weak.upgrade() {
-                            sender.send(StateEvent::Removed(obj_id));
+                            sender.send(StateEvent::Removed { object_id });
                         };
                         if let Some(proxies) = proxies_weak.upgrade() {
-                            proxies.borrow_mut().remove(obj_id);
+                            proxies.borrow_mut().remove(object_id);
                         };
                         if let Some(streams) = streams_weak.upgrade() {
-                            streams.borrow_mut().remove(obj_id);
+                            streams.borrow_mut().remove(object_id);
                         };
                     })
                     .register();
 
-                proxies.borrow_mut().add_proxy_listener(obj_id, listener);
+                proxies.borrow_mut().add_proxy_listener(object_id, listener);
 
                 syncs.borrow_mut().global(&core);
             }

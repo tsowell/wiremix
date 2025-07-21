@@ -26,7 +26,7 @@ pub struct StreamData {
 pub fn capture_node(
     core: &Core,
     sender: &Rc<EventSender>,
-    obj_id: ObjectId,
+    object_id: ObjectId,
     serial: &str,
     capture_sink: bool,
 ) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
@@ -79,10 +79,10 @@ pub fn capture_node(
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
                 };
-                sender.send(StateEvent::NodeRate(
-                    obj_id,
-                    user_data.format.rate(),
-                ));
+                sender.send(StateEvent::NodeRate {
+                    object_id,
+                    rate: user_data.format.rate(),
+                });
             }
         })
         .process({
@@ -121,8 +121,11 @@ pub fn capture_node(
 
                         peaks.push(max);
                     }
-                    sender
-                        .send(StateEvent::NodePeaks(obj_id, peaks, n_samples));
+                    sender.send(StateEvent::NodePeaks {
+                        object_id,
+                        peaks,
+                        samples: n_samples,
+                    });
                     user_data.cursor_move = true;
                 }
             }
@@ -132,7 +135,7 @@ pub fn capture_node(
 
     let mut audio_info = AudioInfoRaw::new();
     audio_info.set_format(AudioFormat::F32LE);
-    let pod_obj = Object {
+    let pod_object = Object {
         type_: pipewire::spa::utils::SpaTypes::ObjectParamFormat.as_raw(),
         id: ParamType::EnumFormat.as_raw(),
         properties: audio_info.into(),
@@ -140,7 +143,7 @@ pub fn capture_node(
     let values: Vec<u8> =
         pipewire::spa::pod::serialize::PodSerializer::serialize(
             std::io::Cursor::new(Vec::new()),
-            &pipewire::spa::pod::Value::Object(pod_obj),
+            &pipewire::spa::pod::Value::Object(pod_object),
         )
         .ok()?
         .0

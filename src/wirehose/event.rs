@@ -11,37 +11,103 @@ pub enum Event {
 
 #[derive(Debug)]
 pub enum StateEvent {
-    DeviceEnumRoute(ObjectId, i32, String, bool, Vec<i32>, Vec<i32>),
-    DeviceEnumProfile(ObjectId, i32, String, bool, Vec<(String, Vec<i32>)>),
-    DeviceProfile(ObjectId, i32),
-    DeviceProperties(ObjectId, PropertyStore),
-    DeviceRoute(ObjectId, i32, i32, Vec<i32>, String, bool, Vec<f32>, bool),
+    DeviceEnumRoute {
+        object_id: ObjectId,
+        index: i32,
+        description: String,
+        available: bool,
+        profiles: Vec<i32>,
+        devices: Vec<i32>,
+    },
+    DeviceEnumProfile {
+        object_id: ObjectId,
+        index: i32,
+        description: String,
+        available: bool,
+        classes: Vec<(String, Vec<i32>)>,
+    },
+    DeviceProfile {
+        object_id: ObjectId,
+        index: i32,
+    },
+    DeviceProperties {
+        object_id: ObjectId,
+        props: PropertyStore,
+    },
+    DeviceRoute {
+        object_id: ObjectId,
+        index: i32,
+        device: i32,
+        profiles: Vec<i32>,
+        description: String,
+        available: bool,
+        channel_volumes: Vec<f32>,
+        mute: bool,
+    },
 
-    MetadataMetadataName(ObjectId, String),
-    MetadataProperty(ObjectId, u32, Option<String>, Option<String>),
+    MetadataMetadataName {
+        object_id: ObjectId,
+        metadata_name: String,
+    },
+    MetadataProperty {
+        object_id: ObjectId,
+        subject: u32,
+        key: Option<String>,
+        value: Option<String>,
+    },
 
-    ClientProperties(ObjectId, PropertyStore),
+    ClientProperties {
+        object_id: ObjectId,
+        props: PropertyStore,
+    },
 
-    NodePeaks(ObjectId, Vec<f32>, u32),
-    NodePositions(ObjectId, Vec<u32>),
-    NodeProperties(ObjectId, PropertyStore),
-    NodeRate(ObjectId, u32),
-    NodeVolumes(ObjectId, Vec<f32>),
-    NodeMute(ObjectId, bool),
+    NodePeaks {
+        object_id: ObjectId,
+        peaks: Vec<f32>,
+        samples: u32,
+    },
+    NodePositions {
+        object_id: ObjectId,
+        positions: Vec<u32>,
+    },
+    NodeProperties {
+        object_id: ObjectId,
+        props: PropertyStore,
+    },
+    NodeRate {
+        object_id: ObjectId,
+        rate: u32,
+    },
+    NodeVolumes {
+        object_id: ObjectId,
+        volumes: Vec<f32>,
+    },
+    NodeMute {
+        object_id: ObjectId,
+        mute: bool,
+    },
 
-    Link(ObjectId, ObjectId, ObjectId),
+    Link {
+        object_id: ObjectId,
+        output_id: ObjectId,
+        input_id: ObjectId,
+    },
 
-    StreamStopped(ObjectId),
+    StreamStopped {
+        object_id: ObjectId,
+    },
 
-    Removed(ObjectId),
+    Removed {
+        object_id: ObjectId,
+    },
 }
 
 impl From<&LinkInfoRef> for StateEvent {
     fn from(link_info: &LinkInfoRef) -> Self {
-        StateEvent::Link(
-            ObjectId::from_raw_id(link_info.id()),
-            ObjectId::from_raw_id(link_info.output_node_id()),
-            ObjectId::from_raw_id(link_info.input_node_id()),
-        )
+        StateEvent::Link {
+            object_id: ObjectId::from_raw_id(link_info.id()),
+            output_id: ObjectId::from_raw_id(link_info.output_node_id()),
+            input_id: ObjectId::from_raw_id(link_info.input_node_id()),
+        }
     }
 }

@@ -37,7 +37,7 @@ pub struct Route {
 
 #[derive(Default, Debug)]
 pub struct Device {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub props: PropertyStore,
     pub profile_index: Option<i32>,
     pub profiles: HashMap<i32, Profile>,
@@ -47,13 +47,13 @@ pub struct Device {
 
 #[derive(Default, Debug)]
 pub struct Client {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub props: PropertyStore,
 }
 
 #[derive(Default, Debug)]
 pub struct Node {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub props: PropertyStore,
     pub volumes: Option<Vec<f32>>,
     pub mute: Option<bool>,
@@ -130,13 +130,13 @@ impl Node {
 
 #[derive(Debug)]
 pub struct Link {
-    pub output: ObjectId,
-    pub input: ObjectId,
+    pub output_id: ObjectId,
+    pub input_id: ObjectId,
 }
 
 #[derive(Default, Debug)]
 pub struct Metadata {
-    pub id: ObjectId,
+    pub object_id: ObjectId,
     pub metadata_name: Option<String>,
     /// Properties for each subject
     pub properties: HashMap<u32, HashMap<String, String>>,
@@ -184,20 +184,20 @@ impl State {
         let mut commands = Vec::<Command>::new();
 
         match event {
-            StateEvent::ClientProperties(id, props) => {
-                self.client_entry(id).props = props;
+            StateEvent::ClientProperties { object_id, props } => {
+                self.client_entry(object_id).props = props;
             }
-            StateEvent::DeviceProperties(id, props) => {
-                self.device_entry(id).props = props;
+            StateEvent::DeviceProperties { object_id, props } => {
+                self.device_entry(object_id).props = props;
             }
-            StateEvent::DeviceEnumProfile(
-                id,
+            StateEvent::DeviceEnumProfile {
+                object_id,
                 index,
                 description,
                 available,
                 classes,
-            ) => {
-                self.device_entry(id).profiles.insert(
+            } => {
+                self.device_entry(object_id).profiles.insert(
                     index,
                     Profile {
                         index,
@@ -207,19 +207,19 @@ impl State {
                     },
                 );
             }
-            StateEvent::DeviceProfile(id, index) => {
-                self.device_entry(id).profile_index = Some(index);
+            StateEvent::DeviceProfile { object_id, index } => {
+                self.device_entry(object_id).profile_index = Some(index);
             }
-            StateEvent::DeviceRoute(
-                id,
+            StateEvent::DeviceRoute {
+                object_id: id,
                 index,
                 device,
                 profiles,
                 description,
                 available,
-                volumes,
+                channel_volumes,
                 mute,
-            ) => {
+            } => {
                 self.device_entry(id).routes.insert(
                     device,
                     Route {
@@ -228,20 +228,20 @@ impl State {
                         profiles,
                         description,
                         available,
-                        volumes,
+                        volumes: channel_volumes,
                         mute,
                     },
                 );
             }
-            StateEvent::DeviceEnumRoute(
-                id,
+            StateEvent::DeviceEnumRoute {
+                object_id,
                 index,
                 description,
                 available,
                 profiles,
                 devices,
-            ) => {
-                self.device_entry(id).enum_routes.insert(
+            } => {
+                self.device_entry(object_id).enum_routes.insert(
                     index,
                     EnumRoute {
                         index,
@@ -252,29 +252,37 @@ impl State {
                     },
                 );
             }
-            StateEvent::NodeProperties(id, props) => {
-                self.node_entry(id).props = props;
+            StateEvent::NodeProperties { object_id, props } => {
+                self.node_entry(object_id).props = props;
 
-                if let Some(node) = self.nodes.get(&id) {
+                if let Some(node) = self.nodes.get(&object_id) {
                     commands.extend(self.on_node(node));
                 }
             }
-            StateEvent::NodeMute(id, mute) => {
-                self.node_entry(id).mute = Some(mute);
+            StateEvent::NodeMute { object_id, mute } => {
+                self.node_entry(object_id).mute = Some(mute);
             }
-            StateEvent::NodePeaks(id, peaks, samples) => {
-                let node = self.nodes.entry(id).or_insert_with(|| Node {
-                    id,
-                    ..Default::default()
-                });
+            StateEvent::NodePeaks {
+                object_id,
+                peaks,
+                samples,
+            } => {
+                let node =
+                    self.nodes.entry(object_id).or_insert_with(|| Node {
+                        object_id,
+                        ..Default::default()
+                    });
                 let peak_processor = self.peak_processor.as_deref();
                 node.update_peaks(&peaks, samples, peak_processor);
             }
-            StateEvent::NodeRate(id, rate) => {
-                self.node_entry(id).rate = Some(rate);
+            StateEvent::NodeRate { object_id, rate } => {
+                self.node_entry(object_id).rate = Some(rate);
             }
-            StateEvent::NodePositions(id, positions) => {
-                if let Some(node) = self.nodes.get(&id) {
+            StateEvent::NodePositions {
+                object_id,
+                positions,
+            } => {
+                if let Some(node) = self.nodes.get(&object_id) {
                     let changed = node
                         .positions
                         .as_ref()
@@ -283,28 +291,46 @@ impl State {
                         commands.extend(self.on_positions_changed(node));
                     }
                 }
-                self.node_entry(id).positions = Some(positions);
+                self.node_entry(object_id).positions = Some(positions);
             }
-            StateEvent::NodeVolumes(id, volumes) => {
-                self.node_entry(id).volumes = Some(volumes);
+            StateEvent::NodeVolumes { object_id, volumes } => {
+                self.node_entry(object_id).volumes = Some(volumes);
             }
-            StateEvent::Link(id, output, input) => {
-                if !self.inputs(input).contains(&output) {
-                    if let Some(node) = self.nodes.get(&input) {
+            StateEvent::Link {
+                object_id,
+                output_id,
+                input_id,
+            } => {
+                if !self.inputs(input_id).contains(&output_id) {
+                    if let Some(node) = self.nodes.get(&input_id) {
                         commands.extend(self.on_link(node));
                     }
                 }
 
-                self.links.insert(id, Link { output, input });
+                self.links.insert(
+                    object_id,
+                    Link {
+                        output_id,
+                        input_id,
+                    },
+                );
             }
-            StateEvent::MetadataMetadataName(id, metadata_name) => {
-                self.metadata_entry(id).metadata_name =
+            StateEvent::MetadataMetadataName {
+                object_id,
+                metadata_name,
+            } => {
+                self.metadata_entry(object_id).metadata_name =
                     Some(metadata_name.clone());
-                self.metadatas_by_name.insert(metadata_name, id);
+                self.metadatas_by_name.insert(metadata_name, object_id);
             }
-            StateEvent::MetadataProperty(id, subject, key, value) => {
+            StateEvent::MetadataProperty {
+                object_id,
+                subject,
+                key,
+                value,
+            } => {
                 let properties = self
-                    .metadata_entry(id)
+                    .metadata_entry(object_id)
                     .properties
                     .entry(subject)
                     .or_default();
@@ -320,27 +346,31 @@ impl State {
                     None => properties.clear(),
                 };
             }
-            StateEvent::StreamStopped(id) => {
+            StateEvent::StreamStopped { object_id } => {
                 // It's likely that the node doesn't exist anymore.
-                self.nodes.entry(id).and_modify(|node| node.peaks = None);
+                self.nodes
+                    .entry(object_id)
+                    .and_modify(|node| node.peaks = None);
             }
-            StateEvent::Removed(id) => {
+            StateEvent::Removed { object_id } => {
                 // Remove from links and stop capture if the last input link
-                if let Some(Link { input, .. }) = self.links.remove(&id) {
-                    if self.inputs(input).len() == 1 {
-                        if let Some(node) = self.nodes.get(&input) {
+                if let Some(Link { input_id, .. }) =
+                    self.links.remove(&object_id)
+                {
+                    if self.inputs(input_id).len() == 1 {
+                        if let Some(node) = self.nodes.get(&input_id) {
                             commands.extend(self.on_removed(node));
                         }
                     }
                 }
 
-                self.devices.remove(&id);
-                self.clients.remove(&id);
-                if let Some(node) = self.nodes.remove(&id) {
+                self.devices.remove(&object_id);
+                self.clients.remove(&object_id);
+                if let Some(node) = self.nodes.remove(&object_id) {
                     commands.extend(self.on_removed(&node));
                 }
 
-                if let Some(metadata) = self.metadatas.remove(&id) {
+                if let Some(metadata) = self.metadatas.remove(&object_id) {
                     if let Some(metadata_name) = metadata.metadata_name {
                         self.metadatas_by_name.remove(&metadata_name);
                     }
@@ -381,49 +411,49 @@ impl State {
             .get(self.metadatas_by_name.get(metadata_name)?)
     }
 
-    fn client_entry(&mut self, id: ObjectId) -> &mut Client {
-        self.clients.entry(id).or_insert_with(|| Client {
-            id,
+    fn client_entry(&mut self, object_id: ObjectId) -> &mut Client {
+        self.clients.entry(object_id).or_insert_with(|| Client {
+            object_id,
             ..Default::default()
         })
     }
 
-    fn node_entry(&mut self, id: ObjectId) -> &mut Node {
-        self.nodes.entry(id).or_insert_with(|| Node {
-            id,
+    fn node_entry(&mut self, object_id: ObjectId) -> &mut Node {
+        self.nodes.entry(object_id).or_insert_with(|| Node {
+            object_id,
             ..Default::default()
         })
     }
 
-    fn device_entry(&mut self, id: ObjectId) -> &mut Device {
-        self.devices.entry(id).or_insert_with(|| Device {
-            id,
+    fn device_entry(&mut self, object_id: ObjectId) -> &mut Device {
+        self.devices.entry(object_id).or_insert_with(|| Device {
+            object_id,
             ..Default::default()
         })
     }
 
-    fn metadata_entry(&mut self, id: ObjectId) -> &mut Metadata {
-        self.metadatas.entry(id).or_insert_with(|| Metadata {
-            id,
+    fn metadata_entry(&mut self, object_id: ObjectId) -> &mut Metadata {
+        self.metadatas.entry(object_id).or_insert_with(|| Metadata {
+            object_id,
             ..Default::default()
         })
     }
 
     /// Returns the objects that the given object outputs to.
-    pub fn outputs(&self, id: ObjectId) -> Vec<ObjectId> {
+    pub fn outputs(&self, object_id: ObjectId) -> Vec<ObjectId> {
         self.links
             .iter()
-            .filter(|(_key, l)| l.output == id)
-            .map(|(_key, l)| l.input)
+            .filter(|(_key, l)| l.output_id == object_id)
+            .map(|(_key, l)| l.input_id)
             .collect()
     }
 
     /// Returns the objects that input to the given object.
-    pub fn inputs(&self, id: ObjectId) -> Vec<ObjectId> {
+    pub fn inputs(&self, object_id: ObjectId) -> Vec<ObjectId> {
         self.links
             .iter()
-            .filter(|(_key, l)| l.input == id)
-            .map(|(_key, l)| l.output)
+            .filter(|(_key, l)| l.input_id == object_id)
+            .map(|(_key, l)| l.output_id)
             .collect()
     }
 
@@ -446,7 +476,7 @@ impl State {
 
         node.props.object_serial()?;
 
-        if self.capturing.as_ref()?.contains(&node.id) {
+        if self.capturing.as_ref()?.contains(&node.object_id) {
             return None;
         }
 
@@ -476,7 +506,7 @@ impl State {
 
     /// Call when a node's output positions have changed.
     fn on_positions_changed(&self, node: &Node) -> Option<Command> {
-        if !self.capturing.as_ref()?.contains(&node.id) {
+        if !self.capturing.as_ref()?.contains(&node.object_id) {
             return None;
         }
 
@@ -505,7 +535,7 @@ impl State {
                 });
 
         Some(Command::NodeCaptureStart(
-            node.id,
+            node.object_id,
             *object_serial,
             capture_sink,
         ))
@@ -514,7 +544,7 @@ impl State {
     fn stop_capture_command(&self, node: &Node) -> Option<Command> {
         self.capturing.as_ref()?;
 
-        Some(Command::NodeCaptureStop(node.id))
+        Some(Command::NodeCaptureStop(node.object_id))
     }
 }
 
@@ -528,14 +558,17 @@ mod tests {
     fn state_metadata_insert() {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
-        let obj_id = ObjectId::from_raw_id(0);
+        let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
             &wirehose,
-            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName {
+                object_id,
+                metadata_name: metadata_name.clone(),
+            },
         );
 
-        let metadata = state.metadatas.get(&obj_id).unwrap();
+        let metadata = state.metadatas.get(&object_id).unwrap();
         assert_eq!(metadata.metadata_name, Some(metadata_name.clone()));
 
         let metadata = state.get_metadata_by_name(&metadata_name).unwrap();
@@ -546,28 +579,31 @@ mod tests {
     fn state_metadata_remove() {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
-        let obj_id = ObjectId::from_raw_id(0);
+        let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
             &wirehose,
-            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName {
+                object_id,
+                metadata_name: metadata_name.clone(),
+            },
         );
 
-        state.update(&wirehose, StateEvent::Removed(obj_id));
+        state.update(&wirehose, StateEvent::Removed { object_id });
 
-        assert!(!state.metadatas.contains_key(&obj_id));
+        assert!(!state.metadatas.contains_key(&object_id));
         assert!(!state.metadatas_by_name.contains_key(&metadata_name));
         assert!(state.get_metadata_by_name(&metadata_name).is_none());
     }
 
     fn get_metadata_properties<'a>(
         state: &'a State,
-        obj_id: &ObjectId,
+        object_id: &ObjectId,
         subject: u32,
     ) -> &'a HashMap<String, String> {
         state
             .metadatas
-            .get(obj_id)
+            .get(object_id)
             .unwrap()
             .properties
             .get(&subject)
@@ -578,11 +614,14 @@ mod tests {
     fn state_metadata_clear_property() {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
-        let obj_id = ObjectId::from_raw_id(0);
+        let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
             &wirehose,
-            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName {
+                object_id,
+                metadata_name: metadata_name.clone(),
+            },
         );
 
         let key = String::from("key");
@@ -590,38 +629,46 @@ mod tests {
 
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(
-                obj_id,
-                0,
-                Some(key.clone()),
-                Some(value.clone()),
-            ),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 0,
+                key: Some(key.clone()),
+                value: Some(value.clone()),
+            },
         );
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(
-                obj_id,
-                1,
-                Some(key.clone()),
-                Some(value.clone()),
-            ),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 1,
+                key: Some(key.clone()),
+                value: Some(value.clone()),
+            },
         );
         assert_eq!(
-            get_metadata_properties(&state, &obj_id, 0).get(&key),
+            get_metadata_properties(&state, &object_id, 0).get(&key),
             Some(&value)
         );
         assert_eq!(
-            get_metadata_properties(&state, &obj_id, 1).get(&key),
+            get_metadata_properties(&state, &object_id, 1).get(&key),
             Some(&value)
         );
 
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(obj_id, 0, Some(key.clone()), None),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 0,
+                key: Some(key.clone()),
+                value: None,
+            },
         );
-        assert_eq!(get_metadata_properties(&state, &obj_id, 0).get(&key), None);
         assert_eq!(
-            get_metadata_properties(&state, &obj_id, 1).get(&key),
+            get_metadata_properties(&state, &object_id, 0).get(&key),
+            None
+        );
+        assert_eq!(
+            get_metadata_properties(&state, &object_id, 1).get(&key),
             Some(&value)
         );
     }
@@ -630,11 +677,14 @@ mod tests {
     fn state_metadata_clear_all_properties() {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
-        let obj_id = ObjectId::from_raw_id(0);
+        let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
         state.update(
             &wirehose,
-            StateEvent::MetadataMetadataName(obj_id, metadata_name.clone()),
+            StateEvent::MetadataMetadataName {
+                object_id,
+                metadata_name: metadata_name.clone(),
+            },
         );
 
         let key = String::from("key");
@@ -642,31 +692,36 @@ mod tests {
 
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(
-                obj_id,
-                0,
-                Some(key.clone()),
-                Some(value.clone()),
-            ),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 0,
+                key: Some(key.clone()),
+                value: Some(value.clone()),
+            },
         );
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(
-                obj_id,
-                1,
-                Some(key.clone()),
-                Some(value.clone()),
-            ),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 1,
+                key: Some(key.clone()),
+                value: Some(value.clone()),
+            },
         );
-        assert!(!get_metadata_properties(&state, &obj_id, 0).is_empty());
-        assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
+        assert!(!get_metadata_properties(&state, &object_id, 0).is_empty());
+        assert!(!get_metadata_properties(&state, &object_id, 1).is_empty());
 
         state.update(
             &wirehose,
-            StateEvent::MetadataProperty(obj_id, 0, None, None),
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 0,
+                key: None,
+                value: None,
+            },
         );
 
-        assert!(get_metadata_properties(&state, &obj_id, 0).is_empty());
-        assert!(!get_metadata_properties(&state, &obj_id, 1).is_empty());
+        assert!(get_metadata_properties(&state, &object_id, 0).is_empty());
+        assert!(!get_metadata_properties(&state, &object_id, 1).is_empty());
     }
 }

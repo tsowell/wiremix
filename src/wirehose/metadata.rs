@@ -13,23 +13,23 @@ use crate::wirehose::{ObjectId, StateEvent};
 
 pub fn monitor_metadata(
     registry: &Registry,
-    obj: &GlobalObject<&DictRef>,
+    object: &GlobalObject<&DictRef>,
     sender: &Rc<EventSender>,
 ) -> Option<(Rc<Metadata>, Box<dyn Listener>)> {
-    let obj_id = ObjectId::from(obj);
+    let object_id = ObjectId::from(object);
 
-    let props = obj.props?;
+    let props = object.props?;
     let metadata_name = props.get("metadata.name")?;
     if metadata_name != "default" {
         return None;
     }
 
-    sender.send(StateEvent::MetadataMetadataName(
-        obj_id,
-        String::from(metadata_name),
-    ));
+    sender.send(StateEvent::MetadataMetadataName {
+        object_id,
+        metadata_name: String::from(metadata_name),
+    });
 
-    let metadata: Metadata = registry.bind(obj).ok()?;
+    let metadata: Metadata = registry.bind(object).ok()?;
     let metadata = Rc::new(metadata);
 
     let listener = metadata
@@ -41,12 +41,12 @@ pub fn monitor_metadata(
                     return 0;
                 };
 
-                sender.send(StateEvent::MetadataProperty(
-                    obj_id,
+                sender.send(StateEvent::MetadataProperty {
+                    object_id,
                     subject,
-                    key.map(String::from),
-                    value.map(String::from),
-                ));
+                    key: key.map(String::from),
+                    value: value.map(String::from),
+                });
 
                 0
             }
