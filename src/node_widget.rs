@@ -15,7 +15,6 @@ use crate::config::{Config, Peaks};
 use crate::device_kind::DeviceKind;
 use crate::meter;
 use crate::object_list::ObjectList;
-use crate::truncate;
 use crate::view;
 
 fn is_default(node: &view::Node, device_kind: Option<DeviceKind>) -> bool {
@@ -287,7 +286,7 @@ impl<'a> HeaderWidget<'a> {
         }
     }
 
-    fn title_line(&self, width: usize) -> Line {
+    fn title_line(&self) -> Line {
         let node_title = node_title(self.node, self.device_kind);
         let default_span = if is_default(self.node, self.device_kind) {
             Span::styled(
@@ -297,7 +296,6 @@ impl<'a> HeaderWidget<'a> {
         } else {
             Span::from(" ")
         };
-        let node_title = truncate::with_ellipses(node_title, width);
         Line::from(vec![
             default_span,
             Span::from(" "),
@@ -313,24 +311,52 @@ impl StatefulWidget for HeaderWidget<'_> {
         let mouse_areas = state;
 
         let target_line = self.target_line();
+        let target_width = target_line.width().try_into().unwrap_or(u16::MAX);
 
+        // See if we can fit the whole title on the screen. We'll scrap this
+        // layout if it doesn't fit.
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Min(0),                             // header_left
-                Constraint::Length(target_line.width() as u16), // header_right
+                // Min(1) so we always show the default indicator
+                Constraint::Min(1),               // title_area
+                Constraint::Length(target_width), // target_area
             ])
             .horizontal_margin(1)
             .spacing(1)
             .split(area);
-        let header_left = layout[0];
-        let header_right = layout[1];
+        let mut title_area = layout[0];
+        let mut target_area = layout[1];
+
+        let title_line = self.title_line();
+        if title_line.width() > title_area.width as usize {
+            // It doesn't fit
+            let layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    // Min(1) so we always show the default indicator
+                    Constraint::Min(1),    // title_area
+                    Constraint::Length(3), // ellipses_area
+                    Constraint::Length(1), // _padding
+                    Constraint::Length(target_width), // target_area
+                ])
+                .horizontal_margin(1)
+                .split(area);
+            title_area = layout[0];
+            let ellipses_area = layout[1];
+            target_area = layout[3];
+
+            Span::styled("...", self.config.theme.node_title)
+                .render(ellipses_area, buf);
+        }
+        let (title_area, target_area) = (title_area, target_area);
 
         target_line
             .alignment(Alignment::Right)
-            .render(header_right, buf);
+            .render(target_area, buf);
+
         mouse_areas.push((
-            header_right,
+            target_area,
             smallvec![MouseEventKind::Down(MouseButton::Left)],
             smallvec![
                 Action::SelectObject(self.node.object_id),
@@ -338,8 +364,7 @@ impl StatefulWidget for HeaderWidget<'_> {
             ],
         ));
 
-        self.title_line((header_left.width.saturating_sub(2)) as usize)
-            .render(header_left, buf);
+        title_line.render(title_area, buf);
     }
 }
 

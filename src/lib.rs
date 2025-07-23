@@ -10,7 +10,6 @@ pub mod meter;
 pub mod node_widget;
 pub mod object_list;
 pub mod opt;
-pub mod truncate;
 pub mod view;
 pub mod wirehose;
 

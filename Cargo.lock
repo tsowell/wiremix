@@ -2282,7 +2282,6 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-subscriber",
- "unicode-width 0.2.0",
  "vergen-git2",
 ]
 

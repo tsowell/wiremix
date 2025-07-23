@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use ratatui::widgets::block::BorderType;
+use ratatui::{text::Span, widgets::block::BorderType};
 use serde::{de::Error, Deserialize};
 
 use crate::config::CharSet;
@@ -83,10 +83,7 @@ impl TryFrom<CharSetOverlay> for CharSet {
             // width. Length of 0 means don't check width.
             ($field:ident, $length:expr) => {
                 if let Some(value) = overlay.$field {
-                    if $length > 0
-                        && unicode_width::UnicodeWidthStr::width(value.as_str())
-                            != $length
-                    {
+                    if $length > 0 && Span::raw(&value).width() != $length {
                         anyhow::bail!(
                             "{} must be {} characters wide",
                             stringify!($field),
