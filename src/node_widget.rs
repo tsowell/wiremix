@@ -37,24 +37,24 @@ fn node_title(node: &view::Node, device_kind: Option<DeviceKind>) -> &str {
 }
 
 pub struct NodeWidget<'a> {
+    config: &'a Config,
+    device_kind: Option<DeviceKind>,
     node: &'a view::Node,
     selected: bool,
-    device_kind: Option<DeviceKind>,
-    config: &'a Config,
 }
 
 impl<'a> NodeWidget<'a> {
     pub fn new(
+        config: &'a Config,
+        device_kind: Option<DeviceKind>,
         node: &'a view::Node,
         selected: bool,
-        device_kind: Option<DeviceKind>,
-        config: &'a Config,
     ) -> Self {
         Self {
+            config,
+            device_kind,
             node,
             selected,
-            device_kind,
-            config,
         }
     }
 
@@ -104,73 +104,55 @@ impl StatefulWidget for NodeWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let mouse_areas = state;
 
-        let max_volume = self.config.max_volume_percent / 100.0;
+        mouse_areas.extend([
+            (
+                area,
+                smallvec![MouseEventKind::Down(MouseButton::Left)],
+                smallvec![Action::SelectObject(self.node.object_id)],
+            ),
+            (
+                area,
+                smallvec![MouseEventKind::Down(MouseButton::Right)],
+                smallvec![
+                    Action::SelectObject(self.node.object_id),
+                    Action::SetDefault
+                ],
+            ),
+            (
+                area,
+                smallvec![MouseEventKind::ScrollLeft],
+                smallvec![
+                    Action::SelectObject(self.node.object_id),
+                    Action::SetRelativeVolume(-0.01),
+                ],
+            ),
+            (
+                area,
+                smallvec![MouseEventKind::ScrollRight],
+                smallvec![
+                    Action::SelectObject(self.node.object_id),
+                    Action::SetRelativeVolume(0.01),
+                ],
+            ),
+        ]);
 
-        mouse_areas.push((
-            area,
-            smallvec![MouseEventKind::Down(MouseButton::Left)],
-            smallvec![Action::SelectObject(self.node.object_id)],
-        ));
-
-        mouse_areas.push((
-            area,
-            smallvec![MouseEventKind::Down(MouseButton::Right)],
-            smallvec![
-                Action::SelectObject(self.node.object_id),
-                Action::SetDefault
-            ],
-        ));
-
-        mouse_areas.push((
-            area,
-            smallvec![MouseEventKind::ScrollLeft],
-            smallvec![
-                Action::SelectObject(self.node.object_id),
-                Action::SetRelativeVolume(-0.01),
-            ],
-        ));
-
-        mouse_areas.push((
-            area,
-            smallvec![MouseEventKind::ScrollRight],
-            smallvec![
-                Action::SelectObject(self.node.object_id),
-                Action::SetRelativeVolume(0.01),
-            ],
-        ));
-
+        // Split area into a selection indicator on the left and the main node
+        // area on the right
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Length(1), // selected_area
+                Constraint::Length(1), // selector_area
                 Constraint::Min(0),    // node_area
             ])
             .split(area);
-        let selected_area = layout[0];
+        let selector_area = layout[0];
         let node_area = layout[1];
 
-        if self.selected {
-            // Render and indication that this is the selected node.
-            let rows = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(1),
-                    Constraint::Length(1),
-                    Constraint::Length(1),
-                ])
-                .split(selected_area);
+        SelectorWidget::new(self.config, self.selected)
+            .render(selector_area, buf);
 
-            let style = self.config.theme.selector;
-
-            // Render the selected node indicator
-            Span::styled(&self.config.char_set.selector_top, style)
-                .render(rows[0], buf);
-            Span::styled(&self.config.char_set.selector_middle, style)
-                .render(rows[1], buf);
-            Span::styled(&self.config.char_set.selector_bottom, style)
-                .render(rows[2], buf);
-        }
-
+        // Split the main node area into a header line and a line for the
+        // volume bar and peak meter.
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -183,8 +165,107 @@ impl StatefulWidget for NodeWidget<'_> {
         let header_area = layout[0];
         let bar_area = layout[1];
 
-        let node_title = node_title(self.node, self.device_kind);
-        let target_line = match self.node.target {
+        HeaderWidget::new(self.config, self.device_kind, self.node).render(
+            header_area,
+            buf,
+            mouse_areas,
+        );
+
+        // Render volume bar and (if enabled) peak meter
+        let volume = VolumeWidget::new(self.config, self.node);
+        if self.config.peaks == Peaks::Off {
+            let layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Length(2), // _padding
+                    Constraint::Fill(9),   // volume_area
+                    Constraint::Fill(1),   // _padding
+                ])
+                .split(bar_area);
+            // index 0 is _padding
+            let volume_area = layout[1];
+
+            volume.render(volume_area, buf, mouse_areas);
+        } else {
+            let layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Length(2), // _padding
+                    Constraint::Fill(4),   // volume_area
+                    Constraint::Fill(1),   // _padding
+                    Constraint::Fill(4),   // meter_area
+                    Constraint::Fill(1),   // _padding
+                ])
+                .split(bar_area);
+            // index 0 is _padding
+            let volume_area = layout[1];
+            // index 2 is _padding
+            let meter_area = layout[3];
+
+            volume.render(volume_area, buf, mouse_areas);
+            MeterWidget::new(self.config, self.node).render(meter_area, buf);
+        }
+    }
+}
+
+struct SelectorWidget<'a> {
+    config: &'a Config,
+    selected: bool,
+}
+
+impl<'a> SelectorWidget<'a> {
+    fn new(config: &'a Config, selected: bool) -> Self {
+        Self { config, selected }
+    }
+}
+
+impl Widget for SelectorWidget<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        if self.selected {
+            // Render and indication that this is the selected node.
+            let rows = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                    Constraint::Length(1),
+                ])
+                .split(area);
+
+            let style = self.config.theme.selector;
+
+            // Render the selected node indicator
+            Span::styled(&self.config.char_set.selector_top, style)
+                .render(rows[0], buf);
+            Span::styled(&self.config.char_set.selector_middle, style)
+                .render(rows[1], buf);
+            Span::styled(&self.config.char_set.selector_bottom, style)
+                .render(rows[2], buf);
+        }
+    }
+}
+
+struct HeaderWidget<'a> {
+    config: &'a Config,
+    device_kind: Option<DeviceKind>,
+    node: &'a view::Node,
+}
+
+impl<'a> HeaderWidget<'a> {
+    fn new(
+        config: &'a Config,
+        device_kind: Option<DeviceKind>,
+        node: &'a view::Node,
+    ) -> Self {
+        Self {
+            config,
+            device_kind,
+            node,
+        }
+    }
+
+    fn target_line(&self) -> Line {
+        match self.node.target {
             Some(view::Target::Default) => {
                 // Add the default target indicator
                 Line::from(vec![
@@ -203,7 +284,35 @@ impl StatefulWidget for NodeWidget<'_> {
                 &self.node.target_title,
                 self.config.theme.node_target,
             )),
+        }
+    }
+
+    fn title_line(&self, width: usize) -> Line {
+        let node_title = node_title(self.node, self.device_kind);
+        let default_span = if is_default(self.node, self.device_kind) {
+            Span::styled(
+                &self.config.char_set.default_device,
+                self.config.theme.default_device,
+            )
+        } else {
+            Span::from(" ")
         };
+        let node_title = truncate::with_ellipses(node_title, width);
+        Line::from(vec![
+            default_span,
+            Span::from(" "),
+            Span::styled(node_title, self.config.theme.node_title),
+        ])
+    }
+}
+
+impl StatefulWidget for HeaderWidget<'_> {
+    type State = Vec<MouseArea>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let mouse_areas = state;
+
+        let target_line = self.target_line();
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -213,7 +322,7 @@ impl StatefulWidget for NodeWidget<'_> {
             ])
             .horizontal_margin(1)
             .spacing(1)
-            .split(header_area);
+            .split(area);
         let header_left = layout[0];
         let header_right = layout[1];
 
@@ -229,48 +338,29 @@ impl StatefulWidget for NodeWidget<'_> {
             ],
         ));
 
-        let default_span = if is_default(self.node, self.device_kind) {
-            Span::styled(
-                &self.config.char_set.default_device,
-                self.config.theme.default_device,
-            )
-        } else {
-            Span::from(" ")
-        };
-        let node_title = truncate::with_ellipses(
-            node_title,
-            (header_left.width.saturating_sub(2)) as usize,
-        );
-        Line::from(vec![
-            default_span,
-            Span::from(" "),
-            Span::styled(node_title, self.config.theme.node_title),
-        ])
-        .render(header_left, buf);
+        self.title_line((header_left.width.saturating_sub(2)) as usize)
+            .render(header_left, buf);
+    }
+}
 
-        let constraints = if self.config.peaks != Peaks::Off {
-            vec![
-                Constraint::Length(2), // _padding
-                Constraint::Fill(4),   // volume_area
-                Constraint::Fill(1),   // _padding
-                Constraint::Fill(4),   // meter_area
-                Constraint::Fill(1),   // _padding
-            ]
-        } else {
-            vec![
-                Constraint::Length(2), // _padding
-                Constraint::Fill(9),   // volume_area
-                Constraint::Fill(1),   // _padding
-            ]
-        };
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(constraints)
-            .split(bar_area);
-        // index 0 is _padding
-        let volume_area = layout[1];
-        // index 2 is _padding
-        let meter_area = (self.config.peaks != Peaks::Off).then(|| layout[3]);
+struct VolumeWidget<'a> {
+    config: &'a Config,
+    node: &'a view::Node,
+}
+
+impl<'a> VolumeWidget<'a> {
+    fn new(config: &'a Config, node: &'a view::Node) -> Self {
+        Self { config, node }
+    }
+}
+
+impl StatefulWidget for VolumeWidget<'_> {
+    type State = Vec<MouseArea>;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let mouse_areas = state;
+
+        let max_volume = self.config.max_volume_percent / 100.0;
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -279,7 +369,7 @@ impl StatefulWidget for NodeWidget<'_> {
                 Constraint::Min(0),    // volume_bar
             ])
             .spacing(1)
-            .split(volume_area);
+            .split(area);
         let volume_label = layout[0];
         let volume_bar = layout[1];
 
@@ -356,38 +446,49 @@ impl StatefulWidget for NodeWidget<'_> {
                 ],
             ));
         }
+    }
+}
 
-        // Render peaks
-        if let Some(meter_area) = meter_area {
-            match self.node.peaks.as_deref() {
-                Some([left, right]) if self.config.peaks != Peaks::Mono => {
-                    meter::render_stereo(
-                        meter_area,
-                        buf,
-                        Some((*left, *right)),
-                        self.config,
-                    )
-                }
-                Some(peaks @ [..]) => meter::render_mono(
-                    meter_area,
+struct MeterWidget<'a> {
+    config: &'a Config,
+    node: &'a view::Node,
+}
+
+impl<'a> MeterWidget<'a> {
+    fn new(config: &'a Config, node: &'a view::Node) -> Self {
+        Self { config, node }
+    }
+}
+
+impl Widget for MeterWidget<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        match self.node.peaks.as_deref() {
+            Some([left, right]) if self.config.peaks != Peaks::Mono => {
+                meter::render_stereo(
+                    area,
                     buf,
-                    (!peaks.is_empty()).then_some(
-                        peaks.iter().sum::<f32>() / peaks.len() as f32,
-                    ),
+                    Some((*left, *right)),
                     self.config,
-                ),
-                _ => match self
-                    .node
-                    .positions
-                    .as_ref()
-                    .map(|positions| positions.len())
-                {
-                    Some(2) if self.config.peaks != Peaks::Mono => {
-                        meter::render_stereo(meter_area, buf, None, self.config)
-                    }
-                    _ => meter::render_mono(meter_area, buf, None, self.config),
-                },
+                )
             }
+            Some(peaks @ [..]) => meter::render_mono(
+                area,
+                buf,
+                (!peaks.is_empty())
+                    .then_some(peaks.iter().sum::<f32>() / peaks.len() as f32),
+                self.config,
+            ),
+            _ => match self
+                .node
+                .positions
+                .as_ref()
+                .map(|positions| positions.len())
+            {
+                Some(2) if self.config.peaks != Peaks::Mono => {
+                    meter::render_stereo(area, buf, None, self.config)
+                }
+                _ => meter::render_mono(area, buf, None, self.config),
+            },
         }
     }
 }

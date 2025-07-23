@@ -290,10 +290,10 @@ impl ObjectListWidget<'_, '_> {
                 .map(|id| id == object.object_id)
                 .unwrap_or_default();
             NodeWidget::new(
+                self.config,
+                self.object_list.device_kind,
                 object,
                 selected,
-                self.object_list.device_kind,
-                self.config,
             )
             .render(object_area, buf, mouse_areas);
         }
