@@ -791,7 +791,7 @@ mod tests {
     use crate::wirehose::PropertyStore;
     use strum::IntoEnumIterator;
 
-    fn fixture(wirehose: &mock::WirehoseHandle) -> App {
+    fn fixture(wirehose: &mock::WirehoseHandle) -> App<'_> {
         let (_, event_rx) = mpsc::channel();
 
         let config = Config {

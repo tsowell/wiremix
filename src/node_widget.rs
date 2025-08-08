@@ -263,7 +263,7 @@ impl<'a> HeaderWidget<'a> {
         }
     }
 
-    fn target_line(&self) -> Line {
+    fn target_line(&self) -> Line<'_> {
         match self.node.target {
             Some(view::Target::Default) => {
                 // Add the default target indicator
@@ -286,7 +286,7 @@ impl<'a> HeaderWidget<'a> {
         }
     }
 
-    fn title_line(&self) -> Line {
+    fn title_line(&self) -> Line<'_> {
         let node_title = node_title(self.node, self.device_kind);
         let default_span = if is_default(self.node, self.device_kind) {
             Span::styled(
