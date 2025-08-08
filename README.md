@@ -19,8 +19,7 @@ Issues and pull requests are welcome!
 * Arch Linux: Install the [official package](https://archlinux.org/packages/extra/x86_64/wiremix/)
   via `pacman -S wiremix` or `paru -S wiremix-git` for the
   latest development version from the [AUR](https://aur.archlinux.org/packages/wiremix-git).
-* Nix: `nix run github:tsowell/wiremix` or add wiremix to your configuration
-  using the provided [flake.nix](./flake.nix)
+* Nix: `nix run nixpkgs#wiremix` or add `wiremix` to your configuration.
 
 ### Manual Installation
 
