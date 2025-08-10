@@ -82,10 +82,10 @@ impl StatefulWidget for DropdownWidget<'_> {
             &list,
             dropdown_area,
             buf,
-            &mut self.object_list.list_state,
+            &mut self.object_list.dropdown_state,
         );
 
-        let first_index = self.object_list.list_state.offset();
+        let first_index = self.object_list.dropdown_state.offset();
 
         // Add a clickable indicator to the top border if there or more items
         // if scrolled up

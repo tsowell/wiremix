@@ -33,7 +33,7 @@ pub struct ObjectList {
     /// Default device type to use for defaults and node rendering
     device_kind: Option<DeviceKind>,
     /// Target dropdown state
-    pub list_state: ListState,
+    pub dropdown_state: ListState,
     /// Targets
     pub targets: Vec<(view::Target, String)>,
 }
@@ -50,8 +50,8 @@ impl ObjectList {
     }
 
     pub fn down(&mut self, view: &view::View) {
-        if self.list_state.selected().is_some() {
-            self.list_state.select_next();
+        if self.dropdown_state.selected().is_some() {
+            self.dropdown_state.select_next();
         } else {
             let new_selected = view.next_id(self.list_kind, self.selected);
             if new_selected.is_some() {
@@ -61,8 +61,8 @@ impl ObjectList {
     }
 
     pub fn up(&mut self, view: &view::View) {
-        if self.list_state.selected().is_some() {
-            self.list_state.select_previous();
+        if self.dropdown_state.selected().is_some() {
+            self.dropdown_state.select_previous();
         } else {
             let new_selected = view.previous_id(self.list_kind, self.selected);
             if new_selected.is_some() {
@@ -83,13 +83,13 @@ impl ObjectList {
         if let Some((targets, index)) = targets {
             if !targets.is_empty() {
                 self.targets = targets;
-                self.list_state.select(Some(index));
+                self.dropdown_state.select(Some(index));
             }
         }
     }
 
     fn selected_target(&self) -> Option<&view::Target> {
-        self.list_state
+        self.dropdown_state
             .selected()
             .and_then(|index| self.targets.get(index))
             .map(|(target, _)| target)
@@ -97,7 +97,7 @@ impl ObjectList {
 
     pub fn dropdown_activate(&mut self, view: &view::View) {
         // Just open the dropdown if it's not showing yet.
-        if self.list_state.selected().is_none() {
+        if self.dropdown_state.selected().is_none() {
             self.dropdown_open(view);
             return;
         }
@@ -108,15 +108,15 @@ impl ObjectList {
             view.set_target(object_id, target);
         };
 
-        self.list_state.select(None);
+        self.dropdown_state.select(None);
     }
 
     pub fn dropdown_close(&mut self) {
-        self.list_state.select(None);
+        self.dropdown_state.select(None);
     }
 
     pub fn set_target(&mut self, view: &view::View, target: view::Target) {
-        self.list_state.select(None);
+        self.dropdown_state.select(None);
         if let Some(object_id) = self.selected {
             view.set_target(object_id, target);
         };
@@ -299,7 +299,7 @@ impl ObjectListWidget<'_, '_> {
         }
 
         // Show the target dropdown?
-        if self.object_list.list_state.selected().is_some() {
+        if self.object_list.dropdown_state.selected().is_some() {
             // Get the area for the selected object
             if let Some((_, object_area)) =
                 objects_and_areas.iter().find(|(object, _)| {
@@ -354,7 +354,7 @@ impl ObjectListWidget<'_, '_> {
         }
 
         // Show the target dropdown?
-        if self.object_list.list_state.selected().is_some() {
+        if self.object_list.dropdown_state.selected().is_some() {
             // Get the area for the selected object
             if let Some((_, object_area)) =
                 objects_and_areas.iter().find(|(object, _)| {
