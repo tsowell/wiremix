@@ -55,7 +55,7 @@ impl ObjectList {
         } else {
             let new_selected = view.next_id(self.list_kind, self.selected);
             if new_selected.is_some() {
-                self.selected = new_selected;
+                self.select(new_selected);
             }
         }
     }
@@ -66,7 +66,7 @@ impl ObjectList {
         } else {
             let new_selected = view.previous_id(self.list_kind, self.selected);
             if new_selected.is_some() {
-                self.selected = new_selected;
+                self.select(new_selected);
             }
         }
     }
@@ -185,11 +185,19 @@ impl ObjectList {
             .and_then(|selected| view.position(self.list_kind, selected))
     }
 
+    fn select(&mut self, object_id: Option<ObjectId>) {
+        self.selected = object_id;
+        // Close the dropdown in case it is open for the previously-selected
+        // object. This can happen when the object is removed from PipeWire
+        // while the dropdown is open.
+        self.dropdown_close();
+    }
+
     /// Reconciles changes to objects, viewport, and selection.
     pub fn update(&mut self, area: Rect, view: &view::View) {
         let selected_index = self.selected_index(view).or_else(|| {
             // There's nothing selected! Select the first item and try again.
-            self.selected = view.next_id(self.list_kind, None);
+            self.select(view.next_id(self.list_kind, None));
             self.selected_index(view)
         });
 
@@ -233,7 +241,7 @@ impl ObjectList {
                         self.top = selected_index;
                     }
                 }
-                None => self.selected = None, // The selected object is gone!
+                None => self.select(None), // The selected object is gone!
             }
         }
     }

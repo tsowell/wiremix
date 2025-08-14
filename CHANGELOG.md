@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Arbitrary PipeWire object properties can be used in configuration file.
 
+### Fixed
+
+- Open dropdowns no longer persist after their underlying object is removed.
+
 ## [0.6.2] - 2025-07-14
 
 ### Fixed
