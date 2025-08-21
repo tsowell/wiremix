@@ -2271,7 +2271,6 @@ dependencies = [
  "paste",
  "pipewire",
  "ratatui",
- "regex",
  "scopeguard",
  "serde",
  "serde_json",
