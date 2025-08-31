@@ -100,6 +100,8 @@ pub struct Device {
 pub enum VolumeAdjustment {
     Relative(f32),
     Absolute(f32),
+    RelativeBalance(f32),
+    AbsoluteBalance(f32),
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -687,6 +689,27 @@ impl<'a> View<'a> {
         }
     }
 
+    /// Get current balance (stereo only)
+    fn balance(&self, volumes: &Vec<f32>) -> Option<f32> {
+        if volumes.len() == 2 {
+            Some((volumes[1] / volumes[0]) - 1.0)
+        } else {
+            None
+        }
+    }
+
+    /// Update channel balance balance (stereo only)
+    fn rebalance(&self, volumes: &mut Vec<f32>, balance: f32) {
+        if let Some(bal) = self.balance(volumes) {
+            let bal_new = balance.clamp(-1.0, 1.0);
+            if bal <= 0.0 {
+                volumes[1] = volumes[0] * (bal_new + 1.0);
+            } else {
+                volumes[0] = volumes[1] / (bal_new + 1.0);
+            }
+        }
+    }
+
     /// Changes the volume of the provided node. If max volume is provided,
     /// won't change volume if result would be greater than max. Returns true
     /// if volume was changed, otherwise false.
@@ -711,6 +734,14 @@ impl<'a> View<'a> {
             }
             VolumeAdjustment::Absolute(volume) => {
                 volumes.fill(volume.max(0.0).powi(3));
+            }
+            VolumeAdjustment::AbsoluteBalance(balance) => {
+                self.rebalance(&mut volumes, balance);
+            }
+            VolumeAdjustment::RelativeBalance(delta) => {
+                if let Some(balance) = self.balance(&volumes) {
+                    self.rebalance(&mut volumes, balance + delta);
+                }
             }
         }
         let volumes = volumes;

@@ -169,6 +169,44 @@ impl ObjectList {
         false
     }
 
+    pub fn set_absolute_balance(
+        &mut self,
+        view: &view::View,
+        balance: f32,
+        max: Option<f32>,
+    ) -> bool {
+        if matches!(self.list_kind, ListKind::Device) {
+            return false;
+        }
+        if let Some(node_id) = self.selected {
+            return view.volume(
+                node_id,
+                VolumeAdjustment::AbsoluteBalance(balance),
+                max,
+            );
+        }
+        false
+    }
+
+    pub fn set_relative_balance(
+        &mut self,
+        view: &view::View,
+        balance: f32,
+        max: Option<f32>,
+    ) -> bool {
+        if matches!(self.list_kind, ListKind::Device) {
+            return false;
+        }
+        if let Some(node_id) = self.selected {
+            return view.volume(
+                node_id,
+                VolumeAdjustment::RelativeBalance(balance),
+                max,
+            );
+        }
+        false
+    }
+
     pub fn set_default(&mut self, view: &view::View) {
         if matches!(self.list_kind, ListKind::Device) {
             return;
