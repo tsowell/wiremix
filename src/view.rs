@@ -710,7 +710,7 @@ impl<'a> View<'a> {
             let bal_new = balance.clamp(-1.0, 1.0);
             if bal < 0.0 || (bal == 0.0 && bal_new < 0.0) {
                 volumes[1] = volumes[0] * (1.0 - bal_new * bal.signum());
-            } else {
+            } else if bal > 0.0 || (bal == 0.0 && bal_new > 0.0) {
                 volumes[0] = volumes[1] * (1.0 - bal_new * bal.signum());
             }
         }
@@ -748,7 +748,7 @@ impl<'a> View<'a> {
                         volumes[1] =
                             (volumes[1].cbrt() + delta).max(0.0).powi(3);
                         volumes[0] =
-                            (volumes[1] * (1.0 + bal * bal.signum())).max(0.0);
+                            (volumes[1] * (1.0 - bal * bal.signum())).max(0.0);
                     }
                     _ => {
                         let avg =
