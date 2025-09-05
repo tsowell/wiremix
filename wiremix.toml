@@ -72,52 +72,56 @@ enforce_max_volume = false
 #
 # Each of the available keybinding actions are documented below.
 keybindings = [
- # Exit the program
- { key = { Char = "q" }, action = "Exit" },
- # Toggle mute for the selected item
- { key = { Char = "m" }, action = "ToggleMute" },
- # Make the selected item in Input/Output Devices the default endpoint
- { key = { Char = "d" }, action = "SetDefault" },
- # Increase the volume of the selected item by 1%
- { key = { Char = "l" }, action = { SetRelativeVolume = 0.01 } },
- { key = "Right", action = { SetRelativeVolume = 0.01 } },
- # Decrease the volume of the selected item by 1%
- { key = { Char = "h" }, action = { SetRelativeVolume = -0.01 } },
- { key = "Left", action = { SetRelativeVolume = -0.01 } },
- # Open a dropdown for the selected item or chose an item in the dropdown
- { key = { Char = "c" }, action = "ActivateDropdown" },
- { key = "Enter", action = "ActivateDropdown" },
- # Close an open dropdown
- { key = "Esc", action = "CloseDropdown" },
- # Select the next item
- { key = { Char = "j" }, action = "MoveDown" },
- { key = "Down", action = "MoveDown" },
- # Select the previous item
- { key = { Char = "k" }, action = "MoveUp" },
- { key = "Up", action = "MoveUp" },
- # Select the next tab
- { key = { Char = "L" }, action = "TabRight" },
- { key = "Tab", action = "TabRight" },
- # Select the previous tab
- { key = { Char = "H" }, action = "TabLeft" },
- { key = "BackTab", modifiers = "SHIFT", action = "TabLeft" },
- # Set the volume of the selected item in 10% increments from 0% to 100%
- { key = { Char = "`" }, action = { SetAbsoluteVolume = 0.00 } },
- { key = { Char = "1" }, action = { SetAbsoluteVolume = 0.10 } },
- { key = { Char = "2" }, action = { SetAbsoluteVolume = 0.20 } },
- { key = { Char = "3" }, action = { SetAbsoluteVolume = 0.30 } },
- { key = { Char = "4" }, action = { SetAbsoluteVolume = 0.40 } },
- { key = { Char = "5" }, action = { SetAbsoluteVolume = 0.50 } },
- { key = { Char = "6" }, action = { SetAbsoluteVolume = 0.60 } },
- { key = { Char = "7" }, action = { SetAbsoluteVolume = 0.70 } },
- { key = { Char = "8" }, action = { SetAbsoluteVolume = 0.80 } },
- { key = { Char = "9" }, action = { SetAbsoluteVolume = 0.90 } },
- { key = { Char = "0" }, action = { SetAbsoluteVolume = 1.00 } },
- # Open the help menu
- { key = { Char = "?" }, action = "Help" },
- # There are two actions which don't have default bindings:
- # 1. "Nothing": Do nothing - can effectively delete a default keybinding
- # 2. { SelectTab = N }: Open the Nth tab
+  # Exit the program
+  { key = { Char = "q" }, action = "Exit" },
+  # Toggle mute for the selected item
+  { key = { Char = "m" }, action = "ToggleMute" },
+  # Make the selected item in Input/Output Devices the default endpoint
+  { key = { Char = "d" }, action = "SetDefault" },
+  # Increase the volume of the selected item by 1%
+  { key = { Char = "l" }, action = { SetRelativeVolume = 0.01 } },
+  { key = "Right", action = { SetRelativeVolume = 0.01 } },
+  # Decrease the volume of the selected item by 1%
+  { key = { Char = "h" }, action = { SetRelativeVolume = -0.01 } },
+  { key = "Left", action = { SetRelativeVolume = -0.01 } },
+  # Open a dropdown for the selected item or chose an item in the dropdown
+  { key = { Char = "c" }, action = "ActivateDropdown" },
+  { key = "Enter", action = "ActivateDropdown" },
+  # Close an open dropdown
+  { key = "Esc", action = "CloseDropdown" },
+  # Select the next item
+  { key = { Char = "j" }, action = "MoveDown" },
+  { key = "Down", action = "MoveDown" },
+  # Select the previous item
+  { key = { Char = "k" }, action = "MoveUp" },
+  { key = "Up", action = "MoveUp" },
+  # Select the next tab
+  { key = { Char = "L" }, action = "TabRight" },
+  { key = "Tab", action = "TabRight" },
+  # Select the previous tab
+  { key = { Char = "H" }, action = "TabLeft" },
+  { key = "BackTab", modifiers = "SHIFT", action = "TabLeft" },
+  # Set the volume of the selected item in 10% increments from 0% to 100%
+  { key = { Char = "`" }, action = { SetAbsoluteVolume = 0.00 } },
+  { key = { Char = "1" }, action = { SetAbsoluteVolume = 0.10 } },
+  { key = { Char = "2" }, action = { SetAbsoluteVolume = 0.20 } },
+  { key = { Char = "3" }, action = { SetAbsoluteVolume = 0.30 } },
+  { key = { Char = "4" }, action = { SetAbsoluteVolume = 0.40 } },
+  { key = { Char = "5" }, action = { SetAbsoluteVolume = 0.50 } },
+  { key = { Char = "6" }, action = { SetAbsoluteVolume = 0.60 } },
+  { key = { Char = "7" }, action = { SetAbsoluteVolume = 0.70 } },
+  { key = { Char = "8" }, action = { SetAbsoluteVolume = 0.80 } },
+  { key = { Char = "9" }, action = { SetAbsoluteVolume = 0.90 } },
+  { key = { Char = "0" }, action = { SetAbsoluteVolume = 1.00 } },
+  # Open the help menu
+  { key = { Char = "?" }, action = "Help" },
+  # Adjust audio balance
+  { key = "Down", modifiers = "SHIFT", action = { SetAbsoluteBalance = 0.00 } },
+  { key = "Left", modifiers = "SHIFT", action = { SetRelativeBalance = -0.01 } },
+  { key = "Right", modifiers = "SHIFT", action = { SetRelativeBalance = 0.01 } },
+  # There are two actions which don't have default bindings:
+  # 1. "Nothing": Do nothing - can effectively delete a default keybinding
+  # 2. { SelectTab = N }: Open the Nth tab
 ]
 
 
@@ -159,11 +163,11 @@ keybindings = [
 # 3. Fall back to the object's name property
 [names]
 # Streams in the Playback/Recording tabs
-stream = [ "{node:node.name}: {node:media.name}" ]
+stream = ["{node:node.name}: {node:media.name}"]
 # Endpoints in the Input/Output Devices tabs
-endpoint = [ "{device:device.nick}", "{node:node.description}" ]
+endpoint = ["{device:device.nick}", "{node:node.description}"]
 # Devices in the Configuration tab
-device = [ "{device:device.nick}", "{device:device.description}" ]
+device = ["{device:device.nick}", "{device:device.description}"]
 
 
 # Name Overrides
@@ -239,13 +243,13 @@ device = [ "{device:device.nick}", "{device:device.description}" ]
 # The following is the default theme with each themeable property described.
 [themes.default]
 # The symbol marking the default device on the Input/Output Devices tabs
-default_device = { }
+default_device = {}
 # The symbol marking the default endpoint on the Playback/Recording tabs
-default_stream = { }
+default_stream = {}
 # The selection indicator in a tab
 selector = { fg = "LightCyan" }
 # The name of a tab in the tab menu
-tab = { }
+tab = {}
 # The name of the selected tab in the tab menu
 tab_selected = { fg = "LightCyan" }
 # The symbols surrounding the selected tab in the tab menu
@@ -253,11 +257,11 @@ tab_marker = { fg = "LightCyan" }
 # The symbol at the top/bottom of a tab indicating that there are more items
 list_more = { fg = "DarkGray" }
 # The name of a PipeWire node
-node_title = { }
+node_title = {}
 # The name of the selected target for a node
-node_target = { }
+node_target = {}
 # The volume percentage label
-volume = { }
+volume = {}
 # Volume bar
 volume_empty = { fg = "DarkGray" }
 volume_filled = { fg = "LightBlue" }
@@ -269,23 +273,23 @@ meter_overload = { fg = "Red" }
 meter_center_inactive = { fg = "DarkGray" }
 meter_center_active = { fg = "LightGreen" }
 # The name of a device in the Configuration tab
-config_device = { }
+config_device = {}
 # The name of the selected profile in the Configuration tab
-config_profile = { }
+config_profile = {}
 # Dropdown marker next to the profiles in the Conifguration tab
-dropdown_icon = { }
+dropdown_icon = {}
 # Border around dropdowns
-dropdown_border = { }
+dropdown_border = {}
 # The name of an item in a dropdown
-dropdown_item = { }
+dropdown_item = {}
 # The name of the currently-selected item in a dropdown
 dropdown_selected = { fg = "LightCyan", add_modifier = "REVERSED" }
 # The symbol at the top/bottom of a dropdown indicating that there are more items
 dropdown_more = { fg = "DarkGray" }
 # Border around help menu
-help_border = { }
+help_border = {}
 # The name of an item in a the help menu
-help_item = { }
+help_item = {}
 # The symbol at the top/bottom of the help menu indicating that there are more items
 help_more = { fg = "DarkGray" }
 
@@ -365,16 +369,16 @@ help_border = "Rounded"
 # The other built-in themes and character sets are defined for reference here.
 
 [themes.nocolor]
-default_device = { }
-default_stream = { }
+default_device = {}
+default_stream = {}
 selector = { add_modifier = "BOLD" }
-tab = { }
+tab = {}
 tab_selected = { add_modifier = "BOLD" }
 tab_marker = { add_modifier = "BOLD" }
-list_more = { }
-node_title = { }
-node_target = { }
-volume = { }
+list_more = {}
+node_title = {}
+node_target = {}
+volume = {}
 volume_empty = { add_modifier = "DIM" }
 volume_filled = { add_modifier = "BOLD" }
 meter_inactive = { add_modifier = "DIM" }
@@ -382,45 +386,45 @@ meter_active = { add_modifier = "BOLD" }
 meter_overload = { add_modifier = "BOLD" }
 meter_center_inactive = { add_modifier = "DIM" }
 meter_center_active = { add_modifier = "BOLD" }
-config_device = { }
-config_profile = { }
-dropdown_icon = { }
-dropdown_border = { }
-dropdown_item = { }
+config_device = {}
+config_profile = {}
+dropdown_icon = {}
+dropdown_border = {}
+dropdown_item = {}
 dropdown_selected = { add_modifier = "BOLD | REVERSED" }
-dropdown_more = { }
-help_border = { }
-help_item = { }
-help_more = { }
+dropdown_more = {}
+help_border = {}
+help_item = {}
+help_more = {}
 
 [themes.plain]
-default_device = { }
-default_stream = { }
-selector = { }
-tab = { }
-tab_selected = { }
-tab_marker = { }
-list_more = { }
-node_title = { }
-node_target = { }
-volume = { }
-volume_empty = { }
-volume_filled = { }
-meter_inactive = { }
-meter_active = { }
-meter_overload = { }
-meter_center_inactive = { }
-meter_center_active = { }
-config_device = { }
-config_profile = { }
-dropdown_icon = { }
-dropdown_border = { }
-dropdown_item = { }
-dropdown_selected = { }
-dropdown_more = { }
-help_border = { }
-help_item = { }
-help_more = { }
+default_device = {}
+default_stream = {}
+selector = {}
+tab = {}
+tab_selected = {}
+tab_marker = {}
+list_more = {}
+node_title = {}
+node_target = {}
+volume = {}
+volume_empty = {}
+volume_filled = {}
+meter_inactive = {}
+meter_active = {}
+meter_overload = {}
+meter_center_inactive = {}
+meter_center_active = {}
+config_device = {}
+config_profile = {}
+dropdown_icon = {}
+dropdown_border = {}
+dropdown_item = {}
+dropdown_selected = {}
+dropdown_more = {}
+help_border = {}
+help_item = {}
+help_more = {}
 
 [char_sets.compat]
 default_device = "◊"
