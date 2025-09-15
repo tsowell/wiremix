@@ -18,8 +18,8 @@
 mouse = true
 
 # Peak meter mode
-# "off" - not meters
-# "mono" - all mono meters
+# "off" - no meters
+# "mono" - mono meters
 # "auto" - left/right meters for stereo streams, otherwise mono
 peaks = "auto"
 
@@ -272,7 +272,7 @@ meter_center_active = { fg = "LightGreen" }
 config_device = { }
 # The name of the selected profile in the Configuration tab
 config_profile = { }
-# Dropdown marker next to the profiles in the Conifguration tab
+# Dropdown marker next to the profiles in the Configuration tab
 dropdown_icon = { }
 # Border around dropdowns
 dropdown_border = { }
@@ -280,13 +280,15 @@ dropdown_border = { }
 dropdown_item = { }
 # The name of the currently-selected item in a dropdown
 dropdown_selected = { fg = "LightCyan", add_modifier = "REVERSED" }
-# The symbol at the top/bottom of a dropdown indicating that there are more items
+# The symbol at the top/bottom of a dropdown indicating that there are more
+# items
 dropdown_more = { fg = "DarkGray" }
 # Border around help menu
 help_border = { }
 # The name of an item in a the help menu
 help_item = { }
-# The symbol at the top/bottom of the help menu indicating that there are more items
+# The symbol at the top/bottom of the help menu indicating that there are more
+# items
 help_more = { fg = "DarkGray" }
 
 
@@ -351,12 +353,14 @@ dropdown_selector = ">"
 # Displayed at the top/bottom of a dropdown when there are more items
 dropdown_more = "•••"
 # Border around dropdowns
-# One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside"
+# One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside",
+# "QuadrantOutside"
 dropdown_border = "Rounded"
 # Displayed at the top/bottom of the help menu when there are more items
 help_more = "•••"
 # Border around help menu
-# One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside"
+# One of "Plain", "Rounded", "Double", "Thick", "QuadrantInside",
+# "QuadrantOutside"
 help_border = "Rounded"
 
 
