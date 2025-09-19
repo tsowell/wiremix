@@ -637,7 +637,7 @@ impl Handle for String {
             error if error.starts_with("unknown resource ") => {}
             // I see this one when disconnecting a Bluetooth sink
             error if error == "Received error event" => {}
-            // Not sure where this originates
+            // This occurs sometimes when Bluetooth devices disconnect
             error if error == "Buffer allocation failed" => {}
             _ => app.exit(Some(self)),
         }
