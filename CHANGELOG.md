@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Desktop entry.
 
+### Fixed
+
+- No longer exits on non-fatal PipeWire "Buffer allocation failed" errors.
+
 ## [0.7.0] - 2025-08-14
 
 ### Added
