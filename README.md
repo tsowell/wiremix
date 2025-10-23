@@ -140,6 +140,7 @@ Everything except quitting can also be done with the mouse. Some of the
 less-intuitive mouse controls are:
 
 * Click the numeric volume percentage to toggle muting.
+* Use the mouse wheel over the volume bar to adjust volume (scroll up to increase, scroll down to decrease).
 * Scroll through lists and dropdowns with the mouse wheel or click on scroll
   buttons (default appearence: `•••`)
 * Right-click to set as the default source/sink
