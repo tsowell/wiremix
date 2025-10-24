@@ -640,20 +640,7 @@ impl Handle for PipewireEvent {
                 app.is_ready = true;
                 Ok(true)
             }
-            PipewireEvent::Error(message) => {
-                match message {
-                    // These happen when objects are removed while wirehose is
-                    // still in the process of setting up listeners
-                    error if error.starts_with("no global ") => {}
-                    error if error.starts_with("unknown resource ") => {}
-                    // I see this one when disconnecting a Bluetooth sink
-                    error if error == "Received error event" => {}
-                    // Not sure where this originates
-                    error if error == "Error: Buffer allocation failed" => {}
-                    _ => app.exit(Some(message)),
-                }
-                Ok(false) // This makes sense for now
-            }
+            PipewireEvent::Error(message) => message.handle(app),
             PipewireEvent::State(event) => event.handle(app),
         }
     }
@@ -691,8 +678,8 @@ impl Handle for String {
             error if error.starts_with("unknown resource ") => {}
             // I see this one when disconnecting a Bluetooth sink
             error if error == "Received error event" => {}
-            // Not sure where this originates
-            error if error == "Error: Buffer allocation failed" => {}
+            // This occurs sometimes when Bluetooth devices disconnect
+            error if error == "Buffer allocation failed" => {}
             _ => app.exit(Some(self)),
         }
         Ok(false) // This makes sense for now
