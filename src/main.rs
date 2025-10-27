@@ -60,6 +60,7 @@ fn main() -> Result<()> {
         stdout().execute(EnableMouseCapture)?;
     }
     let mut terminal = ratatui::init();
+    terminal.clear()?;
     let app_result =
         app::App::new(&client, event_rx, config).run(&mut terminal);
     ratatui::restore();
