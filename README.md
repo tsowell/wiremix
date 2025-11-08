@@ -22,6 +22,8 @@ Issues and pull requests are welcome!
 * Nix: `nix run nixpkgs#wiremix` or add `wiremix` to your configuration.
 * Gentoo: Install the [official package](https://packages.gentoo.org/packages/media-sound/wiremix) via
   `emerge -av wiremix`.
+* Fedora: Install the [official package](https://src.fedoraproject.org/rpms/rust-wiremix) via
+  `dnf in wiremix`.
 
 ### Manual Installation
 
@@ -31,7 +33,6 @@ dependencies:
 * Ubuntu: `sudo apt install cargo libpipewire-0.3-dev pkg-config clang`
 * Debian: `sudo apt install libpipewire-0.3-dev pkg-config clang` (you will
   also need to install a somewhat recent Rust toolchain - rustup is one way)
-* Fedora: `sudo dnf install cargo pipewire-devel clang`
 
 Then install wiremix with `cargo install wiremix`
 
