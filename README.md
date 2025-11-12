@@ -94,7 +94,7 @@ less-intuitive mouse controls are:
 
 * Click the numeric volume percentage to toggle muting.
 * Scroll through lists and dropdowns with the mouse wheel or click on scroll
-  buttons (default appearence: `•••`)
+  buttons (default appearance: `•••`)
 * Right-click to set as the default source/sink
 
 ### Default Keyboard Bindings

@@ -10,7 +10,7 @@ use crate::config;
 // VERGEN_GIT_DESCRIBE is emitted by build.rs.
 const VERSION: &str = match option_env!("VERGEN_GIT_DESCRIBE") {
     Some(version) => version,
-    // VERGEN_GIT_DESCRIBE won't be avilable when publishing, so fall back to
+    // VERGEN_GIT_DESCRIBE won't be available when publishing, so fall back to
     // the cargo version.
     None => concat!("v", env!("CARGO_PKG_VERSION")),
 };

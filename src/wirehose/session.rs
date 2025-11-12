@@ -188,7 +188,7 @@ impl CommandSender for Session {
     }
 
     /// Set a metadata property. Set `type_` to None to clear all metadata for
-    /// the subject. Set `value` to None to clear the metdata for the key.
+    /// the subject. Set `value` to None to clear the metadata for the key.
     fn metadata_set_property(
         &self,
         object_id: ObjectId,
