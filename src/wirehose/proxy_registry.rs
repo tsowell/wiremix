@@ -177,7 +177,7 @@ impl ProxyRegistry {
         v.push(Box::new(listener));
     }
 
-    /// Remove an object, defering deletion until [`Self::collect_garbage()`]
+    /// Remove an object, deferring deletion until [`Self::collect_garbage()`]
     /// is called.
     pub fn remove(&mut self, obj_id: ObjectId) {
         if let Some(listeners) = self.listeners.get_mut(&obj_id) {

@@ -148,7 +148,7 @@ keybindings = [
 # device properties are valid for device.
 #
 
-# Each option in names is an array - if a tempalte can't be resolved because it
+# Each option in names is an array - if a template can't be resolved because it
 # uses a property which doesn't exit on a given object, wiremix tries the next
 # template in the sequence. If none of them can be resolved, it falls back on
 # node.name for nodes or device.name for devices.
