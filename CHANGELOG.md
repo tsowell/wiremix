@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No longer exits on non-fatal PipeWire "Buffer allocation failed" errors.
 - Clear terminal after initialization.
+- Fix typos in README, wiremix.toml.
 
 ## [0.7.0] - 2025-08-14
 
