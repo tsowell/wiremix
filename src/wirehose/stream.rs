@@ -20,7 +20,6 @@ use crate::wirehose::{ObjectId, StateEvent};
 #[derive(Default)]
 pub struct StreamData {
     format: AudioInfoRaw,
-    cursor_move: bool,
 }
 
 pub fn capture_node(
@@ -41,7 +40,6 @@ pub fn capture_node(
 
     let data = StreamData {
         format: Default::default(),
-        cursor_move: false,
     };
 
     let stream = Stream::new(core, "wiremix-capture", props).ok()?;
@@ -126,7 +124,6 @@ pub fn capture_node(
                         peaks,
                         samples: n_samples,
                     });
-                    user_data.cursor_move = true;
                 }
             }
         })
