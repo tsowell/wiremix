@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change default target framerate to 60.
 - Optimize redrawing.
+- Optimize peak level processing.
 
 ## [0.8.0] - 2025-11-12
 
