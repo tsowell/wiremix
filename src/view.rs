@@ -55,6 +55,33 @@ pub enum Target {
     Default,
 }
 
+impl Target {
+    pub fn resolve(
+        &self,
+        view: &View,
+        node_kind: NodeKind,
+    ) -> Option<ObjectId> {
+        match self {
+            Target::Default => match node_kind {
+                NodeKind::Playback => view.default_sink,
+                NodeKind::Recording => view.default_source,
+                _ => None,
+            }
+            .and_then(|target| target.object_id()),
+            other => other.object_id(),
+        }
+    }
+
+    fn object_id(&self) -> Option<ObjectId> {
+        match self {
+            Target::Node(object_id, ..) => Some(*object_id),
+            Target::Route(object_id, ..) => Some(*object_id),
+            Target::Profile(object_id, ..) => Some(*object_id),
+            Target::Default => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Node {
     pub object_id: ObjectId,
@@ -82,6 +109,8 @@ pub struct Node {
 
     pub is_default_sink: bool,
     pub is_default_source: bool,
+
+    pub client_id: Option<ObjectId>,
 }
 
 #[derive(Debug)]
@@ -320,6 +349,7 @@ impl Node {
                 == node.props.node_name(),
             is_default_source: default_source_name.as_ref()
                 == node.props.node_name(),
+            client_id: node.props.client_id().copied(),
         })
     }
 }
@@ -738,7 +768,7 @@ impl<'a> View<'a> {
         true
     }
 
-    fn object_ids(&self, node_kind: ListKind) -> &[ObjectId] {
+    pub fn object_ids(&self, node_kind: ListKind) -> &[ObjectId] {
         match node_kind {
             ListKind::Node(NodeKind::Playback) => &self.nodes_playback,
             ListKind::Node(NodeKind::Recording) => &self.nodes_recording,

@@ -117,3 +117,27 @@ impl From<&LinkInfoRef> for StateEvent {
         }
     }
 }
+
+impl StateEvent {
+    pub fn object_id(&self) -> ObjectId {
+        match self {
+            StateEvent::DeviceEnumRoute { object_id, .. } => *object_id,
+            StateEvent::DeviceEnumProfile { object_id, .. } => *object_id,
+            StateEvent::DeviceProfile { object_id, .. } => *object_id,
+            StateEvent::DeviceProperties { object_id, .. } => *object_id,
+            StateEvent::DeviceRoute { object_id, .. } => *object_id,
+            StateEvent::MetadataMetadataName { object_id, .. } => *object_id,
+            StateEvent::MetadataProperty { object_id, .. } => *object_id,
+            StateEvent::ClientProperties { object_id, .. } => *object_id,
+            StateEvent::NodePeaks { object_id, .. } => *object_id,
+            StateEvent::NodePositions { object_id, .. } => *object_id,
+            StateEvent::NodeProperties { object_id, .. } => *object_id,
+            StateEvent::NodeRate { object_id, .. } => *object_id,
+            StateEvent::NodeVolumes { object_id, .. } => *object_id,
+            StateEvent::NodeMute { object_id, .. } => *object_id,
+            StateEvent::Link { object_id, .. } => *object_id,
+            StateEvent::StreamStopped { object_id } => *object_id,
+            StateEvent::Removed { object_id } => *object_id,
+        }
+    }
+}

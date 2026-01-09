@@ -1,5 +1,8 @@
 //! A Ratatui widget for an interactable list of PipeWire objects.
 
+use std::cmp;
+use std::collections::HashSet;
+
 use ratatui::{
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
     text::{Line, Span},
@@ -193,6 +196,60 @@ impl ObjectList {
         self.dropdown_close();
     }
 
+    /// Returns a set of object IDs of the visible objects. This includes all
+    /// dependencies that affect the display of the objects.
+    pub fn visible_objects(
+        &self,
+        area: &Rect,
+        view: &view::View,
+    ) -> HashSet<ObjectId> {
+        let objects = view.object_ids(self.list_kind);
+
+        let last = cmp::min(objects.len(), self.top + self.visible_count(area));
+
+        let mut visible_objects = HashSet::new();
+        for object_id in objects[self.top..last].iter().cloned() {
+            visible_objects.insert(object_id);
+            if let Some(node) = view.nodes.get(&object_id) {
+                // Add linked client and device.
+                visible_objects.extend(node.client_id);
+                visible_objects.extend(node.device_info.map(|(id, _, _)| id));
+
+                // Add the target and any linked client and device.
+                if let ListKind::Node(node_kind) = self.list_kind {
+                    if let Some(target_id) = node
+                        .target
+                        .and_then(|target| target.resolve(view, node_kind))
+                    {
+                        visible_objects.insert(target_id);
+                        if let Some(target_node) = view.nodes.get(&target_id) {
+                            visible_objects.extend(target_node.client_id);
+                            visible_objects.extend(
+                                target_node.device_info.map(|(id, _, _)| id),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        visible_objects
+    }
+
+    /// Returns the number of objects visible.
+    fn visible_count(&self, area: &Rect) -> usize {
+        let (_, list_area, _) = self.areas(area);
+        let full_height = match self.list_kind {
+            ListKind::Node(_) => {
+                NodeWidget::height().saturating_add(NodeWidget::spacing())
+            }
+            ListKind::Device => {
+                DeviceWidget::height().saturating_add(DeviceWidget::spacing())
+            }
+        };
+        (list_area.height / full_height) as usize
+    }
+
     /// Reconciles changes to objects, viewport, and selection.
     pub fn update(&mut self, area: Rect, view: &view::View) {
         let selected_index = self.selected_index(view).or_else(|| {
@@ -203,22 +260,13 @@ impl ObjectList {
 
         let objects_len = view.len(self.list_kind);
 
-        let (_, list_area, _) = self.areas(&area);
-        let full_height = match self.list_kind {
-            ListKind::Node(_) => {
-                NodeWidget::height().saturating_add(NodeWidget::spacing())
-            }
-            ListKind::Device => {
-                DeviceWidget::height().saturating_add(DeviceWidget::spacing())
-            }
-        };
-        let objects_visible = (list_area.height / full_height) as usize;
+        let visible_count = self.visible_count(&area);
 
         // If objects were removed and the viewport is now below the visible
         // objects, move the viewport up so that the bottom of the object list
         // is visible.
         if self.top >= objects_len {
-            self.top = objects_len.saturating_sub(objects_visible);
+            self.top = objects_len.saturating_sub(visible_count);
         }
 
         // Make sure the selected object is visible and adjust the viewport
@@ -226,15 +274,14 @@ impl ObjectList {
         if self.selected.is_some() {
             match selected_index {
                 Some(selected_index) => {
-                    if selected_index
-                        >= self.top.saturating_add(objects_visible)
+                    if selected_index >= self.top.saturating_add(visible_count)
                     {
                         // The selection is below the viewport. Reposition the
                         // viewport so that the selected item is at the bottom.
-                        let objects_visible_except_last =
-                            objects_visible.saturating_sub(1);
+                        let visible_count_except_last =
+                            visible_count.saturating_sub(1);
                         self.top = selected_index
-                            .saturating_sub(objects_visible_except_last);
+                            .saturating_sub(visible_count_except_last);
                     } else if selected_index < self.top {
                         // The selected item is above the viewport. Reposition
                         // so that it's the first visible item.
@@ -561,6 +608,38 @@ mod tests {
         (state, wirehose)
     }
 
+    /// Helper to create a minimal node with the given media class.
+    fn create_node(
+        state: &mut State,
+        wirehose: &mock::WirehoseHandle,
+        object_id: ObjectId,
+        media_class: &str,
+        node_name: &str,
+    ) {
+        let mut props = PropertyStore::default();
+        props.set_node_description(String::from("Test node"));
+        props.set_media_class(String::from(media_class));
+        props.set_media_name(String::from("Media name"));
+        props.set_node_name(String::from(node_name));
+        props.set_object_serial(u32::from(object_id) as u64);
+
+        state.update(wirehose, StateEvent::NodeProperties { object_id, props });
+        state.update(
+            wirehose,
+            StateEvent::NodeVolumes {
+                object_id,
+                volumes: vec![1.0, 1.0],
+            },
+        );
+        state.update(
+            wirehose,
+            StateEvent::NodeMute {
+                object_id,
+                mute: false,
+            },
+        );
+    }
+
     #[test]
     fn object_list_up_overflow() {
         let (state, wirehose) = init();
@@ -606,5 +685,523 @@ mod tests {
         object_list.update(rect, &view);
         assert_eq!(object_list.top, 7);
         assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
+    }
+
+    #[test]
+    fn visible_objects_changes_with_scroll() {
+        let (state, wirehose) = init();
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        // 3 nodes + 2 lines for header and footer
+        let rect = Rect::new(0, 0, 80, height * 3 + 2);
+        let mut object_list =
+            ObjectList::new(ListKind::Node(NodeKind::All), None);
+
+        // Start at top
+        let visible = object_list.visible_objects(&rect, &view);
+        assert_eq!(visible.len(), 3);
+        assert!(visible.contains(&ObjectId::from_raw_id(0)));
+        assert!(visible.contains(&ObjectId::from_raw_id(1)));
+        assert!(visible.contains(&ObjectId::from_raw_id(2)));
+
+        // Scroll down
+        object_list.top = 5;
+        let visible = object_list.visible_objects(&rect, &view);
+        assert_eq!(visible.len(), 3);
+        assert!(visible.contains(&ObjectId::from_raw_id(5)));
+        assert!(visible.contains(&ObjectId::from_raw_id(6)));
+        assert!(visible.contains(&ObjectId::from_raw_id(7)));
+
+        // Scroll up
+        object_list.top = 4;
+        let visible = object_list.visible_objects(&rect, &view);
+        assert_eq!(visible.len(), 3);
+        assert!(visible.contains(&ObjectId::from_raw_id(4)));
+        assert!(visible.contains(&ObjectId::from_raw_id(5)));
+        assert!(visible.contains(&ObjectId::from_raw_id(6)));
+    }
+
+    #[test]
+    fn visible_objects_includes_linked_clients() {
+        let (mut state, wirehose) = init();
+
+        // Set client_id on node 0
+        let mut props = state
+            .nodes
+            .get(&ObjectId::from_raw_id(0))
+            .unwrap()
+            .props
+            .clone();
+        props.set_client_id(ObjectId::from_raw_id(101));
+        state.update(
+            &wirehose,
+            StateEvent::NodeProperties {
+                object_id: ObjectId::from_raw_id(0),
+                props,
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        // 1 node + 2 lines for header and footer
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list = ObjectList::new(ListKind::Node(NodeKind::All), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert_eq!(visible.len(), 2);
+        assert!(visible.contains(&ObjectId::from_raw_id(0)));
+        assert!(visible.contains(&ObjectId::from_raw_id(101)));
+    }
+
+    #[test]
+    fn visible_objects_includes_linked_devices() {
+        let (mut state, wirehose) = init();
+
+        // Set device_id on node 0
+        let mut props = state
+            .nodes
+            .get(&ObjectId::from_raw_id(0))
+            .unwrap()
+            .props
+            .clone();
+        props.set_device_id(ObjectId::from_raw_id(101));
+        let card_profile_device = 0;
+        props.set_card_profile_device(card_profile_device);
+        state.update(
+            &wirehose,
+            StateEvent::NodeProperties {
+                object_id: ObjectId::from_raw_id(0),
+                props,
+            },
+        );
+
+        // Create a test device with everything needed to populate device_info
+        // on the node in the view.
+        state.update(
+            &wirehose,
+            StateEvent::DeviceProperties {
+                object_id: ObjectId::from_raw_id(101),
+                props: PropertyStore::default(),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::DeviceProfile {
+                object_id: ObjectId::from_raw_id(101),
+                index: 1,
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::DeviceRoute {
+                object_id: ObjectId::from_raw_id(101),
+                index: 0,
+                device: card_profile_device,
+                profiles: vec![1],
+                description: String::new(),
+                available: true,
+                channel_volumes: vec![1.0],
+                mute: false,
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        // 1 node + 2 lines for header and footer
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list = ObjectList::new(ListKind::Node(NodeKind::All), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert_eq!(visible.len(), 2);
+        assert!(visible.contains(&ObjectId::from_raw_id(0)));
+        assert!(visible.contains(&ObjectId::from_raw_id(101)));
+    }
+
+    #[test]
+    fn visible_objects_includes_target() {
+        let mut state = State::default();
+        let wirehose = mock::WirehoseHandle::default();
+
+        // Create a playback stream (sink input)
+        let stream_id = ObjectId::from_raw_id(0);
+        create_node(
+            &mut state,
+            &wirehose,
+            stream_id,
+            "Stream/Output/Audio",
+            "stream",
+        );
+
+        // Create a sink as the target
+        let sink_id = ObjectId::from_raw_id(100);
+        create_node(&mut state, &wirehose, sink_id, "Audio/Sink", "sink");
+
+        // Create a link from stream to sink
+        state.update(
+            &wirehose,
+            StateEvent::Link {
+                object_id: ObjectId::from_raw_id(200),
+                output_id: stream_id,
+                input_id: sink_id,
+            },
+        );
+
+        // Set up metadata
+        let metadata_id = ObjectId::from_raw_id(300);
+        state.update(
+            &wirehose,
+            StateEvent::MetadataMetadataName {
+                object_id: metadata_id,
+                metadata_name: String::from("default"),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::MetadataProperty {
+                object_id: metadata_id,
+                subject: u32::from(stream_id),
+                key: Some(String::from("target.node")),
+                value: Some(String::from("100")),
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list =
+            ObjectList::new(ListKind::Node(NodeKind::Playback), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert!(visible.contains(&stream_id));
+        assert!(visible.contains(&sink_id));
+    }
+
+    #[test]
+    fn visible_objects_includes_target_client() {
+        let mut state = State::default();
+        let wirehose = mock::WirehoseHandle::default();
+
+        // Create a playback stream
+        let stream_id = ObjectId::from_raw_id(0);
+        create_node(
+            &mut state,
+            &wirehose,
+            stream_id,
+            "Stream/Output/Audio",
+            "stream",
+        );
+
+        // Create a sink with a client_id
+        let sink_id = ObjectId::from_raw_id(100);
+        let sink_client_id = ObjectId::from_raw_id(101);
+        let mut props = PropertyStore::default();
+        props.set_node_description(String::from("Test sink"));
+        props.set_media_class(String::from("Audio/Sink"));
+        props.set_media_name(String::from("Media name"));
+        props.set_node_name(String::from("sink"));
+        props.set_object_serial(100);
+        props.set_client_id(sink_client_id);
+        state.update(
+            &wirehose,
+            StateEvent::NodeProperties {
+                object_id: sink_id,
+                props,
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::NodeVolumes {
+                object_id: sink_id,
+                volumes: vec![1.0, 1.0],
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::NodeMute {
+                object_id: sink_id,
+                mute: false,
+            },
+        );
+
+        // Create a link from stream to sink
+        state.update(
+            &wirehose,
+            StateEvent::Link {
+                object_id: ObjectId::from_raw_id(200),
+                output_id: stream_id,
+                input_id: sink_id,
+            },
+        );
+
+        // Set up metadata
+        let metadata_id = ObjectId::from_raw_id(300);
+        state.update(
+            &wirehose,
+            StateEvent::MetadataMetadataName {
+                object_id: metadata_id,
+                metadata_name: String::from("default"),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::MetadataProperty {
+                object_id: metadata_id,
+                subject: u32::from(stream_id),
+                key: Some(String::from("target.node")),
+                value: Some(String::from("100")),
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list =
+            ObjectList::new(ListKind::Node(NodeKind::Playback), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert!(visible.contains(&stream_id));
+        assert!(visible.contains(&sink_id));
+        assert!(visible.contains(&sink_client_id));
+    }
+
+    #[test]
+    fn visible_objects_includes_target_device() {
+        let mut state = State::default();
+        let wirehose = mock::WirehoseHandle::default();
+
+        // Create a playback stream
+        let stream_id = ObjectId::from_raw_id(0);
+        create_node(
+            &mut state,
+            &wirehose,
+            stream_id,
+            "Stream/Output/Audio",
+            "stream",
+        );
+
+        // Create a sink with device_info
+        let sink_id = ObjectId::from_raw_id(100);
+        let sink_device_id = ObjectId::from_raw_id(101);
+        let card_profile_device = 0;
+        let mut props = PropertyStore::default();
+        props.set_node_description(String::from("Test sink"));
+        props.set_media_class(String::from("Audio/Sink"));
+        props.set_media_name(String::from("Media name"));
+        props.set_node_name(String::from("sink"));
+        props.set_object_serial(100);
+        props.set_device_id(sink_device_id);
+        props.set_card_profile_device(card_profile_device);
+        state.update(
+            &wirehose,
+            StateEvent::NodeProperties {
+                object_id: sink_id,
+                props,
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::NodeVolumes {
+                object_id: sink_id,
+                volumes: vec![1.0, 1.0],
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::NodeMute {
+                object_id: sink_id,
+                mute: false,
+            },
+        );
+
+        // Create the device with route
+        state.update(
+            &wirehose,
+            StateEvent::DeviceProperties {
+                object_id: sink_device_id,
+                props: PropertyStore::default(),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::DeviceProfile {
+                object_id: sink_device_id,
+                index: 1,
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::DeviceRoute {
+                object_id: sink_device_id,
+                index: 0,
+                device: card_profile_device,
+                profiles: vec![1],
+                description: String::new(),
+                available: true,
+                channel_volumes: vec![1.0],
+                mute: false,
+            },
+        );
+
+        // Create a link from stream to sink
+        state.update(
+            &wirehose,
+            StateEvent::Link {
+                object_id: ObjectId::from_raw_id(200),
+                output_id: stream_id,
+                input_id: sink_id,
+            },
+        );
+
+        // Set up metadata
+        let metadata_id = ObjectId::from_raw_id(300);
+        state.update(
+            &wirehose,
+            StateEvent::MetadataMetadataName {
+                object_id: metadata_id,
+                metadata_name: String::from("default"),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::MetadataProperty {
+                object_id: metadata_id,
+                subject: u32::from(stream_id),
+                key: Some(String::from("target.node")),
+                value: Some(String::from("100")),
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list =
+            ObjectList::new(ListKind::Node(NodeKind::Playback), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert!(visible.contains(&stream_id));
+        assert!(visible.contains(&sink_id));
+        assert!(visible.contains(&sink_device_id));
+    }
+
+    #[test]
+    fn visible_objects_includes_default_sink() {
+        let mut state = State::default();
+        let wirehose = mock::WirehoseHandle::default();
+
+        // Create a playback stream (no explicit link - will use default)
+        let stream_id = ObjectId::from_raw_id(0);
+        create_node(
+            &mut state,
+            &wirehose,
+            stream_id,
+            "Stream/Output/Audio",
+            "stream",
+        );
+
+        // Create a sink
+        let sink_id = ObjectId::from_raw_id(100);
+        create_node(
+            &mut state,
+            &wirehose,
+            sink_id,
+            "Audio/Sink",
+            "default_sink",
+        );
+
+        // Set up metadata for the default sink
+        let metadata_id = ObjectId::from_raw_id(300);
+        state.update(
+            &wirehose,
+            StateEvent::MetadataMetadataName {
+                object_id: metadata_id,
+                metadata_name: String::from("default"),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::MetadataProperty {
+                object_id: metadata_id,
+                subject: 0,
+                key: Some(String::from("default.audio.sink")),
+                value: Some(String::from("{\"name\":\"default_sink\"}")),
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        assert!(view.default_sink.is_some());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list =
+            ObjectList::new(ListKind::Node(NodeKind::Playback), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert!(visible.contains(&stream_id));
+        assert!(visible.contains(&sink_id));
+    }
+
+    #[test]
+    fn visible_objects_includes_default_source() {
+        let mut state = State::default();
+        let wirehose = mock::WirehoseHandle::default();
+
+        // Create a recording stream (no explicit link - will use default)
+        let stream_id = ObjectId::from_raw_id(0);
+        create_node(
+            &mut state,
+            &wirehose,
+            stream_id,
+            "Stream/Input/Audio",
+            "stream",
+        );
+
+        // Create a source
+        let source_id = ObjectId::from_raw_id(100);
+        create_node(
+            &mut state,
+            &wirehose,
+            source_id,
+            "Audio/Source",
+            "default_source",
+        );
+
+        // Set up metadata for the default source
+        let metadata_id = ObjectId::from_raw_id(300);
+        state.update(
+            &wirehose,
+            StateEvent::MetadataMetadataName {
+                object_id: metadata_id,
+                metadata_name: String::from("default"),
+            },
+        );
+        state.update(
+            &wirehose,
+            StateEvent::MetadataProperty {
+                object_id: metadata_id,
+                subject: 0,
+                key: Some(String::from("default.audio.source")),
+                value: Some(String::from("{\"name\":\"default_source\"}")),
+            },
+        );
+
+        let view = View::from(&wirehose, &state, &config::Names::default());
+
+        assert!(view.default_source.is_some());
+
+        let height = NodeWidget::height() + NodeWidget::spacing();
+        let rect = Rect::new(0, 0, 80, height + 2);
+        let object_list =
+            ObjectList::new(ListKind::Node(NodeKind::Recording), None);
+
+        let visible = object_list.visible_objects(&rect, &view);
+        assert!(visible.contains(&stream_id));
+        assert!(visible.contains(&source_id));
     }
 }

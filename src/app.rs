@@ -1,5 +1,6 @@
 //! Main rendering and event processing for the application.
 
+use std::collections::HashSet;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -204,6 +205,9 @@ pub struct App<'a> {
     drag_row: Option<u16>,
     /// Position in help text (None if not showing help)
     help_position: Option<u16>,
+    /// Object IDs that are currently visible (including any display
+    /// dependencies)
+    visible_objects: HashSet<ObjectId>,
 }
 
 macro_rules! current_list {
@@ -279,6 +283,7 @@ impl<'a> App<'a> {
             config,
             drag_row: None,
             help_position: None,
+            visible_objects: HashSet::new(),
         }
     }
 
@@ -313,14 +318,20 @@ impl<'a> App<'a> {
             }
             self.state_dirty = StateDirty::Clean;
 
+            let frame = terminal.get_frame();
+            current_list!(self).update(frame.area(), &self.view);
+
+            let new_visible_objects =
+                current_list!(self).visible_objects(&frame.area(), &self.view);
+            needs_render |= new_visible_objects != self.visible_objects;
+            self.visible_objects = new_visible_objects;
+
             if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
 
                 self.mouse_areas.clear();
 
                 terminal.draw(|frame| {
-                    current_list!(self).update(frame.area(), &self.view);
-
                     self.draw(frame);
                 })?;
             }
@@ -621,9 +632,46 @@ impl Handle for StateEvent {
             }
         }
 
+        // Determine if any on-screen objects are affected by this event.
+        // Generally we only need to check the event's object ID, but there are
+        // some special cases.
+        let visible_affected =
+            match &self {
+                StateEvent::Link {
+                    output_id,
+                    input_id,
+                    ..
+                } => {
+                    // Check both ends of the link.
+                    app.visible_objects.contains(output_id)
+                        || app.visible_objects.contains(input_id)
+                }
+                StateEvent::Removed { object_id } => {
+                    // If a link was removed, check both nodes.
+                    app.state.links.get(object_id).is_some_and(|link| {
+                        app.visible_objects.contains(&link.output_id)
+                            || app.visible_objects.contains(&link.input_id)
+                    })
+                }
+                StateEvent::MetadataProperty { key: Some(key), .. }
+                    if key == "default.audio.sink"
+                        || key == "default.audio.source" =>
+                {
+                    // The default source/sink shouldn't change frequently, so
+                    // it's easiest just to redraw everything.
+                    true
+                }
+                StateEvent::MetadataProperty { subject, .. } => {
+                    // This primarily handles target changes.
+                    app.visible_objects
+                        .contains(&ObjectId::from_raw_id(*subject))
+                }
+                _ => false, // Check object_id in the || branch below.
+            } || app.visible_objects.contains(&self.object_id());
+
         app.state.update(app.wirehose, self);
 
-        Ok(true)
+        Ok(visible_affected)
     }
 }
 
@@ -832,12 +880,12 @@ mod tests {
             },
         ];
         for event in events {
-            assert!(event.handle(&mut app).unwrap());
+            event.handle(&mut app).unwrap();
         }
         app.view = View::from(wirehose, &app.state, &app.config.names);
 
         // Select the node
-        assert!(Action::SelectObject(object_id).handle(&mut app).unwrap());
+        Action::SelectObject(object_id).handle(&mut app).unwrap();
 
         app
     }
