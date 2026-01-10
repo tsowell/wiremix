@@ -207,7 +207,9 @@ impl ObjectList {
 
         let last = cmp::min(objects.len(), self.top + self.visible_count(area));
 
-        let mut visible_objects = HashSet::new();
+        // Always include object 0 - the global PipeWire state.
+        let mut visible_objects = HashSet::from([ObjectId::from_raw_id(0)]);
+
         for object_id in objects[self.top..last].iter().cloned() {
             visible_objects.insert(object_id);
             if let Some(node) = view.nodes.get(&object_id) {

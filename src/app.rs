@@ -607,39 +607,10 @@ impl Handle for StateEvent {
         // Determine if any on-screen objects are affected by this event.
         // Generally we only need to check the event's object ID, but there are
         // some special cases.
-        let visible_affected =
-            match &self {
-                StateEvent::Link {
-                    output_id,
-                    input_id,
-                    ..
-                } => {
-                    // Check both ends of the link.
-                    app.visible_objects.contains(output_id)
-                        || app.visible_objects.contains(input_id)
-                }
-                StateEvent::Removed { object_id } => {
-                    // If a link was removed, check both nodes.
-                    app.state.links.get(object_id).is_some_and(|link| {
-                        app.visible_objects.contains(&link.output_id)
-                            || app.visible_objects.contains(&link.input_id)
-                    })
-                }
-                StateEvent::MetadataProperty { key: Some(key), .. }
-                    if key == "default.audio.sink"
-                        || key == "default.audio.source" =>
-                {
-                    // The default source/sink shouldn't change frequently, so
-                    // it's easiest just to redraw everything.
-                    true
-                }
-                StateEvent::MetadataProperty { subject, .. } => {
-                    // This primarily handles target changes.
-                    app.visible_objects
-                        .contains(&ObjectId::from_raw_id(*subject))
-                }
-                _ => false, // Check object_id in the || branch below.
-            } || app.visible_objects.contains(&self.object_id());
+        let visible_affected = self
+            .affected_objects(&app.state)
+            .iter()
+            .any(|object| app.visible_objects.contains(object));
 
         app.state.update(app.wirehose, self);
 

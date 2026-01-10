@@ -67,7 +67,7 @@ impl Target {
         }
     }
 
-    fn object_id(&self) -> Option<ObjectId> {
+    pub fn object_id(&self) -> Option<ObjectId> {
         match self {
             Target::Node(object_id, ..) => Some(*object_id),
             Target::Route(object_id, ..) => Some(*object_id),

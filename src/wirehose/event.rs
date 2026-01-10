@@ -2,6 +2,7 @@ use std::sync::{atomic::AtomicU32, Arc};
 
 use pipewire::link::LinkInfoRef;
 
+use crate::wirehose::state::State;
 use crate::wirehose::{ObjectId, PropertyStore};
 
 /// Events emitted by the PipeWire monitoring thread.
@@ -119,25 +120,219 @@ impl From<&LinkInfoRef> for StateEvent {
 }
 
 impl StateEvent {
-    pub fn object_id(&self) -> ObjectId {
+    pub fn affected_objects(&self, state: &State) -> Vec<ObjectId> {
         match self {
-            StateEvent::DeviceEnumRoute { object_id, .. } => *object_id,
-            StateEvent::DeviceEnumProfile { object_id, .. } => *object_id,
-            StateEvent::DeviceProfile { object_id, .. } => *object_id,
-            StateEvent::DeviceProperties { object_id, .. } => *object_id,
-            StateEvent::DeviceRoute { object_id, .. } => *object_id,
-            StateEvent::MetadataMetadataName { object_id, .. } => *object_id,
-            StateEvent::MetadataProperty { object_id, .. } => *object_id,
-            StateEvent::ClientProperties { object_id, .. } => *object_id,
-            StateEvent::NodePositions { object_id, .. } => *object_id,
-            StateEvent::NodeProperties { object_id, .. } => *object_id,
-            StateEvent::NodeVolumes { object_id, .. } => *object_id,
-            StateEvent::NodeMute { object_id, .. } => *object_id,
-            StateEvent::NodeStreamStarted { object_id, .. } => *object_id,
-            StateEvent::NodeStreamStopped { object_id } => *object_id,
-            StateEvent::NodePeaksDirty { object_id } => *object_id,
-            StateEvent::Link { object_id, .. } => *object_id,
-            StateEvent::Removed { object_id } => *object_id,
+            // A few special cases...
+            StateEvent::Link {
+                object_id,
+                output_id,
+                input_id,
+            } => {
+                // Include both ends of the link.
+                vec![*object_id, *output_id, *input_id]
+            }
+            StateEvent::Removed { object_id } => {
+                if let Some(link) = state.links.get(object_id) {
+                    // If a link was removed, include both nodes.
+                    vec![*object_id, link.output_id, link.input_id]
+                } else {
+                    vec![*object_id]
+                }
+            }
+            // If a default source/sink is changing, return object ID 0 which
+            // represents the core PipeWire state.
+            StateEvent::MetadataProperty {
+                object_id,
+                subject: 0,
+                ..
+            } => state
+                .metadatas
+                .get(object_id)
+                .filter(|metadata| {
+                    metadata.metadata_name.as_deref() == Some("default")
+                })
+                .map(|_| vec![ObjectId::from_raw_id(0)])
+                .unwrap_or_default(),
+            StateEvent::MetadataProperty { .. } => vec![],
+
+            // For the rest only the object_id is affected.
+            StateEvent::DeviceEnumRoute { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::DeviceEnumProfile { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::DeviceProfile { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::DeviceProperties { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::DeviceRoute { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::MetadataMetadataName { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::ClientProperties { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::NodePositions { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::NodeProperties { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::NodeVolumes { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::NodeMute { object_id, .. } => vec![*object_id],
+            StateEvent::NodeStreamStarted { object_id, .. } => {
+                vec![*object_id]
+            }
+            StateEvent::NodeStreamStopped { object_id } => {
+                vec![*object_id]
+            }
+            StateEvent::NodePeaksDirty { object_id } => {
+                vec![*object_id]
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn affected_objects_link_includes_connected_nodes() {
+        let state = State::default();
+        let event = StateEvent::Link {
+            object_id: ObjectId::from_raw_id(1),
+            output_id: ObjectId::from_raw_id(2),
+            input_id: ObjectId::from_raw_id(3),
+        };
+        assert_eq!(
+            event.affected_objects(&state),
+            vec![
+                ObjectId::from_raw_id(1),
+                ObjectId::from_raw_id(2),
+                ObjectId::from_raw_id(3)
+            ]
+        );
+    }
+
+    #[test]
+    fn affected_objects_removed_link_includes_connected_nodes() {
+        let mut state = State::default();
+        state.links.insert(
+            ObjectId::from_raw_id(1),
+            crate::wirehose::state::Link {
+                output_id: ObjectId::from_raw_id(2),
+                input_id: ObjectId::from_raw_id(3),
+            },
+        );
+
+        let event = StateEvent::Removed {
+            object_id: ObjectId::from_raw_id(1),
+        };
+        assert_eq!(
+            event.affected_objects(&state),
+            vec![
+                ObjectId::from_raw_id(1),
+                ObjectId::from_raw_id(2),
+                ObjectId::from_raw_id(3)
+            ]
+        );
+    }
+
+    #[test]
+    fn affected_objects_removed_non_link_returns_just_object_id() {
+        let state = State::default();
+        let event = StateEvent::Removed {
+            object_id: ObjectId::from_raw_id(42),
+        };
+        assert_eq!(
+            event.affected_objects(&state),
+            vec![ObjectId::from_raw_id(42)]
+        );
+    }
+
+    #[test]
+    fn affected_objects_default_metadata_subject_0_returns_core_id() {
+        let mut state = State::default();
+        state.metadatas.insert(
+            ObjectId::from_raw_id(10),
+            crate::wirehose::state::Metadata {
+                object_id: ObjectId::from_raw_id(10),
+                metadata_name: Some("default".to_string()),
+                properties: Default::default(),
+            },
+        );
+
+        let event = StateEvent::MetadataProperty {
+            object_id: ObjectId::from_raw_id(10),
+            subject: 0,
+            key: Some("default.audio.sink".to_string()),
+            value: Some("42".to_string()),
+        };
+        assert_eq!(
+            event.affected_objects(&state),
+            vec![ObjectId::from_raw_id(0)]
+        );
+    }
+
+    #[test]
+    fn affected_objects_non_default_metadata_subject_0_returns_empty() {
+        let mut state = State::default();
+        state.metadatas.insert(
+            ObjectId::from_raw_id(10),
+            crate::wirehose::state::Metadata {
+                object_id: ObjectId::from_raw_id(10),
+                metadata_name: Some("route-settings".to_string()),
+                properties: Default::default(),
+            },
+        );
+
+        let event = StateEvent::MetadataProperty {
+            object_id: ObjectId::from_raw_id(10),
+            subject: 0,
+            key: Some("some.key".to_string()),
+            value: Some("some.value".to_string()),
+        };
+        assert!(event.affected_objects(&state).is_empty());
+    }
+
+    #[test]
+    fn affected_objects_metadata_nonzero_subject_returns_empty() {
+        let mut state = State::default();
+        state.metadatas.insert(
+            ObjectId::from_raw_id(10),
+            crate::wirehose::state::Metadata {
+                object_id: ObjectId::from_raw_id(10),
+                metadata_name: Some("default".to_string()),
+                properties: Default::default(),
+            },
+        );
+
+        let event = StateEvent::MetadataProperty {
+            object_id: ObjectId::from_raw_id(10),
+            subject: 42,
+            key: Some("target.node".to_string()),
+            value: Some("100".to_string()),
+        };
+        assert!(event.affected_objects(&state).is_empty());
+    }
+
+    #[test]
+    fn affected_objects_unknown_metadata_returns_empty() {
+        let state = State::default();
+        let event = StateEvent::MetadataProperty {
+            object_id: ObjectId::from_raw_id(99),
+            subject: 0,
+            key: Some("key".to_string()),
+            value: Some("value".to_string()),
+        };
+        assert!(event.affected_objects(&state).is_empty());
     }
 }
