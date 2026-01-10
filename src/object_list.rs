@@ -561,6 +561,7 @@ mod tests {
     use crate::mock;
     use crate::view::{ListKind, NodeKind, View};
     use crate::wirehose::{state::State, PropertyStore, StateEvent};
+    use std::sync::Arc;
 
     fn init() -> (State, mock::WirehoseHandle) {
         let mut state = State::default();
@@ -578,18 +579,14 @@ mod tests {
 
             let events = vec![
                 StateEvent::NodeProperties { object_id, props },
-                StateEvent::NodePeaks {
-                    object_id,
-                    peaks: vec![0.0, 0.0],
-                    samples: 512,
-                },
                 StateEvent::NodePositions {
                     object_id,
                     positions: vec![0, 1],
                 },
-                StateEvent::NodeRate {
+                StateEvent::NodeStreamStarted {
                     object_id,
                     rate: 44100,
+                    peaks: Arc::new([0.into(), 0.into()]),
                 },
                 StateEvent::NodeVolumes {
                     object_id,

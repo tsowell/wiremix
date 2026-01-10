@@ -1,3 +1,5 @@
+use std::sync::{atomic::AtomicU32, Arc};
+
 use pipewire::link::LinkInfoRef;
 
 use crate::wirehose::{ObjectId, PropertyStore};
@@ -67,11 +69,6 @@ pub enum StateEvent {
         props: PropertyStore,
     },
 
-    NodePeaks {
-        object_id: ObjectId,
-        peaks: Vec<f32>,
-        samples: u32,
-    },
     NodePositions {
         object_id: ObjectId,
         positions: Vec<u32>,
@@ -79,10 +76,6 @@ pub enum StateEvent {
     NodeProperties {
         object_id: ObjectId,
         props: PropertyStore,
-    },
-    NodeRate {
-        object_id: ObjectId,
-        rate: u32,
     },
     NodeVolumes {
         object_id: ObjectId,
@@ -92,15 +85,22 @@ pub enum StateEvent {
         object_id: ObjectId,
         mute: bool,
     },
+    NodeStreamStarted {
+        object_id: ObjectId,
+        rate: u32,
+        peaks: Arc<[AtomicU32]>,
+    },
+    NodeStreamStopped {
+        object_id: ObjectId,
+    },
+    NodePeaksDirty {
+        object_id: ObjectId,
+    },
 
     Link {
         object_id: ObjectId,
         output_id: ObjectId,
         input_id: ObjectId,
-    },
-
-    StreamStopped {
-        object_id: ObjectId,
     },
 
     Removed {
@@ -129,14 +129,14 @@ impl StateEvent {
             StateEvent::MetadataMetadataName { object_id, .. } => *object_id,
             StateEvent::MetadataProperty { object_id, .. } => *object_id,
             StateEvent::ClientProperties { object_id, .. } => *object_id,
-            StateEvent::NodePeaks { object_id, .. } => *object_id,
             StateEvent::NodePositions { object_id, .. } => *object_id,
             StateEvent::NodeProperties { object_id, .. } => *object_id,
-            StateEvent::NodeRate { object_id, .. } => *object_id,
             StateEvent::NodeVolumes { object_id, .. } => *object_id,
             StateEvent::NodeMute { object_id, .. } => *object_id,
+            StateEvent::NodeStreamStarted { object_id, .. } => *object_id,
+            StateEvent::NodeStreamStopped { object_id } => *object_id,
+            StateEvent::NodePeaksDirty { object_id } => *object_id,
             StateEvent::Link { object_id, .. } => *object_id,
-            StateEvent::StreamStopped { object_id } => *object_id,
             StateEvent::Removed { object_id } => *object_id,
         }
     }

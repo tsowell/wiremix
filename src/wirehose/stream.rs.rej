@@ -1,0 +1,59 @@
+--- src/wirehose/stream.rs
++++ src/wirehose/stream.rs
+@@ -19,10 +21,48 @@ use libspa::{
+ use crate::wirehose::event_sender::EventSender;
+ use crate::wirehose::{ObjectId, StateEvent};
+ 
++/// Find peak absolute value in samples using SIMD when available.
++fn find_peak(samples: &[f32]) -> f32 {
++    struct Impl<'a> {
++        samples: &'a [f32],
++    }
++
++    impl WithSimd for Impl<'_> {
++        type Output = f32;
++
++        #[inline(always)]
++        fn with_simd<S: Simd>(self, simd: S) -> f32 {
++            let samples = self.samples;
++            let (chunks, tail) = S::f32s_as_simd(samples);
++
++            // SIMD for aligned chunks
++            let mut simd_max = simd.f32s_splat(0.0);
++            for &chunk in chunks {
++                let abs = simd.f32s_abs(chunk);
++                simd_max = simd.f32s_max(simd_max, abs);
++            }
++
++            // Scalar for tail
++            let mut scalar_max = simd.f32s_reduce_max(simd_max);
++            for &s in tail {
++                let abs = s.abs();
++                if abs > scalar_max {
++                    scalar_max = abs;
++                }
++            }
++
++            scalar_max
++        }
++    }
++
++    Arch::new().dispatch(Impl { samples })
++}
++
+ #[derive(Default)]
+ pub struct StreamData {
+     format: AudioInfoRaw,
+     cursor_move: bool,
++    peaks: SmallVec<[f32; 8]>,
+ }
+ 
+ pub fn capture_node(
+@@ -44,6 +84,7 @@ pub fn capture_node(
+     let data = StreamData {
+         format: Default::default(),
+         cursor_move: false,
++        peaks: SmallVec::new(),
+     };
+ 
+     let stream = Stream::new(core, "wiremix-capture", props).ok()?;

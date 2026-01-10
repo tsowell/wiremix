@@ -161,14 +161,6 @@ impl std::fmt::Display for TabKind {
 pub type MouseArea =
     (Rect, SmallVec<[MouseEventKind; 4]>, SmallVec<[Action; 4]>);
 
-#[derive(Default, Debug, Clone, Copy)]
-pub enum StateDirty {
-    #[default]
-    Clean,
-    PeaksOnly,
-    Everything,
-}
-
 /// Handles the main UI for the application.
 ///
 /// This runs the main loop to process PipeWire events and terminal input and
@@ -193,8 +185,8 @@ pub struct App<'a> {
     is_ready: bool,
     /// The current PipeWire state
     state: State,
-    /// How dirty is the PipeWire state?
-    state_dirty: StateDirty,
+    /// Does the view need to be updated with the current PipeWire state?
+    state_dirty: bool,
     /// A rendering view based on the current PipeWire state
     view: View<'a>,
     /// The application configuration
@@ -278,7 +270,7 @@ impl<'a> App<'a> {
             mouse_areas: Vec::new(),
             is_ready: false,
             state,
-            state_dirty: StateDirty::default(),
+            state_dirty: false,
             view: View::new(wirehose),
             config,
             drag_row: None,
@@ -303,20 +295,11 @@ impl<'a> App<'a> {
 
         while !self.exit {
             // Update view if needed
-            match self.state_dirty {
-                StateDirty::Everything => {
-                    self.view = View::from(
-                        self.wirehose,
-                        &self.state,
-                        &self.config.names,
-                    );
-                }
-                StateDirty::PeaksOnly => {
-                    self.view.update_peaks(&self.state);
-                }
-                _ => {}
+            if self.state_dirty {
+                self.view =
+                    View::from(self.wirehose, &self.state, &self.config.names);
             }
-            self.state_dirty = StateDirty::Clean;
+            self.state_dirty = false;
 
             let frame = terminal.get_frame();
             current_list!(self).update(frame.area(), &self.view);
@@ -618,19 +601,8 @@ impl Handle for PipewireEvent {
 
 impl Handle for StateEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
-        // Peaks updates are very frequent and easy to merge, so track if those
-        // are the only updates done since the state was last Clean.
-        match (app.state_dirty, &self) {
-            (
-                StateDirty::Clean | StateDirty::PeaksOnly,
-                StateEvent::NodePeaks { .. },
-            ) => {
-                app.state_dirty = StateDirty::PeaksOnly;
-            }
-            _ => {
-                app.state_dirty = StateDirty::Everything;
-            }
-        }
+        // Peaks are shared between state and view, so no update is necessary.
+        app.state_dirty = !matches!(&self, StateEvent::NodePeaksDirty { .. });
 
         // Determine if any on-screen objects are affected by this event.
         // Generally we only need to check the event's object ID, but there are
@@ -824,6 +796,7 @@ mod tests {
     use super::*;
     use crate::mock;
     use crate::wirehose::PropertyStore;
+    use std::sync::Arc;
     use strum::IntoEnumIterator;
 
     fn fixture(wirehose: &mock::WirehoseHandle) -> App<'_> {
@@ -857,18 +830,14 @@ mod tests {
         let props = props;
         let events = vec![
             StateEvent::NodeProperties { object_id, props },
-            StateEvent::NodePeaks {
-                object_id,
-                peaks: vec![0.0, 0.0],
-                samples: 512,
-            },
             StateEvent::NodePositions {
                 object_id,
                 positions: vec![0, 1],
             },
-            StateEvent::NodeRate {
+            StateEvent::NodeStreamStarted {
                 object_id,
                 rate: 44100,
+                peaks: Arc::new([0.into(), 0.into()]),
             },
             StateEvent::NodeVolumes {
                 object_id,

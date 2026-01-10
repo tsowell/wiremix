@@ -51,13 +51,21 @@ pub fn execute_command(
                 device_set_profile(device, profile_index);
             }
         }
-        Command::NodeCaptureStart(obj_id, object_serial, capture_sink) => {
+        Command::NodeCaptureStart(
+            obj_id,
+            object_serial,
+            capture_sink,
+            peaks_dirty,
+            peak_processor,
+        ) => {
             let result = stream::capture_node(
                 core,
                 &sender,
                 obj_id,
                 &object_serial.to_string(),
                 capture_sink,
+                peaks_dirty,
+                peak_processor,
             );
             if let Some((stream, listener)) = result {
                 streams.add_stream(obj_id, stream, listener);

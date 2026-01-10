@@ -1,8 +1,9 @@
 //! PipeWire controls which can be executed by wirehose.
 
-use crate::wirehose::ObjectId;
+use std::sync::{atomic::AtomicBool, Arc};
 
-#[derive(Debug)]
+use crate::wirehose::{state::PeakProcessor, ObjectId};
+
 pub enum Command {
     NodeMute(ObjectId, bool),
     DeviceMute(ObjectId, i32, i32, bool),
@@ -10,7 +11,13 @@ pub enum Command {
     DeviceVolumes(ObjectId, i32, i32, Vec<f32>),
     DeviceSetRoute(ObjectId, i32, i32),
     DeviceSetProfile(ObjectId, i32),
-    NodeCaptureStart(ObjectId, u64, bool),
+    NodeCaptureStart(
+        ObjectId,
+        u64,
+        bool,
+        Arc<AtomicBool>,
+        Option<Arc<dyn PeakProcessor>>,
+    ),
     NodeCaptureStop(ObjectId),
     MetadataSetProperty(ObjectId, u32, String, Option<String>, Option<String>),
 }
@@ -23,6 +30,8 @@ pub trait CommandSender {
         obj_id: ObjectId,
         object_serial: u64,
         capture_sink: bool,
+        peaks_dirty: Arc<AtomicBool>,
+        peak_processor: Option<Arc<dyn PeakProcessor>>,
     );
     fn node_capture_stop(&self, obj_id: ObjectId);
     fn node_mute(&self, obj_id: ObjectId, mute: bool);

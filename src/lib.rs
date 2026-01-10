@@ -18,7 +18,8 @@ pub mod trace;
 
 #[cfg(test)]
 mod mock {
-    use crate::wirehose::{CommandSender, ObjectId};
+    use crate::wirehose::{state::PeakProcessor, CommandSender, ObjectId};
+    use std::sync::{atomic::AtomicBool, Arc};
 
     #[derive(Default)]
     pub struct WirehoseHandle {}
@@ -29,6 +30,8 @@ mod mock {
             _object_id: ObjectId,
             _object_serial: u64,
             _capture_sink: bool,
+            _peaks_dirty: Arc<AtomicBool>,
+            _peak_processor: Option<Arc<dyn PeakProcessor>>,
         ) {
         }
         fn node_capture_stop(&self, _object_id: ObjectId) {}

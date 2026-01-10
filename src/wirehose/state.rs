@@ -1,6 +1,10 @@
 //! Representation of PipeWire state.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::{
+    atomic::{AtomicBool, AtomicU32},
+    Arc,
+};
 
 use crate::wirehose::{
     command::Command, media_class, CommandSender, ObjectId, PropertyStore,
@@ -57,13 +61,14 @@ pub struct Node {
     pub props: PropertyStore,
     pub volumes: Option<Vec<f32>>,
     pub mute: Option<bool>,
-    pub peaks: Option<Vec<f32>>,
+    pub peaks: Option<Arc<[AtomicU32]>>,
+    pub peaks_dirty: Arc<AtomicBool>,
     pub rate: Option<u32>,
     pub positions: Option<Vec<u32>>,
 }
 
 /// Trait for processing peaks in order to implement effects like ballistics.
-pub trait PeakProcessor {
+pub trait PeakProcessor: Send + Sync {
     fn process_peak(
         &self,
         current_peak: f32,
@@ -75,7 +80,7 @@ pub trait PeakProcessor {
 
 impl<F> PeakProcessor for F
 where
-    F: Fn(f32, f32, u32, u32) -> f32,
+    F: Fn(f32, f32, u32, u32) -> f32 + Send + Sync,
 {
     fn process_peak(
         &self,
@@ -85,46 +90,6 @@ where
         sample_rate: u32,
     ) -> f32 {
         self(current_peak, previous_peak, sample_count, sample_rate)
-    }
-}
-
-impl Node {
-    /// Update peaks with an optional peak processor for ballistics or other
-    /// effects.
-    pub fn update_peaks(
-        &mut self,
-        peaks: &Vec<f32>,
-        samples: u32,
-        peak_processor: Option<&dyn PeakProcessor>,
-    ) {
-        let Some(rate) = self.rate else {
-            return;
-        };
-
-        // Initialize or resize current peaks.
-        let peaks_ref = self.peaks.get_or_insert_with(Default::default);
-        if peaks_ref.len() != peaks.len() {
-            // New length, clean slate.
-            peaks_ref.clear();
-        }
-        // Make sure it's the right size.
-        peaks_ref.resize(peaks.len(), 0.0);
-
-        for (current_peak, new_peak) in peaks_ref.iter_mut().zip(peaks) {
-            match peak_processor {
-                Some(peak_processor) => {
-                    *current_peak = peak_processor.process_peak(
-                        *current_peak,
-                        *new_peak,
-                        rate,
-                        samples,
-                    );
-                }
-                None => {
-                    *current_peak = *new_peak;
-                }
-            }
-        }
     }
 }
 
@@ -158,17 +123,17 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
-    peak_processor: Option<Box<dyn PeakProcessor>>,
+    peak_processor: Option<Arc<dyn PeakProcessor>>,
     capturing: Option<HashSet<ObjectId>>,
 }
 
 impl State {
     /// Provide a peak processor for setting peak levels.
-    pub fn with_peak_processor(
+    pub fn with_peak_processor<P: PeakProcessor + 'static>(
         mut self,
-        peak_processor: Box<dyn PeakProcessor>,
+        peak_processor: P,
     ) -> Self {
-        self.peak_processor = Some(peak_processor);
+        self.peak_processor = Some(Arc::new(peak_processor));
         self
     }
 
@@ -262,22 +227,6 @@ impl State {
             StateEvent::NodeMute { object_id, mute } => {
                 self.node_entry(object_id).mute = Some(mute);
             }
-            StateEvent::NodePeaks {
-                object_id,
-                peaks,
-                samples,
-            } => {
-                let node =
-                    self.nodes.entry(object_id).or_insert_with(|| Node {
-                        object_id,
-                        ..Default::default()
-                    });
-                let peak_processor = self.peak_processor.as_deref();
-                node.update_peaks(&peaks, samples, peak_processor);
-            }
-            StateEvent::NodeRate { object_id, rate } => {
-                self.node_entry(object_id).rate = Some(rate);
-            }
             StateEvent::NodePositions {
                 object_id,
                 positions,
@@ -295,6 +244,23 @@ impl State {
             }
             StateEvent::NodeVolumes { object_id, volumes } => {
                 self.node_entry(object_id).volumes = Some(volumes);
+            }
+            StateEvent::NodeStreamStarted {
+                object_id,
+                rate,
+                peaks,
+            } => {
+                self.node_entry(object_id).rate = Some(rate);
+                self.node_entry(object_id).peaks = Some(peaks);
+            }
+            StateEvent::NodeStreamStopped { object_id } => {
+                // It's likely that the node doesn't exist anymore.
+                self.nodes
+                    .entry(object_id)
+                    .and_modify(|node| node.peaks = None);
+            }
+            StateEvent::NodePeaksDirty { object_id: _ } => {
+                // This message just wakes up the App.
             }
             StateEvent::Link {
                 object_id,
@@ -346,12 +312,6 @@ impl State {
                     None => properties.clear(),
                 };
             }
-            StateEvent::StreamStopped { object_id } => {
-                // It's likely that the node doesn't exist anymore.
-                self.nodes
-                    .entry(object_id)
-                    .and_modify(|node| node.peaks = None);
-            }
             StateEvent::Removed { object_id } => {
                 // Remove from links and stop capture if the last input link
                 if let Some(Link { input_id, .. }) =
@@ -385,12 +345,16 @@ impl State {
                         obj_id,
                         object_serial,
                         capture_sink,
+                        peaks_dirty,
+                        peak_processor,
                     ) => {
                         capturing.insert(obj_id);
                         wirehose.node_capture_start(
                             obj_id,
                             object_serial,
                             capture_sink,
+                            peaks_dirty,
+                            peak_processor,
                         );
                     }
                     Command::NodeCaptureStop(obj_id) => {
@@ -538,6 +502,8 @@ impl State {
             node.object_id,
             *object_serial,
             capture_sink,
+            Arc::clone(&node.peaks_dirty),
+            self.peak_processor.as_ref().map(Arc::clone),
         ))
     }
 

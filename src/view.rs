@@ -2,6 +2,8 @@
 
 use itertools::Itertools;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::Arc;
 
 use serde_json::json;
 
@@ -12,16 +14,9 @@ use crate::wirehose::{media_class, state, CommandSender, ObjectId};
 /// A view for transforming [`State`](`state::State`) into a better format for
 /// rendering.
 ///
-/// This is done in only two ways:
-///
-/// 1. [`Self::from()`] creates a View from scratch from a provided State.
-///
-/// 2. [`Self::update_peaks()`] updates just the provided peaks in an existing
-///    View.
-///
-/// [`Self::from()`] is a bit expensive, but doesn't happen very often after we
-/// get the initial state from PipeWire. Peak updates happen very frequently
-/// though, hence the optimization.
+/// [`Self::from()`] creates a View from scratch from a provided State and is a
+/// bit expensive, but it doesn't happen very often after we get the initial
+/// state from PipeWire.
 ///
 /// There are also functions like [`Self::mute()`] for executing commands
 /// against [`wirehose`](`crate::wirehose`).
@@ -99,7 +94,8 @@ pub struct Node {
     pub volumes: Vec<f32>,
     pub mute: bool,
 
-    pub peaks: Option<Vec<f32>>,
+    pub peaks: Option<Arc<[AtomicU32]>>,
+    pub peaks_dirty: Arc<AtomicBool>,
     pub positions: Option<Vec<u32>>,
 
     /// If this is a device/endpoint node, store the (device_id, route_index,
@@ -342,7 +338,8 @@ impl Node {
             target_title,
             volumes,
             mute,
-            peaks: node.peaks.clone(),
+            peaks: node.peaks.as_ref().map(Arc::clone),
+            peaks_dirty: Arc::clone(&node.peaks_dirty),
             positions: node.positions.clone(),
             device_info,
             is_default_sink: default_sink_name.as_ref()
@@ -601,23 +598,6 @@ impl<'a> View<'a> {
             default_sink,
             default_source,
             metadata_id: state.metadatas_by_name.get("default").copied(),
-        }
-    }
-
-    /// Update just the peaks of an existing State.
-    pub fn update_peaks(&mut self, state: &state::State) {
-        for state_node in state.nodes.values() {
-            if let Some(node) = self.nodes.get_mut(&state_node.object_id) {
-                match &state_node.peaks {
-                    Some(peaks) => {
-                        let peaks_ref =
-                            node.peaks.get_or_insert_with(Default::default);
-                        peaks_ref.resize(peaks.len(), 0.0);
-                        peaks_ref.copy_from_slice(peaks);
-                    }
-                    _ => node.peaks = None,
-                }
-            }
         }
     }
 

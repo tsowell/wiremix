@@ -5,7 +5,7 @@
 use anyhow::Result;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 use std::thread;
 
 use nix::sys::eventfd::{EfdFlags, EventFd};
@@ -18,7 +18,7 @@ use pipewire::{
 
 use crate::wirehose::{
     client, command::Command, device, event_sender::EventSender, execute, link,
-    metadata, node, proxy_registry::ProxyRegistry,
+    metadata, node, proxy_registry::ProxyRegistry, state::PeakProcessor,
     stream_registry::StreamRegistry, sync_registry::SyncRegistry,
     CommandSender, EventHandler, ObjectId, StateEvent,
 };
@@ -111,11 +111,15 @@ impl CommandSender for Session {
         object_id: ObjectId,
         object_serial: u64,
         capture_sink: bool,
+        peaks_dirty: Arc<AtomicBool>,
+        peak_processor: Option<Arc<dyn PeakProcessor>>,
     ) {
         let _ = self.tx.send(Command::NodeCaptureStart(
             object_id,
             object_serial,
             capture_sink,
+            peaks_dirty,
+            peak_processor,
         ));
     }
 
@@ -297,7 +301,8 @@ fn monitor_pipewire(
                 let collected = streams.borrow_mut().collect_garbage();
                 if let Some(sender) = sender_weak.upgrade() {
                     for object_id in collected {
-                        sender.send(StateEvent::StreamStopped { object_id });
+                        sender
+                            .send(StateEvent::NodeStreamStopped { object_id });
                     }
                 }
             }
