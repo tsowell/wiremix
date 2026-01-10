@@ -567,7 +567,7 @@ mod tests {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
 
-        for i in 0..10 {
+        for i in 1..11 {
             let object_id = ObjectId::from_raw_id(i);
             let mut props = PropertyStore::default();
             props.set_node_description(String::from("Test node"));
@@ -650,12 +650,12 @@ mod tests {
         // Select first object
         object_list.down(&view);
         assert_eq!(object_list.top, 0);
-        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(1)));
 
         object_list.up(&view);
         object_list.update(rect, &view);
         assert_eq!(object_list.top, 0);
-        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(1)));
     }
 
     #[test]
@@ -671,7 +671,7 @@ mod tests {
         // Select first object
         object_list.down(&view);
         assert_eq!(object_list.top, 0);
-        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(0)));
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(1)));
 
         let nodes_len = view.nodes.len();
 
@@ -681,7 +681,7 @@ mod tests {
 
         object_list.update(rect, &view);
         assert_eq!(object_list.top, 7);
-        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(9)));
+        assert_eq!(object_list.selected, Some(ObjectId::from_raw_id(10)));
     }
 
     #[test]
@@ -697,36 +697,39 @@ mod tests {
 
         // Start at top
         let visible = object_list.visible_objects(&rect, &view);
-        assert_eq!(visible.len(), 3);
+        assert_eq!(visible.len(), 4);
         assert!(visible.contains(&ObjectId::from_raw_id(0)));
         assert!(visible.contains(&ObjectId::from_raw_id(1)));
         assert!(visible.contains(&ObjectId::from_raw_id(2)));
+        assert!(visible.contains(&ObjectId::from_raw_id(3)));
 
         // Scroll down
         object_list.top = 5;
         let visible = object_list.visible_objects(&rect, &view);
-        assert_eq!(visible.len(), 3);
-        assert!(visible.contains(&ObjectId::from_raw_id(5)));
+        assert_eq!(visible.len(), 4);
+        assert!(visible.contains(&ObjectId::from_raw_id(0)));
         assert!(visible.contains(&ObjectId::from_raw_id(6)));
         assert!(visible.contains(&ObjectId::from_raw_id(7)));
+        assert!(visible.contains(&ObjectId::from_raw_id(8)));
 
         // Scroll up
         object_list.top = 4;
         let visible = object_list.visible_objects(&rect, &view);
-        assert_eq!(visible.len(), 3);
-        assert!(visible.contains(&ObjectId::from_raw_id(4)));
+        assert_eq!(visible.len(), 4);
+        assert!(visible.contains(&ObjectId::from_raw_id(0)));
         assert!(visible.contains(&ObjectId::from_raw_id(5)));
         assert!(visible.contains(&ObjectId::from_raw_id(6)));
+        assert!(visible.contains(&ObjectId::from_raw_id(7)));
     }
 
     #[test]
     fn visible_objects_includes_linked_clients() {
         let (mut state, wirehose) = init();
 
-        // Set client_id on node 0
+        // Set client_id on node 1
         let mut props = state
             .nodes
-            .get(&ObjectId::from_raw_id(0))
+            .get(&ObjectId::from_raw_id(1))
             .unwrap()
             .props
             .clone();
@@ -734,7 +737,7 @@ mod tests {
         state.update(
             &wirehose,
             StateEvent::NodeProperties {
-                object_id: ObjectId::from_raw_id(0),
+                object_id: ObjectId::from_raw_id(1),
                 props,
             },
         );
@@ -747,8 +750,9 @@ mod tests {
         let object_list = ObjectList::new(ListKind::Node(NodeKind::All), None);
 
         let visible = object_list.visible_objects(&rect, &view);
-        assert_eq!(visible.len(), 2);
+        assert_eq!(visible.len(), 3);
         assert!(visible.contains(&ObjectId::from_raw_id(0)));
+        assert!(visible.contains(&ObjectId::from_raw_id(1)));
         assert!(visible.contains(&ObjectId::from_raw_id(101)));
     }
 
@@ -756,10 +760,10 @@ mod tests {
     fn visible_objects_includes_linked_devices() {
         let (mut state, wirehose) = init();
 
-        // Set device_id on node 0
+        // Set device_id on node 1
         let mut props = state
             .nodes
-            .get(&ObjectId::from_raw_id(0))
+            .get(&ObjectId::from_raw_id(1))
             .unwrap()
             .props
             .clone();
@@ -769,7 +773,7 @@ mod tests {
         state.update(
             &wirehose,
             StateEvent::NodeProperties {
-                object_id: ObjectId::from_raw_id(0),
+                object_id: ObjectId::from_raw_id(1),
                 props,
             },
         );
@@ -812,8 +816,9 @@ mod tests {
         let object_list = ObjectList::new(ListKind::Node(NodeKind::All), None);
 
         let visible = object_list.visible_objects(&rect, &view);
-        assert_eq!(visible.len(), 2);
+        assert_eq!(visible.len(), 3);
         assert!(visible.contains(&ObjectId::from_raw_id(0)));
+        assert!(visible.contains(&ObjectId::from_raw_id(1)));
         assert!(visible.contains(&ObjectId::from_raw_id(101)));
     }
 
