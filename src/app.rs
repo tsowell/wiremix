@@ -808,7 +808,7 @@ mod tests {
             StateEvent::NodeStreamStarted {
                 object_id,
                 rate: 44100,
-                peaks: Arc::new([0.into(), 0.into()]),
+                peaks: Arc::new([0.0.into(), 0.0.into()]),
             },
             StateEvent::NodeVolumes {
                 object_id,

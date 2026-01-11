@@ -2,11 +2,13 @@
 
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::atomic::AtomicBool;
+
 use std::sync::Arc;
 
 use serde_json::json;
 
+use crate::atomic_f32::AtomicF32;
 use crate::config;
 use crate::device_kind::DeviceKind;
 use crate::wirehose::{media_class, state, CommandSender, ObjectId};
@@ -94,7 +96,7 @@ pub struct Node {
     pub volumes: Vec<f32>,
     pub mute: bool,
 
-    pub peaks: Option<Arc<[AtomicU32]>>,
+    pub peaks: Option<Arc<[AtomicF32]>>,
     pub peaks_dirty: Arc<AtomicBool>,
     pub positions: Option<Vec<u32>>,
 

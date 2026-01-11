@@ -1,8 +1,6 @@
 use std::rc::Rc;
-use std::sync::{
-    atomic::{AtomicBool, AtomicU32, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 use pipewire::{
     core::Core,
@@ -19,6 +17,7 @@ use libspa::{
 
 use pulp::{Arch, Simd, WithSimd};
 
+use crate::atomic_f32::AtomicF32;
 use crate::wirehose::event_sender::EventSender;
 use crate::wirehose::state::PeakProcessor;
 use crate::wirehose::{ObjectId, StateEvent};
@@ -26,7 +25,7 @@ use crate::wirehose::{ObjectId, StateEvent};
 #[derive(Default)]
 pub struct StreamData {
     format: AudioInfoRaw,
-    peaks: Arc<[AtomicU32]>,
+    peaks: Arc<[AtomicF32]>,
     peaks_dirty: Arc<AtomicBool>,
     peak_processor: Option<Arc<dyn PeakProcessor>>,
 }
@@ -117,7 +116,7 @@ pub fn capture_node(
                 // call a helper function to parse the format for us.
                 let _ = user_data.format.parse(param);
                 user_data.peaks = (0..user_data.format.channels())
-                    .map(|_| AtomicU32::new(0.0_f32.to_bits()))
+                    .map(|_| AtomicF32::new(0.0))
                     .collect::<Arc<[_]>>();
 
                 let Some(sender) = sender_weak.upgrade() else {
@@ -150,16 +149,14 @@ pub fn capture_node(
 
                 for c in 0..n_channels {
                     let Some(data) = datas.get_mut(c) else {
-                        user_data.peaks[c]
-                            .store(0.0_f32.to_bits(), Ordering::Relaxed);
+                        user_data.peaks[c].store(0.0);
                         continue;
                     };
 
                     let chunk_size = data.chunk().size() as usize;
 
                     let Some(samples) = data.data() else {
-                        user_data.peaks[c]
-                            .store(0.0_f32.to_bits(), Ordering::Relaxed);
+                        user_data.peaks[c].store(0.0);
                         continue;
                     };
 
@@ -172,25 +169,16 @@ pub fn capture_node(
                     let new_peak = find_peak(samples);
 
                     if let Some(peak_processor) = &user_data.peak_processor {
-                        let _ = user_data.peaks[c].fetch_update(
-                            Ordering::Relaxed,
-                            Ordering::Relaxed,
-                            |current_peak| {
-                                Some(
-                                    peak_processor
-                                        .process_peak(
-                                            f32::from_bits(current_peak),
-                                            new_peak,
-                                            user_data.format.rate(),
-                                            n_samples,
-                                        )
-                                        .to_bits(),
-                                )
-                            },
-                        );
+                        let _ = user_data.peaks[c].fetch_update(|current| {
+                            Some(peak_processor.process_peak(
+                                current,
+                                new_peak,
+                                user_data.format.rate(),
+                                n_samples,
+                            ))
+                        });
                     } else {
-                        user_data.peaks[c]
-                            .store(new_peak.to_bits(), Ordering::Relaxed);
+                        user_data.peaks[c].store(new_peak);
                     }
                 }
 

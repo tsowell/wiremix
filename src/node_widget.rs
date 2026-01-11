@@ -491,23 +491,16 @@ impl Widget for MeterWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         match self.node.peaks.as_deref() {
             Some([left, right]) if self.config.peaks != Peaks::Mono => {
-                let left = f32::from_bits(left.load(Ordering::Relaxed));
-                let right = f32::from_bits(right.load(Ordering::Relaxed));
                 meter::render_stereo(
                     area,
                     buf,
-                    Some((left, right)),
+                    Some((left.load(), right.load())),
                     self.config,
                 )
             }
             Some(peaks @ [..]) => {
                 let peaks = (!peaks.is_empty()).then_some(
-                    peaks
-                        .iter()
-                        .map(|peak| {
-                            f32::from_bits(peak.load(Ordering::Relaxed))
-                        })
-                        .sum::<f32>()
+                    peaks.iter().map(|peak| peak.load()).sum::<f32>()
                         / peaks.len() as f32,
                 );
                 meter::render_mono(area, buf, peaks, self.config)

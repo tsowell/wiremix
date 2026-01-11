@@ -1,11 +1,9 @@
 //! Representation of PipeWire state.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::{
-    atomic::{AtomicBool, AtomicU32},
-    Arc,
-};
+use std::sync::{atomic::AtomicBool, Arc};
 
+use crate::atomic_f32::AtomicF32;
 use crate::wirehose::{
     command::Command, media_class, CommandSender, ObjectId, PropertyStore,
     StateEvent,
@@ -61,7 +59,7 @@ pub struct Node {
     pub props: PropertyStore,
     pub volumes: Option<Vec<f32>>,
     pub mute: Option<bool>,
-    pub peaks: Option<Arc<[AtomicU32]>>,
+    pub peaks: Option<Arc<[AtomicF32]>>,
     pub peaks_dirty: Arc<AtomicBool>,
     pub rate: Option<u32>,
     pub positions: Option<Vec<u32>>,

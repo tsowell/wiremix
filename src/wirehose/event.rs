@@ -1,7 +1,8 @@
-use std::sync::{atomic::AtomicU32, Arc};
+use std::sync::Arc;
 
 use pipewire::link::LinkInfoRef;
 
+use crate::atomic_f32::AtomicF32;
 use crate::wirehose::state::State;
 use crate::wirehose::{ObjectId, PropertyStore};
 
@@ -89,7 +90,7 @@ pub enum StateEvent {
     NodeStreamStarted {
         object_id: ObjectId,
         rate: u32,
-        peaks: Arc<[AtomicU32]>,
+        peaks: Arc<[AtomicF32]>,
     },
     NodeStreamStopped {
         object_id: ObjectId,
