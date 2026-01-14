@@ -25,3 +25,4 @@ pub use event_sender::EventHandler;
 pub use object_id::ObjectId;
 pub use property_store::PropertyStore;
 pub use session::Session;
+pub use stream::PeakProcessor;

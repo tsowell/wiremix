@@ -1,11 +1,15 @@
 //! Main rendering and event processing for the application.
 
 use std::collections::HashSet;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
 use crate::config::{Config, Peaks};
-use crate::wirehose::{CommandSender, Event as PipewireEvent, StateEvent};
+use crate::wirehose::state::CaptureEligibility;
+use crate::wirehose::{
+    media_class, CommandSender, Event as PipewireEvent, PeakProcessor,
+    StateEvent,
+};
 
 use anyhow::{anyhow, Result};
 
@@ -200,6 +204,10 @@ pub struct App<'a> {
     /// Object IDs that are currently visible (including any display
     /// dependencies)
     visible_objects: HashSet<ObjectId>,
+    /// Callback for peak ballistics.
+    peak_processor: Arc<dyn PeakProcessor>,
+    /// Objects currently being captured.
+    capturing_objects: HashSet<ObjectId>,
 }
 
 macro_rules! current_list {
@@ -256,9 +264,7 @@ impl<'a> App<'a> {
             current_peak + (new_peak - current_peak) * coef
         };
 
-        let state = State::default()
-            .with_peak_processor(Box::new(peak_processor))
-            .with_capture(config.peaks != Peaks::Off);
+        let state = State::default();
 
         App {
             exit: false,
@@ -276,6 +282,8 @@ impl<'a> App<'a> {
             drag_row: None,
             help_position: None,
             visible_objects: HashSet::new(),
+            peak_processor: Arc::new(peak_processor),
+            capturing_objects: HashSet::new(),
         }
     }
 
@@ -347,6 +355,58 @@ impl<'a> App<'a> {
     fn exit(&mut self, error_message: Option<String>) {
         self.exit = true;
         self.error_message = error_message;
+    }
+
+    fn start_capture(&mut self, object_id: ObjectId) {
+        let Some(node) = self.state.nodes.get(&object_id) else {
+            return;
+        };
+
+        let Some(object_serial) = node.props.object_serial() else {
+            return;
+        };
+
+        let capture_sink =
+            node.props
+                .media_class()
+                .as_ref()
+                .is_some_and(|media_class| {
+                    media_class::is_sink(media_class)
+                        || media_class::is_source(media_class)
+                });
+
+        self.capturing_objects.insert(object_id);
+        self.wirehose.node_capture_start(
+            node.object_id,
+            *object_serial,
+            capture_sink,
+            Arc::clone(&node.peaks_dirty),
+            Some(Arc::clone(&self.peak_processor)),
+        );
+    }
+
+    fn set_capture_eligibility(
+        &mut self,
+        capture_eligibility: CaptureEligibility,
+    ) {
+        if self.config.peaks == Peaks::Off {
+            return;
+        }
+
+        match capture_eligibility {
+            CaptureEligibility::Eligible(object_id) => {
+                if !self.capturing_objects.contains(&object_id) {
+                    self.start_capture(object_id);
+                }
+            }
+            CaptureEligibility::NeedsRestart(object_id) => {
+                self.start_capture(object_id);
+            }
+            CaptureEligibility::Ineligible(object_id) => {
+                self.capturing_objects.remove(&object_id);
+                self.wirehose.node_capture_stop(object_id);
+            }
+        }
     }
 
     /// Handle events with optional timeout.
@@ -612,7 +672,9 @@ impl Handle for StateEvent {
             .iter()
             .any(|object| app.visible_objects.contains(object));
 
-        app.state.update(app.wirehose, self);
+        for capture_eligibility in app.state.update(self) {
+            app.set_capture_eligibility(capture_eligibility);
+        }
 
         Ok(visible_affected)
     }

@@ -1,13 +1,10 @@
 //! Representation of PipeWire state.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{atomic::AtomicBool, Arc};
 
 use crate::atomic_f32::AtomicF32;
-use crate::wirehose::{
-    command::Command, media_class, CommandSender, ObjectId, PropertyStore,
-    StateEvent,
-};
+use crate::wirehose::{media_class, ObjectId, PropertyStore, StateEvent};
 
 #[derive(Debug)]
 pub struct Profile {
@@ -65,32 +62,6 @@ pub struct Node {
     pub positions: Option<Vec<u32>>,
 }
 
-/// Trait for processing peaks in order to implement effects like ballistics.
-pub trait PeakProcessor: Send + Sync {
-    fn process_peak(
-        &self,
-        current_peak: f32,
-        previous_peak: f32,
-        sample_count: u32,
-        sample_rate: u32,
-    ) -> f32;
-}
-
-impl<F> PeakProcessor for F
-where
-    F: Fn(f32, f32, u32, u32) -> f32 + Send + Sync,
-{
-    fn process_peak(
-        &self,
-        current_peak: f32,
-        previous_peak: f32,
-        sample_count: u32,
-        sample_rate: u32,
-    ) -> f32 {
-        self(current_peak, previous_peak, sample_count, sample_rate)
-    }
-}
-
 #[derive(Debug)]
 pub struct Link {
     pub output_id: ObjectId,
@@ -105,15 +76,18 @@ pub struct Metadata {
     pub properties: HashMap<u32, HashMap<String, String>>,
 }
 
+#[derive(Debug)]
+pub enum CaptureEligibility {
+    Eligible(ObjectId),
+    Ineligible(ObjectId),
+    NeedsRestart(ObjectId),
+}
+
 #[derive(Default)]
 /// PipeWire state, maintained from [`StateEvent`]s from the
 /// [`wirehose`](`crate::wirehose`) module.
 ///
-/// This is primarily for maintaining a representation of the PipeWire state,
-/// but [`Self::update()`] also handles capture management for starting
-/// and stopping streaming because the [`wirehose`](`crate::wirehose`)
-/// callbacks don't individually have enough information to determine when that
-/// should happen.
+/// This is primarily for maintaining a representation of the PipeWire state.
 pub struct State {
     pub clients: HashMap<ObjectId, Client>,
     pub nodes: HashMap<ObjectId, Node>,
@@ -121,30 +95,15 @@ pub struct State {
     pub links: HashMap<ObjectId, Link>,
     pub metadatas: HashMap<ObjectId, Metadata>,
     pub metadatas_by_name: HashMap<String, ObjectId>,
-    peak_processor: Option<Arc<dyn PeakProcessor>>,
-    capturing: Option<HashSet<ObjectId>>,
 }
 
 impl State {
-    /// Provide a peak processor for setting peak levels.
-    pub fn with_peak_processor<P: PeakProcessor + 'static>(
-        mut self,
-        peak_processor: P,
-    ) -> Self {
-        self.peak_processor = Some(Arc::new(peak_processor));
-        self
-    }
-
-    /// Enable stream capturing.
-    pub fn with_capture(mut self, enable: bool) -> Self {
-        self.capturing = enable.then_some(Default::default());
-        self
-    }
-
-    /// Update the state based on the supplied event. Also handles capture
-    /// management for starting and stopping streaming.
-    pub fn update(&mut self, wirehose: &dyn CommandSender, event: StateEvent) {
-        let mut commands = Vec::<Command>::new();
+    /// Update the state based on the supplied event.
+    ///
+    /// Returns a [`CaptureEligibility`] if an object's capture eligibility
+    /// might have changed.
+    pub fn update(&mut self, event: StateEvent) -> Vec<CaptureEligibility> {
+        let mut capture_eligibility = Vec::new();
 
         match event {
             StateEvent::ClientProperties { object_id, props } => {
@@ -219,7 +178,7 @@ impl State {
                 self.node_entry(object_id).props = props;
 
                 if let Some(node) = self.nodes.get(&object_id) {
-                    commands.extend(self.on_node(node));
+                    capture_eligibility.extend(self.on_node(node));
                 }
             }
             StateEvent::NodeMute { object_id, mute } => {
@@ -235,7 +194,9 @@ impl State {
                         .as_ref()
                         .is_some_and(|p| *p != positions);
                     if changed {
-                        commands.extend(self.on_positions_changed(node));
+                        capture_eligibility.push(
+                            CaptureEligibility::NeedsRestart(node.object_id),
+                        );
                     }
                 }
                 self.node_entry(object_id).positions = Some(positions);
@@ -267,7 +228,7 @@ impl State {
             } => {
                 if !self.inputs(input_id).contains(&output_id) {
                     if let Some(node) = self.nodes.get(&input_id) {
-                        commands.extend(self.on_link(node));
+                        capture_eligibility.extend(self.on_link(node));
                     }
                 }
 
@@ -317,7 +278,9 @@ impl State {
                 {
                     if self.inputs(input_id).is_empty() {
                         if let Some(node) = self.nodes.get(&input_id) {
-                            commands.extend(self.on_removed(node));
+                            capture_eligibility.push(
+                                CaptureEligibility::Ineligible(node.object_id),
+                            );
                         }
                     }
                 }
@@ -325,7 +288,8 @@ impl State {
                 self.devices.remove(&object_id);
                 self.clients.remove(&object_id);
                 if let Some(node) = self.nodes.remove(&object_id) {
-                    commands.extend(self.on_removed(&node));
+                    capture_eligibility
+                        .push(CaptureEligibility::Ineligible(node.object_id));
                 }
 
                 if let Some(metadata) = self.metadatas.remove(&object_id) {
@@ -336,33 +300,7 @@ impl State {
             }
         }
 
-        if let Some(capturing) = &mut self.capturing {
-            for command in commands.into_iter() {
-                match command {
-                    Command::NodeCaptureStart(
-                        obj_id,
-                        object_serial,
-                        capture_sink,
-                        peaks_dirty,
-                        peak_processor,
-                    ) => {
-                        capturing.insert(obj_id);
-                        wirehose.node_capture_start(
-                            obj_id,
-                            object_serial,
-                            capture_sink,
-                            peaks_dirty,
-                            peak_processor,
-                        );
-                    }
-                    Command::NodeCaptureStop(obj_id) => {
-                        capturing.remove(&obj_id);
-                        wirehose.node_capture_stop(obj_id);
-                    }
-                    _ => {}
-                }
-            }
-        }
+        capture_eligibility
     }
 
     pub fn get_metadata_by_name(
@@ -420,9 +358,7 @@ impl State {
     }
 
     /// Call when a node's capture eligibility might have changed.
-    fn on_node(&self, node: &Node) -> Option<Command> {
-        self.capturing.as_ref()?;
-
+    fn on_node(&self, node: &Node) -> Option<CaptureEligibility> {
         if !node
             .props
             .media_class()
@@ -438,17 +374,11 @@ impl State {
 
         node.props.object_serial()?;
 
-        if self.capturing.as_ref()?.contains(&node.object_id) {
-            return None;
-        }
-
-        self.start_capture_command(node)
+        Some(CaptureEligibility::Eligible(node.object_id))
     }
 
     /// Call when a node gets a new input link.
-    fn on_link(&self, node: &Node) -> Option<Command> {
-        self.capturing.as_ref()?;
-
+    fn on_link(&self, node: &Node) -> Option<CaptureEligibility> {
         if !node
             .props
             .media_class()
@@ -463,52 +393,7 @@ impl State {
             return None;
         }
 
-        self.start_capture_command(node)
-    }
-
-    /// Call when a node's output positions have changed.
-    fn on_positions_changed(&self, node: &Node) -> Option<Command> {
-        if !self.capturing.as_ref()?.contains(&node.object_id) {
-            return None;
-        }
-
-        self.start_capture_command(node)
-    }
-
-    /// Call when a node has no more input links.
-    fn on_removed(&self, node: &Node) -> Option<Command> {
-        self.capturing.as_ref()?;
-
-        self.stop_capture_command(node)
-    }
-
-    fn start_capture_command(&self, node: &Node) -> Option<Command> {
-        self.capturing.as_ref()?;
-
-        let object_serial = node.props.object_serial()?;
-
-        let capture_sink =
-            node.props
-                .media_class()
-                .as_ref()
-                .is_some_and(|media_class| {
-                    media_class::is_sink(media_class)
-                        || media_class::is_source(media_class)
-                });
-
-        Some(Command::NodeCaptureStart(
-            node.object_id,
-            *object_serial,
-            capture_sink,
-            Arc::clone(&node.peaks_dirty),
-            self.peak_processor.as_ref().map(Arc::clone),
-        ))
-    }
-
-    fn stop_capture_command(&self, node: &Node) -> Option<Command> {
-        self.capturing.as_ref()?;
-
-        Some(Command::NodeCaptureStop(node.object_id))
+        Some(CaptureEligibility::NeedsRestart(node.object_id))
     }
 }
 
@@ -516,21 +401,27 @@ impl State {
 mod tests {
     use super::*;
 
-    use crate::mock;
+    fn create_node(
+        state: &mut State,
+        object_id: ObjectId,
+        media_class: &str,
+        object_serial: u64,
+    ) {
+        let mut props = PropertyStore::default();
+        props.set_media_class(String::from(media_class));
+        props.set_object_serial(object_serial);
+        state.update(StateEvent::NodeProperties { object_id, props });
+    }
 
     #[test]
     fn state_metadata_insert() {
         let mut state = State::default();
-        let wirehose = mock::WirehoseHandle::default();
         let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id,
-                metadata_name: metadata_name.clone(),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id,
+            metadata_name: metadata_name.clone(),
+        });
 
         let metadata = state.metadatas.get(&object_id).unwrap();
         assert_eq!(metadata.metadata_name, Some(metadata_name.clone()));
@@ -542,18 +433,14 @@ mod tests {
     #[test]
     fn state_metadata_remove() {
         let mut state = State::default();
-        let wirehose = mock::WirehoseHandle::default();
         let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id,
-                metadata_name: metadata_name.clone(),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id,
+            metadata_name: metadata_name.clone(),
+        });
 
-        state.update(&wirehose, StateEvent::Removed { object_id });
+        state.update(StateEvent::Removed { object_id });
 
         assert!(!state.metadatas.contains_key(&object_id));
         assert!(!state.metadatas_by_name.contains_key(&metadata_name));
@@ -577,38 +464,28 @@ mod tests {
     #[test]
     fn state_metadata_clear_property() {
         let mut state = State::default();
-        let wirehose = mock::WirehoseHandle::default();
         let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id,
-                metadata_name: metadata_name.clone(),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id,
+            metadata_name: metadata_name.clone(),
+        });
 
         let key = String::from("key");
         let value = String::from("value");
 
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 0,
-                key: Some(key.clone()),
-                value: Some(value.clone()),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 1,
-                key: Some(key.clone()),
-                value: Some(value.clone()),
-            },
-        );
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 0,
+            key: Some(key.clone()),
+            value: Some(value.clone()),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 1,
+            key: Some(key.clone()),
+            value: Some(value.clone()),
+        });
         assert_eq!(
             get_metadata_properties(&state, &object_id, 0).get(&key),
             Some(&value)
@@ -618,15 +495,12 @@ mod tests {
             Some(&value)
         );
 
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 0,
-                key: Some(key.clone()),
-                value: None,
-            },
-        );
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 0,
+            key: Some(key.clone()),
+            value: None,
+        });
         assert_eq!(
             get_metadata_properties(&state, &object_id, 0).get(&key),
             None
@@ -640,52 +514,180 @@ mod tests {
     #[test]
     fn state_metadata_clear_all_properties() {
         let mut state = State::default();
-        let wirehose = mock::WirehoseHandle::default();
         let object_id = ObjectId::from_raw_id(0);
         let metadata_name = String::from("metadata0");
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id,
-                metadata_name: metadata_name.clone(),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id,
+            metadata_name: metadata_name.clone(),
+        });
 
         let key = String::from("key");
         let value = String::from("value");
 
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 0,
-                key: Some(key.clone()),
-                value: Some(value.clone()),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 1,
-                key: Some(key.clone()),
-                value: Some(value.clone()),
-            },
-        );
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 0,
+            key: Some(key.clone()),
+            value: Some(value.clone()),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 1,
+            key: Some(key.clone()),
+            value: Some(value.clone()),
+        });
         assert!(!get_metadata_properties(&state, &object_id, 0).is_empty());
         assert!(!get_metadata_properties(&state, &object_id, 1).is_empty());
 
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id,
-                subject: 0,
-                key: None,
-                value: None,
-            },
-        );
+        state.update(StateEvent::MetadataProperty {
+            object_id,
+            subject: 0,
+            key: None,
+            value: None,
+        });
 
         assert!(get_metadata_properties(&state, &object_id, 0).is_empty());
         assert!(!get_metadata_properties(&state, &object_id, 1).is_empty());
+    }
+
+    #[test]
+    fn capture_eligible_for_stream() {
+        let mut state = State::default();
+        let object_id = ObjectId::from_raw_id(1);
+
+        let result = state.update(StateEvent::NodeProperties {
+            object_id,
+            props: {
+                let mut props = PropertyStore::default();
+                props.set_media_class(String::from("Stream/Output/Audio"));
+                props.set_object_serial(100);
+                props
+            },
+        });
+
+        assert!(matches!(
+            result.as_slice(),
+            [CaptureEligibility::Eligible(id)] if *id == object_id
+        ));
+    }
+
+    #[test]
+    fn capture_eligible_requires_object_serial() {
+        let mut state = State::default();
+        let object_id = ObjectId::from_raw_id(1);
+
+        let result = state.update(StateEvent::NodeProperties {
+            object_id,
+            props: {
+                let mut props = PropertyStore::default();
+                props.set_media_class(String::from("Stream/Output/Audio"));
+                // No object_serial set
+                props
+            },
+        });
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn capture_needs_restart_on_positions_change() {
+        let mut state = State::default();
+        let object_id = ObjectId::from_raw_id(1);
+
+        create_node(&mut state, object_id, "Stream/Output/Audio", 100);
+        state.update(StateEvent::NodePositions {
+            object_id,
+            positions: vec![1, 2],
+        });
+
+        // Change positions
+        let result = state.update(StateEvent::NodePositions {
+            object_id,
+            positions: vec![1, 2, 3],
+        });
+
+        assert!(matches!(
+            result.as_slice(),
+            [CaptureEligibility::NeedsRestart(id)] if *id == object_id
+        ));
+    }
+
+    #[test]
+    fn capture_no_restart_on_same_positions() {
+        let mut state = State::default();
+        let object_id = ObjectId::from_raw_id(1);
+
+        create_node(&mut state, object_id, "Stream/Output/Audio", 100);
+        state.update(StateEvent::NodePositions {
+            object_id,
+            positions: vec![1, 2],
+        });
+
+        // Same positions
+        let result = state.update(StateEvent::NodePositions {
+            object_id,
+            positions: vec![1, 2],
+        });
+
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn capture_needs_restart_on_link_to_sink() {
+        let mut state = State::default();
+        let stream_id = ObjectId::from_raw_id(1);
+        let sink_id = ObjectId::from_raw_id(2);
+
+        create_node(&mut state, stream_id, "Stream/Output/Audio", 100);
+        create_node(&mut state, sink_id, "Audio/Sink", 101);
+
+        let result = state.update(StateEvent::Link {
+            object_id: ObjectId::from_raw_id(10),
+            output_id: stream_id,
+            input_id: sink_id,
+        });
+
+        assert!(matches!(
+            result.as_slice(),
+            [CaptureEligibility::NeedsRestart(id)] if *id == sink_id
+        ));
+    }
+
+    #[test]
+    fn capture_ineligible_on_node_removed() {
+        let mut state = State::default();
+        let object_id = ObjectId::from_raw_id(1);
+
+        create_node(&mut state, object_id, "Stream/Output/Audio", 100);
+
+        let result = state.update(StateEvent::Removed { object_id });
+
+        assert!(matches!(
+            result.as_slice(),
+            [CaptureEligibility::Ineligible(id)] if *id == object_id
+        ));
+    }
+
+    #[test]
+    fn capture_ineligible_on_last_link_removed() {
+        let mut state = State::default();
+        let stream_id = ObjectId::from_raw_id(1);
+        let sink_id = ObjectId::from_raw_id(2);
+        let link_id = ObjectId::from_raw_id(10);
+
+        create_node(&mut state, stream_id, "Stream/Output/Audio", 100);
+        create_node(&mut state, sink_id, "Audio/Sink", 101);
+        state.update(StateEvent::Link {
+            object_id: link_id,
+            output_id: stream_id,
+            input_id: sink_id,
+        });
+
+        let result = state.update(StateEvent::Removed { object_id: link_id });
+
+        assert!(matches!(
+            result.as_slice(),
+            [CaptureEligibility::Ineligible(id)] if *id == sink_id
+        ));
     }
 }

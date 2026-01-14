@@ -2,7 +2,8 @@
 
 use std::sync::{atomic::AtomicBool, Arc};
 
-use crate::wirehose::{state::PeakProcessor, ObjectId};
+use crate::wirehose::stream::PeakProcessor;
+use crate::wirehose::ObjectId;
 
 pub enum Command {
     NodeMute(ObjectId, bool),

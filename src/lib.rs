@@ -19,7 +19,7 @@ pub mod trace;
 
 #[cfg(test)]
 mod mock {
-    use crate::wirehose::{state::PeakProcessor, CommandSender, ObjectId};
+    use crate::wirehose::{CommandSender, ObjectId, PeakProcessor};
     use std::sync::{atomic::AtomicBool, Arc};
 
     #[derive(Default)]

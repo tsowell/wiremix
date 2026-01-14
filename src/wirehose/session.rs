@@ -18,7 +18,7 @@ use pipewire::{
 
 use crate::wirehose::{
     client, command::Command, device, event_sender::EventSender, execute, link,
-    metadata, node, proxy_registry::ProxyRegistry, state::PeakProcessor,
+    metadata, node, proxy_registry::ProxyRegistry, stream::PeakProcessor,
     stream_registry::StreamRegistry, sync_registry::SyncRegistry,
     CommandSender, EventHandler, ObjectId, StateEvent,
 };

@@ -600,7 +600,7 @@ mod tests {
                 },
             ];
             for event in events {
-                state.update(&wirehose, event);
+                state.update(event);
             }
         }
 
@@ -610,7 +610,6 @@ mod tests {
     /// Helper to create a minimal node with the given media class.
     fn create_node(
         state: &mut State,
-        wirehose: &mock::WirehoseHandle,
         object_id: ObjectId,
         media_class: &str,
         node_name: &str,
@@ -622,21 +621,15 @@ mod tests {
         props.set_node_name(String::from(node_name));
         props.set_object_serial(u32::from(object_id) as u64);
 
-        state.update(wirehose, StateEvent::NodeProperties { object_id, props });
-        state.update(
-            wirehose,
-            StateEvent::NodeVolumes {
-                object_id,
-                volumes: vec![1.0, 1.0],
-            },
-        );
-        state.update(
-            wirehose,
-            StateEvent::NodeMute {
-                object_id,
-                mute: false,
-            },
-        );
+        state.update(StateEvent::NodeProperties { object_id, props });
+        state.update(StateEvent::NodeVolumes {
+            object_id,
+            volumes: vec![1.0, 1.0],
+        });
+        state.update(StateEvent::NodeMute {
+            object_id,
+            mute: false,
+        });
     }
 
     #[test]
@@ -736,13 +729,10 @@ mod tests {
             .props
             .clone();
         props.set_client_id(ObjectId::from_raw_id(101));
-        state.update(
-            &wirehose,
-            StateEvent::NodeProperties {
-                object_id: ObjectId::from_raw_id(1),
-                props,
-            },
-        );
+        state.update(StateEvent::NodeProperties {
+            object_id: ObjectId::from_raw_id(1),
+            props,
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -772,43 +762,31 @@ mod tests {
         props.set_device_id(ObjectId::from_raw_id(101));
         let card_profile_device = 0;
         props.set_card_profile_device(card_profile_device);
-        state.update(
-            &wirehose,
-            StateEvent::NodeProperties {
-                object_id: ObjectId::from_raw_id(1),
-                props,
-            },
-        );
+        state.update(StateEvent::NodeProperties {
+            object_id: ObjectId::from_raw_id(1),
+            props,
+        });
 
         // Create a test device with everything needed to populate device_info
         // on the node in the view.
-        state.update(
-            &wirehose,
-            StateEvent::DeviceProperties {
-                object_id: ObjectId::from_raw_id(101),
-                props: PropertyStore::default(),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::DeviceProfile {
-                object_id: ObjectId::from_raw_id(101),
-                index: 1,
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::DeviceRoute {
-                object_id: ObjectId::from_raw_id(101),
-                index: 0,
-                device: card_profile_device,
-                profiles: vec![1],
-                description: String::new(),
-                available: true,
-                channel_volumes: vec![1.0],
-                mute: false,
-            },
-        );
+        state.update(StateEvent::DeviceProperties {
+            object_id: ObjectId::from_raw_id(101),
+            props: PropertyStore::default(),
+        });
+        state.update(StateEvent::DeviceProfile {
+            object_id: ObjectId::from_raw_id(101),
+            index: 1,
+        });
+        state.update(StateEvent::DeviceRoute {
+            object_id: ObjectId::from_raw_id(101),
+            index: 0,
+            device: card_profile_device,
+            profiles: vec![1],
+            description: String::new(),
+            available: true,
+            channel_volumes: vec![1.0],
+            mute: false,
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -831,46 +809,31 @@ mod tests {
 
         // Create a playback stream (sink input)
         let stream_id = ObjectId::from_raw_id(0);
-        create_node(
-            &mut state,
-            &wirehose,
-            stream_id,
-            "Stream/Output/Audio",
-            "stream",
-        );
+        create_node(&mut state, stream_id, "Stream/Output/Audio", "stream");
 
         // Create a sink as the target
         let sink_id = ObjectId::from_raw_id(100);
-        create_node(&mut state, &wirehose, sink_id, "Audio/Sink", "sink");
+        create_node(&mut state, sink_id, "Audio/Sink", "sink");
 
         // Create a link from stream to sink
-        state.update(
-            &wirehose,
-            StateEvent::Link {
-                object_id: ObjectId::from_raw_id(200),
-                output_id: stream_id,
-                input_id: sink_id,
-            },
-        );
+        state.update(StateEvent::Link {
+            object_id: ObjectId::from_raw_id(200),
+            output_id: stream_id,
+            input_id: sink_id,
+        });
 
         // Set up metadata
         let metadata_id = ObjectId::from_raw_id(300);
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id: metadata_id,
-                metadata_name: String::from("default"),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id: metadata_id,
-                subject: u32::from(stream_id),
-                key: Some(String::from("target.node")),
-                value: Some(String::from("100")),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id: metadata_id,
+            metadata_name: String::from("default"),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id: metadata_id,
+            subject: u32::from(stream_id),
+            key: Some(String::from("target.node")),
+            value: Some(String::from("100")),
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -891,13 +854,7 @@ mod tests {
 
         // Create a playback stream
         let stream_id = ObjectId::from_raw_id(0);
-        create_node(
-            &mut state,
-            &wirehose,
-            stream_id,
-            "Stream/Output/Audio",
-            "stream",
-        );
+        create_node(&mut state, stream_id, "Stream/Output/Audio", "stream");
 
         // Create a sink with a client_id
         let sink_id = ObjectId::from_raw_id(100);
@@ -909,56 +866,38 @@ mod tests {
         props.set_node_name(String::from("sink"));
         props.set_object_serial(100);
         props.set_client_id(sink_client_id);
-        state.update(
-            &wirehose,
-            StateEvent::NodeProperties {
-                object_id: sink_id,
-                props,
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::NodeVolumes {
-                object_id: sink_id,
-                volumes: vec![1.0, 1.0],
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::NodeMute {
-                object_id: sink_id,
-                mute: false,
-            },
-        );
+        state.update(StateEvent::NodeProperties {
+            object_id: sink_id,
+            props,
+        });
+        state.update(StateEvent::NodeVolumes {
+            object_id: sink_id,
+            volumes: vec![1.0, 1.0],
+        });
+        state.update(StateEvent::NodeMute {
+            object_id: sink_id,
+            mute: false,
+        });
 
         // Create a link from stream to sink
-        state.update(
-            &wirehose,
-            StateEvent::Link {
-                object_id: ObjectId::from_raw_id(200),
-                output_id: stream_id,
-                input_id: sink_id,
-            },
-        );
+        state.update(StateEvent::Link {
+            object_id: ObjectId::from_raw_id(200),
+            output_id: stream_id,
+            input_id: sink_id,
+        });
 
         // Set up metadata
         let metadata_id = ObjectId::from_raw_id(300);
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id: metadata_id,
-                metadata_name: String::from("default"),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id: metadata_id,
-                subject: u32::from(stream_id),
-                key: Some(String::from("target.node")),
-                value: Some(String::from("100")),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id: metadata_id,
+            metadata_name: String::from("default"),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id: metadata_id,
+            subject: u32::from(stream_id),
+            key: Some(String::from("target.node")),
+            value: Some(String::from("100")),
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -980,13 +919,7 @@ mod tests {
 
         // Create a playback stream
         let stream_id = ObjectId::from_raw_id(0);
-        create_node(
-            &mut state,
-            &wirehose,
-            stream_id,
-            "Stream/Output/Audio",
-            "stream",
-        );
+        create_node(&mut state, stream_id, "Stream/Output/Audio", "stream");
 
         // Create a sink with device_info
         let sink_id = ObjectId::from_raw_id(100);
@@ -1000,85 +933,58 @@ mod tests {
         props.set_object_serial(100);
         props.set_device_id(sink_device_id);
         props.set_card_profile_device(card_profile_device);
-        state.update(
-            &wirehose,
-            StateEvent::NodeProperties {
-                object_id: sink_id,
-                props,
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::NodeVolumes {
-                object_id: sink_id,
-                volumes: vec![1.0, 1.0],
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::NodeMute {
-                object_id: sink_id,
-                mute: false,
-            },
-        );
+        state.update(StateEvent::NodeProperties {
+            object_id: sink_id,
+            props,
+        });
+        state.update(StateEvent::NodeVolumes {
+            object_id: sink_id,
+            volumes: vec![1.0, 1.0],
+        });
+        state.update(StateEvent::NodeMute {
+            object_id: sink_id,
+            mute: false,
+        });
 
         // Create the device with route
-        state.update(
-            &wirehose,
-            StateEvent::DeviceProperties {
-                object_id: sink_device_id,
-                props: PropertyStore::default(),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::DeviceProfile {
-                object_id: sink_device_id,
-                index: 1,
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::DeviceRoute {
-                object_id: sink_device_id,
-                index: 0,
-                device: card_profile_device,
-                profiles: vec![1],
-                description: String::new(),
-                available: true,
-                channel_volumes: vec![1.0],
-                mute: false,
-            },
-        );
+        state.update(StateEvent::DeviceProperties {
+            object_id: sink_device_id,
+            props: PropertyStore::default(),
+        });
+        state.update(StateEvent::DeviceProfile {
+            object_id: sink_device_id,
+            index: 1,
+        });
+        state.update(StateEvent::DeviceRoute {
+            object_id: sink_device_id,
+            index: 0,
+            device: card_profile_device,
+            profiles: vec![1],
+            description: String::new(),
+            available: true,
+            channel_volumes: vec![1.0],
+            mute: false,
+        });
 
         // Create a link from stream to sink
-        state.update(
-            &wirehose,
-            StateEvent::Link {
-                object_id: ObjectId::from_raw_id(200),
-                output_id: stream_id,
-                input_id: sink_id,
-            },
-        );
+        state.update(StateEvent::Link {
+            object_id: ObjectId::from_raw_id(200),
+            output_id: stream_id,
+            input_id: sink_id,
+        });
 
         // Set up metadata
         let metadata_id = ObjectId::from_raw_id(300);
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id: metadata_id,
-                metadata_name: String::from("default"),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id: metadata_id,
-                subject: u32::from(stream_id),
-                key: Some(String::from("target.node")),
-                value: Some(String::from("100")),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id: metadata_id,
+            metadata_name: String::from("default"),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id: metadata_id,
+            subject: u32::from(stream_id),
+            key: Some(String::from("target.node")),
+            value: Some(String::from("100")),
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -1100,42 +1006,24 @@ mod tests {
 
         // Create a playback stream (no explicit link - will use default)
         let stream_id = ObjectId::from_raw_id(0);
-        create_node(
-            &mut state,
-            &wirehose,
-            stream_id,
-            "Stream/Output/Audio",
-            "stream",
-        );
+        create_node(&mut state, stream_id, "Stream/Output/Audio", "stream");
 
         // Create a sink
         let sink_id = ObjectId::from_raw_id(100);
-        create_node(
-            &mut state,
-            &wirehose,
-            sink_id,
-            "Audio/Sink",
-            "default_sink",
-        );
+        create_node(&mut state, sink_id, "Audio/Sink", "default_sink");
 
         // Set up metadata for the default sink
         let metadata_id = ObjectId::from_raw_id(300);
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id: metadata_id,
-                metadata_name: String::from("default"),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id: metadata_id,
-                subject: 0,
-                key: Some(String::from("default.audio.sink")),
-                value: Some(String::from("{\"name\":\"default_sink\"}")),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id: metadata_id,
+            metadata_name: String::from("default"),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id: metadata_id,
+            subject: 0,
+            key: Some(String::from("default.audio.sink")),
+            value: Some(String::from("{\"name\":\"default_sink\"}")),
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
@@ -1158,42 +1046,24 @@ mod tests {
 
         // Create a recording stream (no explicit link - will use default)
         let stream_id = ObjectId::from_raw_id(0);
-        create_node(
-            &mut state,
-            &wirehose,
-            stream_id,
-            "Stream/Input/Audio",
-            "stream",
-        );
+        create_node(&mut state, stream_id, "Stream/Input/Audio", "stream");
 
         // Create a source
         let source_id = ObjectId::from_raw_id(100);
-        create_node(
-            &mut state,
-            &wirehose,
-            source_id,
-            "Audio/Source",
-            "default_source",
-        );
+        create_node(&mut state, source_id, "Audio/Source", "default_source");
 
         // Set up metadata for the default source
         let metadata_id = ObjectId::from_raw_id(300);
-        state.update(
-            &wirehose,
-            StateEvent::MetadataMetadataName {
-                object_id: metadata_id,
-                metadata_name: String::from("default"),
-            },
-        );
-        state.update(
-            &wirehose,
-            StateEvent::MetadataProperty {
-                object_id: metadata_id,
-                subject: 0,
-                key: Some(String::from("default.audio.source")),
-                value: Some(String::from("{\"name\":\"default_source\"}")),
-            },
-        );
+        state.update(StateEvent::MetadataMetadataName {
+            object_id: metadata_id,
+            metadata_name: String::from("default"),
+        });
+        state.update(StateEvent::MetadataProperty {
+            object_id: metadata_id,
+            subject: 0,
+            key: Some(String::from("default.audio.source")),
+            value: Some(String::from("{\"name\":\"default_source\"}")),
+        });
 
         let view = View::from(&wirehose, &state, &config::Names::default());
 
