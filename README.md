@@ -160,6 +160,8 @@ peaks = "auto"
 char_set = "default"
 theme = "default"
 tab = "playback"
+max_volume_percent = 150.0
+enforce_max_volume = false
 ```
 
 ### Keybindings
