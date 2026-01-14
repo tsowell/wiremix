@@ -245,6 +245,10 @@ impl ConfigFile {
             self.mouse = true;
         }
 
+        if opt.double_click_select {
+            self.double_click_select = true;
+        }
+
         if let Some(peaks) = &opt.peaks {
             self.peaks = Some(peaks.clone());
         }
