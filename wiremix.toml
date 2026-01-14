@@ -17,6 +17,11 @@
 # Enable mouse support
 mouse = true
 
+# Enable double-click to set default device (disabled by default)
+# When enabled, double-clicking on a device sets it as the default
+# (same as right-click or pressing 'd')
+double_click_select = false
+
 # Peak meter mode
 # "off" - no meters
 # "mono" - mono meters

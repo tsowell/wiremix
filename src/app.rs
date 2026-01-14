@@ -204,6 +204,8 @@ pub struct App<'a> {
     drag_row: Option<u16>,
     /// Position in help text (None if not showing help)
     help_position: Option<u16>,
+    /// Last left-click info for double-click detection: (timestamp, column, row)
+    last_click: Option<(Instant, u16, u16)>,
 }
 
 macro_rules! current_list {
@@ -279,6 +281,7 @@ impl<'a> App<'a> {
             config,
             drag_row: None,
             help_position: None,
+            last_click: None,
         }
     }
 
@@ -560,6 +563,28 @@ impl Handle for Action {
 
 impl Handle for MouseEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
+        // Double-click detection for left button
+        let is_double_click = if let MouseEventKind::Down(MouseButton::Left) = self.kind {
+            let now = Instant::now();
+            let double_click = if let Some((last_time, last_col, last_row)) = app.last_click {
+                // Check if within 400ms and same position (within 2 pixels tolerance)
+                now.duration_since(last_time) < Duration::from_millis(400)
+                    && (self.column as i16 - last_col as i16).abs() <= 2
+                    && (self.row as i16 - last_row as i16).abs() <= 2
+            } else {
+                false
+            };
+            // Update last click tracking (reset on double-click to prevent triple-click)
+            app.last_click = if double_click {
+                None
+            } else {
+                Some((now, self.column, self.row))
+            };
+            double_click
+        } else {
+            false
+        };
+
         match self.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 app.drag_row = Some(self.row)
@@ -567,6 +592,14 @@ impl Handle for MouseEvent {
             MouseEventKind::Up(MouseButton::Left) => app.drag_row = None,
             _ => {}
         }
+
+        // Determine which event kind to look up actions for
+        let lookup_kind = if is_double_click && app.config.double_click_select {
+            // On double-click, use right-click actions (SetDefault)
+            MouseEventKind::Down(MouseButton::Right)
+        } else {
+            self.kind
+        };
 
         let actions = app
             .mouse_areas
@@ -576,7 +609,7 @@ impl Handle for MouseEvent {
                 rect.contains(Position {
                     x: self.column,
                     y: app.drag_row.unwrap_or(self.row),
-                }) && kinds.contains(&self.kind)
+                }) && kinds.contains(&lookup_kind)
             })
             .map(|(_, _, action)| action.clone())
             .into_iter()
@@ -785,6 +818,7 @@ mod tests {
             remote: None,
             fps: None,
             mouse: false,
+            double_click_select: true,
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
@@ -869,6 +903,7 @@ mod tests {
             remote: None,
             fps: None,
             mouse: false,
+            double_click_select: false,
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
@@ -1043,5 +1078,138 @@ mod tests {
         // 90% is allowed
         assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
         assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
+    }
+
+    // Double-click detection tests
+    mod double_click {
+        use super::*;
+        use std::thread;
+
+        fn make_mouse_event(column: u16, row: u16) -> MouseEvent {
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column,
+                row,
+                modifiers: crossterm::event::KeyModifiers::NONE,
+            }
+        }
+
+        #[test]
+        fn single_click_stores_position() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            assert!(app.last_click.is_none());
+
+            let event = make_mouse_event(10, 5);
+            let _ = event.handle(&mut app);
+
+            assert!(app.last_click.is_some());
+            let (_, col, row) = app.last_click.unwrap();
+            assert_eq!(col, 10);
+            assert_eq!(row, 5);
+        }
+
+        #[test]
+        fn double_click_within_threshold_resets_tracking() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+            assert!(app.last_click.is_some());
+
+            // Second click at same position (simulates double-click)
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+
+            // After double-click, last_click should be reset to None
+            // to prevent triple-click triggering another double-click
+            assert!(app.last_click.is_none());
+        }
+
+        #[test]
+        fn clicks_outside_time_threshold_not_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Wait longer than 400ms threshold
+            thread::sleep(Duration::from_millis(450));
+
+            // Second click at same position
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+
+            // Should NOT be detected as double-click, so last_click is updated
+            // (not reset to None like it would be after a real double-click)
+            assert!(app.last_click.is_some());
+        }
+
+        #[test]
+        fn clicks_outside_position_threshold_not_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click at (10, 5)
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click at (20, 15) - far from first
+            let event2 = make_mouse_event(20, 15);
+            let _ = event2.handle(&mut app);
+
+            // Should NOT be detected as double-click
+            assert!(app.last_click.is_some());
+            let (_, col, row) = app.last_click.unwrap();
+            assert_eq!(col, 20);
+            assert_eq!(row, 15);
+        }
+
+        #[test]
+        fn clicks_within_position_tolerance_is_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click at (10, 5)
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click at (11, 6) - within 2px tolerance
+            let event2 = make_mouse_event(11, 6);
+            let _ = event2.handle(&mut app);
+
+            // Should be detected as double-click (last_click reset)
+            assert!(app.last_click.is_none());
+        }
+
+        #[test]
+        fn after_double_click_next_click_starts_fresh() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click (double-click)
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+            assert!(app.last_click.is_none());
+
+            // Third click should start fresh tracking
+            let event3 = make_mouse_event(10, 5);
+            let _ = event3.handle(&mut app);
+            assert!(app.last_click.is_some());
+
+            // Fourth click should be a new double-click
+            let event4 = make_mouse_event(10, 5);
+            let _ = event4.handle(&mut app);
+            assert!(app.last_click.is_none());
+        }
     }
 }

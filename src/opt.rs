@@ -73,6 +73,12 @@ pub struct Opt {
     pub mouse: bool,
 
     #[clap(
+        long,
+        help = "Enable double-click to set default device"
+    )]
+    pub double_click_select: bool,
+
+    #[clap(
         short = 'v',
         long,
         value_enum,

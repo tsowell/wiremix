@@ -29,6 +29,7 @@ pub struct Config {
     pub remote: Option<String>,
     pub fps: Option<f32>,
     pub mouse: bool,
+    pub double_click_select: bool,
     pub peaks: Peaks,
     pub char_set: CharSet,
     pub theme: Theme,
@@ -50,6 +51,8 @@ struct ConfigFile {
     fps: Option<f32>,
     #[serde(default = "default_mouse")]
     mouse: bool,
+    #[serde(default = "default_double_click_select")]
+    double_click_select: bool,
     #[serde(default = "default_peaks")]
     peaks: Option<Peaks>,
     #[serde(default = "default_char_set_name")]
@@ -195,6 +198,10 @@ fn default_mouse() -> bool {
     true
 }
 
+fn default_double_click_select() -> bool {
+    false
+}
+
 fn default_peaks() -> Option<Peaks> {
     Some(Peaks::default())
 }
@@ -236,6 +243,10 @@ impl ConfigFile {
 
         if opt.mouse {
             self.mouse = true;
+        }
+
+        if opt.double_click_select {
+            self.double_click_select = true;
         }
 
         if let Some(peaks) = &opt.peaks {
@@ -304,6 +315,7 @@ impl TryFrom<ConfigFile> for Config {
             remote: config_file.remote,
             fps: config_file.fps,
             mouse: config_file.mouse,
+            double_click_select: config_file.double_click_select,
             peaks: config_file.peaks.unwrap_or_default(),
             max_volume_percent: config_file
                 .max_volume_percent
@@ -378,6 +390,7 @@ pub mod strict {
         remote: Option<String>,
         fps: Option<f32>,
         mouse: bool,
+        double_click_select: bool,
         peaks: Option<Peaks>,
         char_set: String,
         theme: String,
@@ -399,6 +412,7 @@ pub mod strict {
                 remote: strict.remote,
                 fps: strict.fps,
                 mouse: strict.mouse,
+                double_click_select: strict.double_click_select,
                 peaks: strict.peaks,
                 char_set: strict.char_set,
                 theme: strict.theme,
