@@ -204,6 +204,8 @@ pub struct App<'a> {
     drag_row: Option<u16>,
     /// Position in help text (None if not showing help)
     help_position: Option<u16>,
+    /// Last left-click info for double-click detection: (timestamp, column, row)
+    last_click: Option<(Instant, u16, u16)>,
 }
 
 macro_rules! current_list {
@@ -279,6 +281,7 @@ impl<'a> App<'a> {
             config,
             drag_row: None,
             help_position: None,
+            last_click: None,
         }
     }
 
@@ -560,6 +563,28 @@ impl Handle for Action {
 
 impl Handle for MouseEvent {
     fn handle(self, app: &mut App) -> Result<bool> {
+        // Double-click detection for left button
+        let is_double_click = if let MouseEventKind::Down(MouseButton::Left) = self.kind {
+            let now = Instant::now();
+            let double_click = if let Some((last_time, last_col, last_row)) = app.last_click {
+                // Check if within 400ms and same position (within 2 pixels tolerance)
+                now.duration_since(last_time) < Duration::from_millis(400)
+                    && (self.column as i16 - last_col as i16).abs() <= 2
+                    && (self.row as i16 - last_row as i16).abs() <= 2
+            } else {
+                false
+            };
+            // Update last click tracking (reset on double-click to prevent triple-click)
+            app.last_click = if double_click {
+                None
+            } else {
+                Some((now, self.column, self.row))
+            };
+            double_click
+        } else {
+            false
+        };
+
         match self.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 app.drag_row = Some(self.row)
@@ -567,6 +592,14 @@ impl Handle for MouseEvent {
             MouseEventKind::Up(MouseButton::Left) => app.drag_row = None,
             _ => {}
         }
+
+        // Determine which event kind to look up actions for
+        let lookup_kind = if is_double_click && app.config.double_click_select {
+            // On double-click, use right-click actions (SetDefault)
+            MouseEventKind::Down(MouseButton::Right)
+        } else {
+            self.kind
+        };
 
         let actions = app
             .mouse_areas
@@ -576,7 +609,7 @@ impl Handle for MouseEvent {
                 rect.contains(Position {
                     x: self.column,
                     y: app.drag_row.unwrap_or(self.row),
-                }) && kinds.contains(&self.kind)
+                }) && kinds.contains(&lookup_kind)
             })
             .map(|(_, _, action)| action.clone())
             .into_iter()
@@ -785,6 +818,7 @@ mod tests {
             remote: None,
             fps: None,
             mouse: false,
+            double_click_select: true,
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
@@ -869,6 +903,7 @@ mod tests {
             remote: None,
             fps: None,
             mouse: false,
+            double_click_select: false,
             peaks: Default::default(),
             char_set: Default::default(),
             theme: Default::default(),
