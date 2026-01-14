@@ -1079,4 +1079,137 @@ mod tests {
         assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
         assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
     }
+
+    // Double-click detection tests
+    mod double_click {
+        use super::*;
+        use std::thread;
+
+        fn make_mouse_event(column: u16, row: u16) -> MouseEvent {
+            MouseEvent {
+                kind: MouseEventKind::Down(MouseButton::Left),
+                column,
+                row,
+                modifiers: crossterm::event::KeyModifiers::NONE,
+            }
+        }
+
+        #[test]
+        fn single_click_stores_position() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            assert!(app.last_click.is_none());
+
+            let event = make_mouse_event(10, 5);
+            let _ = event.handle(&mut app);
+
+            assert!(app.last_click.is_some());
+            let (_, col, row) = app.last_click.unwrap();
+            assert_eq!(col, 10);
+            assert_eq!(row, 5);
+        }
+
+        #[test]
+        fn double_click_within_threshold_resets_tracking() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+            assert!(app.last_click.is_some());
+
+            // Second click at same position (simulates double-click)
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+
+            // After double-click, last_click should be reset to None
+            // to prevent triple-click triggering another double-click
+            assert!(app.last_click.is_none());
+        }
+
+        #[test]
+        fn clicks_outside_time_threshold_not_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Wait longer than 400ms threshold
+            thread::sleep(Duration::from_millis(450));
+
+            // Second click at same position
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+
+            // Should NOT be detected as double-click, so last_click is updated
+            // (not reset to None like it would be after a real double-click)
+            assert!(app.last_click.is_some());
+        }
+
+        #[test]
+        fn clicks_outside_position_threshold_not_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click at (10, 5)
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click at (20, 15) - far from first
+            let event2 = make_mouse_event(20, 15);
+            let _ = event2.handle(&mut app);
+
+            // Should NOT be detected as double-click
+            assert!(app.last_click.is_some());
+            let (_, col, row) = app.last_click.unwrap();
+            assert_eq!(col, 20);
+            assert_eq!(row, 15);
+        }
+
+        #[test]
+        fn clicks_within_position_tolerance_is_double_click() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click at (10, 5)
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click at (11, 6) - within 2px tolerance
+            let event2 = make_mouse_event(11, 6);
+            let _ = event2.handle(&mut app);
+
+            // Should be detected as double-click (last_click reset)
+            assert!(app.last_click.is_none());
+        }
+
+        #[test]
+        fn after_double_click_next_click_starts_fresh() {
+            let wirehose = mock::WirehoseHandle::default();
+            let mut app = fixture(&wirehose);
+
+            // First click
+            let event1 = make_mouse_event(10, 5);
+            let _ = event1.handle(&mut app);
+
+            // Second click (double-click)
+            let event2 = make_mouse_event(10, 5);
+            let _ = event2.handle(&mut app);
+            assert!(app.last_click.is_none());
+
+            // Third click should start fresh tracking
+            let event3 = make_mouse_event(10, 5);
+            let _ = event3.handle(&mut app);
+            assert!(app.last_click.is_some());
+
+            // Fourth click should be a new double-click
+            let event4 = make_mouse_event(10, 5);
+            let _ = event4.handle(&mut app);
+            assert!(app.last_click.is_none());
+        }
+    }
 }
