@@ -53,6 +53,7 @@ pub struct StreamData {
     peaks: Arc<[AtomicF32]>,
     peaks_dirty: Arc<AtomicBool>,
     peak_processor: Option<Arc<dyn PeakProcessor>>,
+    buffers_seen: u8,
 }
 
 fn find_peak(samples: &[f32]) -> f32 {
@@ -107,6 +108,7 @@ pub fn capture_node(
         peaks: Default::default(),
         peaks_dirty,
         peak_processor,
+        buffers_seen: 0,
     };
 
     let stream = Stream::new(core, "wiremix-capture", props).ok()?;
@@ -161,9 +163,23 @@ pub fn capture_node(
                 let Some(mut buffer) = stream.dequeue_buffer() else {
                     return;
                 };
+
+                user_data.buffers_seen =
+                    user_data.buffers_seen.saturating_add(1);
+
                 let Some(sender) = sender_weak.upgrade() else {
                     return;
                 };
+
+                // For some reason the first chunk's samples are all 0s.
+                // Also, the second bit of the flags is set despite not being
+                // defined on ChunkFlags. It would be nice to know what's going
+                // on there, but until then, skip the first buffer after
+                // starting capture.
+                if user_data.buffers_seen == 1 {
+                    return;
+                }
+
                 let datas = buffer.datas_mut();
                 if datas.is_empty() {
                     return;
