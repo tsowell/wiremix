@@ -211,6 +211,12 @@ pub fn capture_node(
 
                     if let Some(peak_processor) = &user_data.peak_processor {
                         let _ = user_data.peaks[c].fetch_update(|current| {
+                            // Initialize if this is the first peak.
+                            let current = if user_data.buffers_seen == 2 {
+                                new_peak
+                            } else {
+                                current
+                            };
                             Some(peak_processor.process_peak(
                                 current,
                                 new_peak,
