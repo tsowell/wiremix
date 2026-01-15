@@ -315,7 +315,7 @@ impl State {
                 if let Some(Link { input_id, .. }) =
                     self.links.remove(&object_id)
                 {
-                    if self.inputs(input_id).len() == 1 {
+                    if self.inputs(input_id).is_empty() {
                         if let Some(node) = self.nodes.get(&input_id) {
                             commands.extend(self.on_removed(node));
                         }
