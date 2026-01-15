@@ -38,6 +38,9 @@ max_volume_percent = 150.0
 # Whether to prevent increasing volume past max_volume
 enforce_max_volume = false
 
+# If true, only monitor peak levels of visible nodes
+lazy_capture = false
+
 
 # Keybindings
 #

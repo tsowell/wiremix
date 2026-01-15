@@ -38,6 +38,7 @@ pub struct Config {
     pub help: help::Help,
     pub names: Names,
     pub tab: TabKind,
+    pub lazy_capture: bool,
 }
 
 /// Represents a configuration deserialized from a file. This gets baked into a
@@ -77,6 +78,8 @@ struct ConfigFile {
     themes: HashMap<String, Theme>,
     #[serde(default = "default_tab")]
     tab: Option<TabKind>,
+    #[serde(default = "default_lazy_capture")]
+    lazy_capture: bool,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, clap::ValueEnum)]
@@ -224,6 +227,10 @@ fn default_enforce_max_volume() -> bool {
     false
 }
 
+fn default_lazy_capture() -> bool {
+    false
+}
+
 impl ConfigFile {
     /// Override configuration with command-line arguments.
     pub fn apply_opt(&mut self, opt: &Opt) {
@@ -269,6 +276,14 @@ impl ConfigFile {
 
         if opt.enforce_max_volume {
             self.enforce_max_volume = true;
+        }
+
+        if opt.no_lazy_capture {
+            self.lazy_capture = false;
+        }
+
+        if opt.lazy_capture {
+            self.lazy_capture = true;
         }
     }
 }
@@ -320,6 +335,7 @@ impl TryFrom<ConfigFile> for Config {
             help,
             names: config_file.names,
             tab: config_file.tab.unwrap_or_default(),
+            lazy_capture: config_file.lazy_capture,
         })
     }
 }
@@ -365,6 +381,12 @@ impl Config {
 
         Self::try_from(config_file)
     }
+
+    #[cfg(test)]
+    pub fn from_toml_str(toml: &str) -> Self {
+        let config_file: ConfigFile = toml::from_str(toml).unwrap();
+        Self::try_from(config_file).unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -396,6 +418,7 @@ pub mod strict {
         #[serde(deserialize_with = "themes")]
         themes: HashMap<String, Theme>,
         tab: Option<TabKind>,
+        lazy_capture: bool,
     }
 
     impl From<ConfigFile> for super::ConfigFile {
@@ -414,6 +437,7 @@ pub mod strict {
                 char_sets: strict.char_sets,
                 themes: strict.themes,
                 tab: strict.tab,
+                lazy_capture: strict.lazy_capture,
             }
         }
     }

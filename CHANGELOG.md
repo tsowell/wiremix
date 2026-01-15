@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional lazy capturing, to only monitor peak levels of on-screen nodes.
+
 ### Changed
 
 - Change default target framerate to 60.

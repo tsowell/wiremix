@@ -80,6 +80,11 @@ Options:
           Allow increasing volume past max-volume-percent
       --enforce-max-volume
           Prevent increasing volume past max-volume-percent
+      --no-lazy-capture
+          Monitor peak levels of all nodes
+      --lazy-capture
+          Only monitor peak levels of on-screen nodes (reduces CPU usage, but
+          peaks appear with a slight delay)
   -h, --help
           Print help
   -V, --version
@@ -162,6 +167,7 @@ theme = "default"
 tab = "playback"
 max_volume_percent = 150.0
 enforce_max_volume = false
+lazy_capture = false
 ```
 
 ### Keybindings

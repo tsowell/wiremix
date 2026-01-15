@@ -20,22 +20,53 @@ pub mod trace;
 #[cfg(test)]
 mod mock {
     use crate::wirehose::{CommandSender, ObjectId, PeakProcessor};
+    use std::cell::RefCell;
+    use std::collections::VecDeque;
     use std::sync::{atomic::AtomicBool, Arc};
 
-    #[derive(Default)]
-    pub struct WirehoseHandle {}
+    #[derive(Debug, PartialEq)]
+    pub enum MockCommand {
+        NodeCaptureStart(ObjectId),
+        NodeCaptureStop(ObjectId),
+    }
 
-    impl CommandSender for WirehoseHandle {
+    #[derive(Default)]
+    pub struct WirehoseHandle<'a> {
+        commands: Option<&'a RefCell<VecDeque<MockCommand>>>,
+    }
+
+    impl<'a> WirehoseHandle<'a> {
+        pub fn with_commands(
+            commands: &'a RefCell<VecDeque<MockCommand>>,
+        ) -> Self {
+            Self {
+                commands: Some(commands),
+            }
+        }
+    }
+
+    impl CommandSender for WirehoseHandle<'_> {
         fn node_capture_start(
             &self,
-            _object_id: ObjectId,
+            object_id: ObjectId,
             _object_serial: u64,
             _capture_sink: bool,
             _peaks_dirty: Arc<AtomicBool>,
             _peak_processor: Option<Arc<dyn PeakProcessor>>,
         ) {
+            if let Some(commands) = self.commands {
+                commands
+                    .borrow_mut()
+                    .push_back(MockCommand::NodeCaptureStart(object_id));
+            }
         }
-        fn node_capture_stop(&self, _object_id: ObjectId) {}
+        fn node_capture_stop(&self, object_id: ObjectId) {
+            if let Some(commands) = self.commands {
+                commands
+                    .borrow_mut()
+                    .push_back(MockCommand::NodeCaptureStop(object_id));
+            }
+        }
         fn node_mute(&self, _object_id: ObjectId, _mute: bool) {}
         fn node_volumes(&self, _object_id: ObjectId, _volumes: Vec<f32>) {}
         fn device_mute(

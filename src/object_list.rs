@@ -565,7 +565,7 @@ mod tests {
     use crate::wirehose::{state::State, PropertyStore, StateEvent};
     use std::sync::Arc;
 
-    fn init() -> (State, mock::WirehoseHandle) {
+    fn init() -> (State, mock::WirehoseHandle<'static>) {
         let mut state = State::default();
         let wirehose = mock::WirehoseHandle::default();
 

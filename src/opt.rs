@@ -72,6 +72,15 @@ pub struct Opt {
     #[clap(long, conflicts_with = "no_enforce_max_volume")]
     pub enforce_max_volume: bool,
 
+    /// Monitor peak levels of all nodes
+    #[clap(long, conflicts_with = "lazy_capture")]
+    pub no_lazy_capture: bool,
+
+    /// Only monitor peak levels of on-screen nodes (reduces CPU usage, but
+    /// peaks appear with a slight delay)
+    #[clap(long, conflicts_with = "no_lazy_capture")]
+    pub lazy_capture: bool,
+
     #[cfg(debug_assertions)]
     #[clap(short, long)]
     pub dump_events: bool,

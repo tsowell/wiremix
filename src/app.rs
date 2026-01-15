@@ -206,6 +206,8 @@ pub struct App<'a> {
     visible_objects: HashSet<ObjectId>,
     /// Callback for peak ballistics.
     peak_processor: Arc<dyn PeakProcessor>,
+    /// Objects eligible for capture.
+    capturable_objects: HashSet<ObjectId>,
     /// Objects currently being captured.
     capturing_objects: HashSet<ObjectId>,
 }
@@ -283,6 +285,7 @@ impl<'a> App<'a> {
             help_position: None,
             visible_objects: HashSet::new(),
             peak_processor: Arc::new(peak_processor),
+            capturable_objects: HashSet::new(),
             capturing_objects: HashSet::new(),
         }
     }
@@ -314,8 +317,11 @@ impl<'a> App<'a> {
 
             let new_visible_objects =
                 current_list!(self).visible_objects(&frame.area(), &self.view);
-            needs_render |= new_visible_objects != self.visible_objects;
-            self.visible_objects = new_visible_objects;
+            if new_visible_objects != self.visible_objects {
+                needs_render = true;
+                self.visible_objects = new_visible_objects;
+                self.update_capturing();
+            }
 
             if needs_render && pacer.is_time_to_render() {
                 needs_render = false;
@@ -357,7 +363,18 @@ impl<'a> App<'a> {
         self.error_message = error_message;
     }
 
+    fn stop_capture(&mut self, object_id: ObjectId) {
+        self.capturing_objects.remove(&object_id);
+        self.wirehose.node_capture_stop(object_id);
+    }
+
     fn start_capture(&mut self, object_id: ObjectId) {
+        if self.config.lazy_capture
+            && !self.visible_objects.contains(&object_id)
+        {
+            return;
+        }
+
         let Some(node) = self.state.nodes.get(&object_id) else {
             return;
         };
@@ -385,6 +402,34 @@ impl<'a> App<'a> {
         );
     }
 
+    /// If lazy capture is enabled, make sure visible nodes are captured and
+    /// non-visible nodes are not.
+    fn update_capturing(&mut self) {
+        if !self.config.lazy_capture {
+            return;
+        }
+
+        let need_to_start: Vec<_> = self
+            .visible_objects
+            .intersection(&self.capturable_objects)
+            .copied()
+            .collect();
+        for object_id in need_to_start {
+            if !self.capturing_objects.contains(&object_id) {
+                self.start_capture(object_id);
+            }
+        }
+
+        let need_to_stop: Vec<_> = self
+            .capturing_objects
+            .difference(&self.visible_objects)
+            .copied()
+            .collect();
+        for object_id in need_to_stop {
+            self.stop_capture(object_id);
+        }
+    }
+
     fn set_capture_eligibility(
         &mut self,
         capture_eligibility: CaptureEligibility,
@@ -395,16 +440,18 @@ impl<'a> App<'a> {
 
         match capture_eligibility {
             CaptureEligibility::Eligible(object_id) => {
+                self.capturable_objects.insert(object_id);
                 if !self.capturing_objects.contains(&object_id) {
                     self.start_capture(object_id);
                 }
             }
             CaptureEligibility::NeedsRestart(object_id) => {
+                self.capturable_objects.insert(object_id);
                 self.start_capture(object_id);
             }
             CaptureEligibility::Ineligible(object_id) => {
-                self.capturing_objects.remove(&object_id);
-                self.wirehose.node_capture_stop(object_id);
+                self.capturable_objects.remove(&object_id);
+                self.stop_capture(object_id);
             }
         }
     }
@@ -829,10 +876,12 @@ mod tests {
     use super::*;
     use crate::mock;
     use crate::wirehose::PropertyStore;
+    use std::cell::RefCell;
+    use std::collections::VecDeque;
     use std::sync::Arc;
     use strum::IntoEnumIterator;
 
-    fn fixture(wirehose: &mock::WirehoseHandle) -> App<'_> {
+    fn fixture<'a>(wirehose: &'a mock::WirehoseHandle<'a>) -> App<'a> {
         let (_, event_rx) = mpsc::channel();
 
         let config = Config {
@@ -848,6 +897,7 @@ mod tests {
             help: Default::default(),
             names: Default::default(),
             tab: Default::default(),
+            lazy_capture: Default::default(),
         };
 
         let mut app = App::new(wirehose, event_rx, config);
@@ -892,6 +942,17 @@ mod tests {
         app
     }
 
+    fn add_capturable_node(app: &mut App<'_>, object_id: ObjectId) {
+        let mut props = PropertyStore::default();
+        props.set_node_description(String::from("Test node"));
+        props.set_media_class(String::from("Stream/Output/Audio"));
+        props.set_object_serial(u32::from(object_id) as u64);
+
+        StateEvent::NodeProperties { object_id, props }
+            .handle(app)
+            .unwrap();
+    }
+
     #[test]
     fn select_tab_bounds() {
         let wirehose = mock::WirehoseHandle::default();
@@ -928,6 +989,7 @@ mod tests {
             help: Default::default(),
             names: Default::default(),
             tab: Default::default(),
+            lazy_capture: Default::default(),
         };
         let mut app = App::new(&wirehose, event_rx, config);
 
@@ -1093,5 +1155,149 @@ mod tests {
         // 90% is allowed
         assert!(Action::SetRelativeVolume(-0.10).handle(&mut app).unwrap());
         assert!(Action::SetAbsoluteVolume(0.90).handle(&mut app).unwrap());
+    }
+
+    #[test]
+    fn update_capturing_noop_when_lazy_disabled() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = false");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+
+        // Mark as capturable and visible
+        app.capturable_objects.insert(id);
+        app.visible_objects.insert(id);
+        commands.borrow_mut().clear();
+
+        // update_capturing should do nothing when lazy_capture is false
+        app.update_capturing();
+
+        assert!(commands.borrow().is_empty());
+    }
+
+    #[test]
+    fn update_capturing_starts_visible_capturable() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = true");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+
+        // Mark as capturable and visible, but not yet capturing
+        app.capturable_objects.insert(id);
+        app.visible_objects.insert(id);
+        commands.borrow_mut().clear();
+
+        app.update_capturing();
+
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStart(id))
+        );
+        assert!(app.capturing_objects.contains(&id));
+    }
+
+    #[test]
+    fn update_capturing_stops_invisible() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = true");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+
+        // Node is capturing but no longer visible
+        app.capturable_objects.insert(id);
+        app.capturing_objects.insert(id);
+        // visible_objects does NOT contain id
+        commands.borrow_mut().clear();
+
+        app.update_capturing();
+
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStop(id))
+        );
+        assert!(!app.capturing_objects.contains(&id));
+    }
+
+    #[test]
+    fn set_capture_eligibility_eligible_starts_capture() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = false");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+        // Reset state: node exists but isn't capturing yet
+        app.capturing_objects.clear();
+        app.capturable_objects.clear();
+        commands.borrow_mut().clear();
+
+        app.set_capture_eligibility(CaptureEligibility::Eligible(id));
+
+        assert!(app.capturable_objects.contains(&id));
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStart(id))
+        );
+    }
+
+    #[test]
+    fn set_capture_eligibility_eligible_skips_invisible_when_lazy() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = true");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+        // id is NOT in visible_objects
+        commands.borrow_mut().clear();
+
+        app.set_capture_eligibility(CaptureEligibility::Eligible(id));
+
+        // Should be capturable but not actually capturing
+        assert!(app.capturable_objects.contains(&id));
+        assert!(commands.borrow().is_empty());
+        assert!(!app.capturing_objects.contains(&id));
+    }
+
+    #[test]
+    fn set_capture_eligibility_ineligible_stops_capture() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let (_, event_rx) = mpsc::channel();
+        let config = Config::from_toml_str("lazy_capture = false");
+        let mut app = App::new(&wirehose, event_rx, config);
+
+        let id = ObjectId::from_raw_id(1);
+        add_capturable_node(&mut app, id);
+
+        // Start capturing first
+        app.capturable_objects.insert(id);
+        app.capturing_objects.insert(id);
+        commands.borrow_mut().clear();
+
+        app.set_capture_eligibility(CaptureEligibility::Ineligible(id));
+
+        assert!(!app.capturable_objects.contains(&id));
+        assert!(!app.capturing_objects.contains(&id));
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStop(id))
+        );
     }
 }
