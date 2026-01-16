@@ -11,8 +11,8 @@
 # PipeWire remote to connect to
 #remote = "pipewire-0"
 
-# Limit rendering frames per second (unlimited if unset)
-#fps = 60.0 #
+# Limit rendering frames per second (unlimited if 0.0)
+fps = 60.0
 
 # Enable mouse support
 mouse = true

@@ -15,7 +15,7 @@ const VERSION: &str = match option_env!("VERGEN_GIT_DESCRIBE") {
     None => concat!("v", env!("CARGO_PKG_VERSION")),
 };
 
-#[derive(Parser)]
+#[derive(Parser, Default)]
 #[clap(name = "wiremix", about = "PipeWire mixer")]
 #[command(version = VERSION)]
 pub struct Opt {

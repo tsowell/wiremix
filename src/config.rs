@@ -47,6 +47,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 struct ConfigFile {
     remote: Option<String>,
+    #[serde(default = "default_fps")]
     fps: Option<f32>,
     #[serde(default = "default_mouse")]
     mouse: bool,
@@ -191,6 +192,10 @@ pub struct Theme {
     pub help_more: Style,
 }
 
+fn default_fps() -> Option<f32> {
+    Some(60.0)
+}
+
 fn default_mouse() -> bool {
     true
 }
@@ -302,7 +307,7 @@ impl TryFrom<ConfigFile> for Config {
 
         Ok(Self {
             remote: config_file.remote,
-            fps: config_file.fps,
+            fps: config_file.fps.filter(|&fps| fps != 0.0),
             mouse: config_file.mouse,
             peaks: config_file.peaks.unwrap_or_default(),
             max_volume_percent: config_file
@@ -512,5 +517,68 @@ mod tests {
         let default: ConfigFile = toml::from_str("").unwrap();
 
         assert_eq!(default, example.into());
+    }
+
+    #[test]
+    fn fps_defaults_to_60() {
+        let config: ConfigFile = toml::from_str("").unwrap();
+        assert_eq!(config.fps, Some(60.0));
+    }
+
+    #[test]
+    fn fps_can_be_overridden() {
+        let config: ConfigFile = toml::from_str("fps = 30.0").unwrap();
+        assert_eq!(config.fps, Some(30.0));
+    }
+
+    #[test]
+    fn fps_zero_means_unlimited() {
+        let config_file: ConfigFile = toml::from_str("fps = 0.0").unwrap();
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.fps, None);
+    }
+
+    #[test]
+    fn opt_fps_zero_overrides_config_fps() {
+        let mut config_file: ConfigFile = toml::from_str("fps = 30.0").unwrap();
+        let opt = Opt {
+            fps: Some(0.0),
+            ..Default::default()
+        };
+        config_file.apply_opt(&opt);
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.fps, None);
+    }
+
+    #[test]
+    fn opt_fps_overrides_config_unlimited() {
+        let mut config_file: ConfigFile = toml::from_str("fps = 0.0").unwrap();
+        let opt = Opt {
+            fps: Some(60.0),
+            ..Default::default()
+        };
+        config_file.apply_opt(&opt);
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.fps, Some(60.0));
+    }
+
+    #[test]
+    fn opt_fps_none_preserves_config_fps() {
+        let mut config_file: ConfigFile = toml::from_str("fps = 30.0").unwrap();
+        config_file.apply_opt(&Default::default());
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.fps, Some(30.0));
+    }
+
+    #[test]
+    fn opt_fps_overrides_config_fps() {
+        let mut config_file: ConfigFile = toml::from_str("fps = 20.0").unwrap();
+        let opt = Opt {
+            fps: Some(30.0),
+            ..Default::default()
+        };
+        config_file.apply_opt(&opt);
+        let config = Config::try_from(config_file).unwrap();
+        assert_eq!(config.fps, Some(30.0));
     }
 }
