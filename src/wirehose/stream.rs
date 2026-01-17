@@ -218,10 +218,10 @@ pub fn capture_node(
                                 current
                             };
                             Some(peak_processor.process_peak(
-                                current,
                                 new_peak,
-                                user_data.format.rate(),
+                                current,
                                 n_samples,
+                                user_data.format.rate(),
                             ))
                         });
                     } else {

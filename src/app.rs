@@ -255,7 +255,7 @@ impl<'a> App<'a> {
         ];
 
         // Update peaks with VU-meter-style ballistics
-        let peak_processor = |current_peak, new_peak, rate, samples| {
+        let peak_processor = |new_peak, current_peak, samples, rate| {
             // Attack/release time of 300 ms
             let time_constant = 0.3;
             let coef =
