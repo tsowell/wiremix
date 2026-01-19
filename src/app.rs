@@ -817,6 +817,26 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
         };
         widget.render(list_area, buf, state.mouse_areas);
 
+        // Render help indicator in bottom right corner
+        let help_text = "Help ?";
+        let help_width = help_text.len() as u16;
+        let help_area = Rect::new(
+            area.x
+                .saturating_add(area.width.saturating_sub(help_width + 1)),
+            area.y.saturating_add(area.height.saturating_sub(1)),
+            help_width,
+            1,
+        );
+
+        Line::from(Span::styled(help_text, self.config.theme.help_border))
+            .render(help_area, buf);
+
+        state.mouse_areas.push((
+            help_area,
+            smallvec![MouseEventKind::Down(MouseButton::Left)],
+            smallvec![Action::Help],
+        ));
+
         // Render the help menu if it's open
         if let Some(ref mut help_position) = state.help_position {
             // Ignore any mouse actions on the lower area
