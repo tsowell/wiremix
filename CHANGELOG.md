@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Endpoints with the media.name prop (notably AirPods) were using that instead
+  of the proper name templates.
+
 ## [0.9.0] - 2026-01-27
 
 ### Added
