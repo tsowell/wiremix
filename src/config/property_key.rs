@@ -51,3 +51,84 @@ impl std::str::FromStr for PropertyKey {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn parse_bare() {
+        assert_eq!(
+            PropertyKey::from_str("volume").unwrap(),
+            PropertyKey::Bare("volume".into())
+        );
+    }
+
+    #[test]
+    fn parse_device() {
+        assert_eq!(
+            PropertyKey::from_str("device:alsa.name").unwrap(),
+            PropertyKey::Device("alsa.name".into())
+        );
+    }
+
+    #[test]
+    fn parse_node() {
+        assert_eq!(
+            PropertyKey::from_str("node:media.class").unwrap(),
+            PropertyKey::Node("media.class".into())
+        );
+    }
+
+    #[test]
+    fn parse_client() {
+        assert_eq!(
+            PropertyKey::from_str("client:application.name").unwrap(),
+            PropertyKey::Client("application.name".into())
+        );
+    }
+
+    #[test]
+    fn empty_bare_is_error() {
+        assert!(PropertyKey::from_str("").is_err());
+    }
+
+    #[test]
+    fn empty_prefixed_is_error() {
+        assert!(PropertyKey::from_str("device:").is_err());
+        assert!(PropertyKey::from_str("node:").is_err());
+        assert!(PropertyKey::from_str("client:").is_err());
+    }
+
+    #[test]
+    fn roundtrip_bare() {
+        let key = PropertyKey::from_str("volume").unwrap();
+        assert_eq!(PropertyKey::from_str(&key.to_string()).unwrap(), key);
+    }
+
+    #[test]
+    fn roundtrip_prefixed() {
+        for input in ["device:foo", "node:bar", "client:baz"] {
+            let key = PropertyKey::from_str(input).unwrap();
+            assert_eq!(key.to_string(), input);
+        }
+    }
+
+    #[test]
+    fn to_string_formats() {
+        assert_eq!(PropertyKey::Device("x".into()).to_string(), "device:x");
+        assert_eq!(PropertyKey::Node("x".into()).to_string(), "node:x");
+        assert_eq!(PropertyKey::Client("x".into()).to_string(), "client:x");
+        assert_eq!(PropertyKey::Bare("x".into()).to_string(), "x");
+    }
+
+    #[test]
+    fn unknown_prefix_is_bare() {
+        // "other:foo" doesn't match any known prefix, so it's Bare
+        assert_eq!(
+            PropertyKey::from_str("other:foo").unwrap(),
+            PropertyKey::Bare("other:foo".into())
+        );
+    }
+}
