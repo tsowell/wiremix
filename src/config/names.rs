@@ -104,7 +104,7 @@ impl PropertyResolver for state::Device {
         key: &PropertyKey,
     ) -> Option<&'a str> {
         match key {
-            PropertyKey::Device(s) => self.props.raw(s),
+            PropertyKey::Device(s) | PropertyKey::Bare(s) => self.props.raw(s),
             PropertyKey::Node(_) => None,
             PropertyKey::Client(_) => None,
         }
@@ -139,7 +139,7 @@ impl PropertyResolver for state::Node {
         key: &PropertyKey,
     ) -> Option<&'a str> {
         match key {
-            PropertyKey::Node(s) => self.props.raw(s),
+            PropertyKey::Node(s) | PropertyKey::Bare(s) => self.props.raw(s),
             PropertyKey::Device(_) => {
                 let device = state.devices.get(self.props.device_id()?)?;
                 device.resolve_key(state, key)
@@ -193,7 +193,7 @@ impl PropertyResolver for state::Client {
         key: &PropertyKey,
     ) -> Option<&'a str> {
         match key {
-            PropertyKey::Client(s) => self.props.raw(s),
+            PropertyKey::Client(s) | PropertyKey::Bare(s) => self.props.raw(s),
             PropertyKey::Node(_) => None,
             PropertyKey::Device(_) => None,
         }

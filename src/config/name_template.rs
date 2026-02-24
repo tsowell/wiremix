@@ -155,13 +155,6 @@ mod tests {
     }
 
     #[test]
-    fn unimplemented_tag() {
-        let s = String::from("Hello {world}");
-        let template: Result<NameTemplate, _> = s.parse();
-        assert!(template.is_err());
-    }
-
-    #[test]
     fn escapes() {
         let s = String::from("Hello }} {{ {{ {node:node.name} }}");
         let template: Result<NameTemplate, _> = s.parse();

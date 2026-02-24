@@ -8,6 +8,7 @@ pub enum PropertyKey {
     Device(String),
     Node(String),
     Client(String),
+    Bare(String),
 }
 
 #[allow(clippy::to_string_trait_impl)] // This is not for display.
@@ -23,6 +24,7 @@ impl ToString for PropertyKey {
             PropertyKey::Client(s) => {
                 format!("client:{s}")
             }
+            PropertyKey::Bare(s) => s.to_string(),
         }
     }
 }
@@ -31,14 +33,21 @@ impl std::str::FromStr for PropertyKey {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(key) = s.strip_prefix("client:") {
-            Ok(PropertyKey::Client(String::from(key)))
-        } else if let Some(key) = s.strip_prefix("device:") {
-            Ok(PropertyKey::Device(String::from(key)))
-        } else if let Some(key) = s.strip_prefix("node:") {
-            Ok(PropertyKey::Node(String::from(key)))
+        let (variant, key): (fn(String) -> PropertyKey, &str) =
+            if let Some(key) = s.strip_prefix("client:") {
+                (PropertyKey::Client, key)
+            } else if let Some(key) = s.strip_prefix("device:") {
+                (PropertyKey::Device, key)
+            } else if let Some(key) = s.strip_prefix("node:") {
+                (PropertyKey::Node, key)
+            } else {
+                (PropertyKey::Bare, s)
+            };
+
+        if key.is_empty() {
+            Err(format!("Empty property name in \"{s}\""))
         } else {
-            Err(format!("\"{s}\" is not implemented"))
+            Ok(variant(String::from(key)))
         }
     }
 }

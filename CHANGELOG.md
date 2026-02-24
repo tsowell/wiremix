@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Tags no longer require a type prefix. If there is no prefix, it refers to the
+  property on the object itself.
+
 ### Fixed
 
 - Endpoints with the media.name prop (notably AirPods) were using that instead

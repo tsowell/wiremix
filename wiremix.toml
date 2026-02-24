@@ -138,17 +138,19 @@ keybindings = [
 # wiremix will replace the property tags with the properties from the PipeWire
 # object being displayed.
 #
-# The first part of a tag specifies the object type - device, node, or client,
-# and the second part specifies the property.
+# A tag can be just a property name, like {media.name} which refers to the
+# property on the object itself. Tags can also include a type prefix to refer
+# to a linked object. The available type prefixes are: device, node, and
+# client.
+#
+# Streams can have linked clients, so node and client properties are valid for
+# stream. Similarly, endpoint can use either node or device properties. Only
+# device properties are valid for device.
 #
 # You can use pw-dump(1) to inspect the available properties.
 #
 # Literal curly braces can be escaped by doubling them: {{ become { and }}
 # becomes }.
-#
-# Streams can have linked clients, so node and client properties are valid for
-# stream. Similarly, endpoint can use either node or device properties. Only
-# device properties are valid for device.
 #
 
 # Each option in names is an array - if a template can't be resolved because it
