@@ -177,9 +177,8 @@ device = [ "{device:device.nick}", "{device:device.description}" ]
 # matching a given criterion.
 #
 # An override is matched by type, which contains a list of one or more of
-# stream, endpoint, or device (see the Name section for more details), and a
-# property value. Any node or device property that can be used in the names
-# section can be used to match an override.
+# stream, endpoint, or device (see the Name section for more details), and
+# match rules. Match rules are explained in detail in the next section.
 #
 # There are no default overrides, but here is an example. This causes all
 # streams whose node.name is "spotify" to use just "{node:node.name}" as its
@@ -188,15 +187,45 @@ device = [ "{device:device.nick}", "{device:device.description}" ]
 # [[names.overrides]]
 # # Which object types this override applies to
 # types = [ "stream" ]
-# # The property to match
-# property = "node:node.name"
-# # The value to match
-# value = "spotify"
+# # The match rules
+# matches = [ { "node:node.name" = "spotify" } ]
 # # Templates to use when the property value matches
 # templates = [ "{node:node.name}" ]
 #
 # You can have multiple name overrides, each in its own [[names.overrides]]
 # section.
+
+
+# Match Rules
+#
+# Match rules follow the PipeWire format (see the MATCH RULES section of
+# pipewire.conf(5)), except for two differences:
+#
+# 1. For regular expressions, wiremix uses the syntax from the regex crate
+#    (https://docs.rs/regex/latest/regex/)
+#
+# 2. node:/device:/client: prefixes can be used to match against properties in
+#    a linked object (see the Names section above).
+#
+# # If any set of properties matches, the match succeeds.
+# matches = [
+#   # All keys in a set must match their values.
+#   { "node.virtual" = "true", "media.class" = "Audio/Sink" },
+#   # ~ starts a regex
+#   { "media.class" = "~.*Audio.*" }
+#   # ! negates a condition
+#   { "node.name" = "!~my_.*" }
+#   # ! can be used with or without a regular expression
+#   { "client:application.process.binary" = "!firefox" }
+#   # "null" matches if the property is unset
+#   { "node.name" = "null" }
+#   # "!null" matches if the property exists
+#   { "node.name" = "!null" }
+#   # Match the string "null"
+#   { "node.name" = "\"null\"" }
+#   # Match anything but the string "null"
+#   { "node.name" = "!\"null\"" }
+# ]
 
 
 # Themes

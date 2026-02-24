@@ -277,8 +277,7 @@ I use these overrides with the default names:
 # this device is "USB-C to 3.5mm Headphone Jack Adapter".
 [[names.overrides]]
 types = [ "endpoint", "device" ]
-property = "device:device.name"
-value = "alsa_card.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH841302FEJKLTA3-00"
+matches = [ { "device:device.name" = "alsa_card.usb-Apple__Inc._USB-C_to_3.5mm_Headphone_Jack_Adapter_DWH841302FEJKLTA3-00" } ]
 templates = [ "{device:device.description}" ]
 
 # The Spotify client's node.name is "spotify", and it also uses "Spotify" for
@@ -286,8 +285,7 @@ templates = [ "{device:device.description}" ]
 # as "spotify" instead of "spotify: Spotify".
 [[names.overrides]]
 types = [ "stream" ]
-property = "node:node.name"
-value = "spotify"
+matches = [ { "node.name" = "spotify" } ]
 templates = [ "{node:node.name}" ]
 
 # mpv is also a bit redundant with the default naming scheme - it suffixes
@@ -295,7 +293,6 @@ templates = [ "{node:node.name}" ]
 # of "mpv: foo - mpv".
 [[names.overrides]]
 types = [ "stream" ]
-property = "node:node.name"
-value = "mpv"
+matches = [ { "node.name" = "mpv" } ]
 templates = [ "{node:media.name}" ]
 ```

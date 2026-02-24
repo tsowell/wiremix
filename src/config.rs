@@ -3,6 +3,8 @@
 mod char_set;
 mod help;
 mod keybinding;
+mod matching;
+mod name_override;
 mod name_template;
 mod names;
 mod property_key;
@@ -122,13 +124,11 @@ pub enum OverrideType {
     Device,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-#[serde(deny_unknown_fields)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
-    pub property: names::PropertyKey,
-    pub value: String,
+    pub matches: Vec<matching::MatchCondition>,
     pub templates: Vec<names::NameTemplate>,
 }
 
@@ -604,5 +604,16 @@ mod tests {
         config_file.apply_opt(&opt);
         let config = Config::try_from(config_file).unwrap();
         assert_eq!(config.fps, Some(30.0));
+    }
+
+    #[test]
+    fn name_override_with_matches() {
+        let config = r#"
+            [[names.overrides]]
+            types = ["stream"]
+            matches = [{ "node:node.name" = "spotify" }]
+            templates = ["{node:node.name}"]
+        "#;
+        assert_eq!(Config::from_toml_str(config).names.overrides.len(), 1);
     }
 }

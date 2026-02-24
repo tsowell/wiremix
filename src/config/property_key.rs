@@ -2,8 +2,9 @@
 
 use serde_with::DeserializeFromStr;
 
-#[derive(Debug, Clone, DeserializeFromStr)]
-#[cfg_attr(test, derive(PartialEq))]
+use crate::wirehose::state;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, DeserializeFromStr)]
 pub enum PropertyKey {
     Device(String),
     Node(String),
@@ -48,6 +49,66 @@ impl std::str::FromStr for PropertyKey {
             Err(format!("Empty property name in \"{s}\""))
         } else {
             Ok(variant(String::from(key)))
+        }
+    }
+}
+
+pub trait PropertyResolver {
+    fn resolve_key<'a>(
+        &'a self,
+        state: &'a state::State,
+        key: &PropertyKey,
+    ) -> Option<&'a str>;
+}
+
+impl PropertyResolver for state::Device {
+    /// Resolve a key using Device.
+    fn resolve_key<'a>(
+        &'a self,
+        _state: &'a state::State,
+        key: &PropertyKey,
+    ) -> Option<&'a str> {
+        match key {
+            PropertyKey::Device(s) | PropertyKey::Bare(s) => self.props.raw(s),
+            PropertyKey::Node(_) => None,
+            PropertyKey::Client(_) => None,
+        }
+    }
+}
+
+impl PropertyResolver for state::Node {
+    /// Resolve a key using Node. Falls back on resolving using the linked
+    /// Device, if present.
+    fn resolve_key<'a>(
+        &'a self,
+        state: &'a state::State,
+        key: &PropertyKey,
+    ) -> Option<&'a str> {
+        match key {
+            PropertyKey::Node(s) | PropertyKey::Bare(s) => self.props.raw(s),
+            PropertyKey::Device(_) => {
+                let device = state.devices.get(self.props.device_id()?)?;
+                device.resolve_key(state, key)
+            }
+            PropertyKey::Client(_) => {
+                let client = state.clients.get(self.props.client_id()?)?;
+                client.resolve_key(state, key)
+            }
+        }
+    }
+}
+
+impl PropertyResolver for state::Client {
+    /// Resolve a key using Client.
+    fn resolve_key<'a>(
+        &'a self,
+        _state: &'a state::State,
+        key: &PropertyKey,
+    ) -> Option<&'a str> {
+        match key {
+            PropertyKey::Client(s) | PropertyKey::Bare(s) => self.props.raw(s),
+            PropertyKey::Node(_) => None,
+            PropertyKey::Device(_) => None,
         }
     }
 }

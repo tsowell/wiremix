@@ -5,7 +5,7 @@ use crate::config;
 use crate::wirehose::state;
 
 pub use crate::config::name_template::NameTemplate;
-pub use crate::config::property_key::PropertyKey;
+use crate::config::property_key::PropertyResolver;
 use crate::config::Names;
 use crate::wirehose::media_class;
 
@@ -64,14 +64,6 @@ impl Default for Names {
     }
 }
 
-pub trait PropertyResolver {
-    fn resolve_key<'a>(
-        &'a self,
-        state: &'a state::State,
-        key: &PropertyKey,
-    ) -> Option<&'a str>;
-}
-
 pub trait NameResolver: PropertyResolver {
     fn fallback(&self) -> Option<&String>;
 
@@ -89,25 +81,12 @@ pub trait NameResolver: PropertyResolver {
     ) -> Option<&'a Vec<NameTemplate>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
-                && self.resolve_key(state, &name_override.property)
-                    == Some(&name_override.value))
+                && name_override
+                    .matches
+                    .iter()
+                    .any(|condition| condition.matches(state, self)))
             .then_some(&name_override.templates)
         })
-    }
-}
-
-impl PropertyResolver for state::Device {
-    /// Resolve a key using Device.
-    fn resolve_key<'a>(
-        &'a self,
-        _state: &'a state::State,
-        key: &PropertyKey,
-    ) -> Option<&'a str> {
-        match key {
-            PropertyKey::Device(s) | PropertyKey::Bare(s) => self.props.raw(s),
-            PropertyKey::Node(_) => None,
-            PropertyKey::Client(_) => None,
-        }
     }
 }
 
@@ -127,28 +106,6 @@ impl NameResolver for state::Device {
             config::OverrideType::Device,
         )
         .unwrap_or(&names.device)
-    }
-}
-
-impl PropertyResolver for state::Node {
-    /// Resolve a key using Node. Falls back on resolving using the linked
-    /// Device, if present.
-    fn resolve_key<'a>(
-        &'a self,
-        state: &'a state::State,
-        key: &PropertyKey,
-    ) -> Option<&'a str> {
-        match key {
-            PropertyKey::Node(s) | PropertyKey::Bare(s) => self.props.raw(s),
-            PropertyKey::Device(_) => {
-                let device = state.devices.get(self.props.device_id()?)?;
-                device.resolve_key(state, key)
-            }
-            PropertyKey::Client(_) => {
-                let client = state.clients.get(self.props.client_id()?)?;
-                client.resolve_key(state, key)
-            }
-        }
     }
 }
 
@@ -185,26 +142,13 @@ impl NameResolver for state::Node {
     }
 }
 
-impl PropertyResolver for state::Client {
-    /// Resolve a key using Client.
-    fn resolve_key<'a>(
-        &'a self,
-        _state: &'a state::State,
-        key: &PropertyKey,
-    ) -> Option<&'a str> {
-        match key {
-            PropertyKey::Client(s) | PropertyKey::Bare(s) => self.props.raw(s),
-            PropertyKey::Node(_) => None,
-            PropertyKey::Device(_) => None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::config::matching::{MatchCondition, MatchValue};
+    use crate::config::property_key::PropertyKey;
     use crate::config::{NameOverride, Names, OverrideType};
     use crate::wirehose::{state::State, ObjectId, PropertyStore, StateEvent};
+    use std::collections::HashMap;
 
     #[test]
     fn default_stream() {
@@ -471,8 +415,10 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: PropertyKey::Node(String::from("node.name")),
-                value: String::from("Node name"),
+                matches: vec![MatchCondition(HashMap::from([(
+                    PropertyKey::Node(String::from("node.name")),
+                    MatchValue::Literal(String::from("Node name")),
+                )]))],
                 templates: vec![
                     "{node:node.description}".parse().unwrap(),
                     "{node:node.nick}".parse().unwrap(),
@@ -493,8 +439,10 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: PropertyKey::Node(String::from("node.name")),
-                value: String::from("Node name"),
+                matches: vec![MatchCondition(HashMap::from([(
+                    PropertyKey::Node(String::from("node.name")),
+                    MatchValue::Literal(String::from("Node name")),
+                )]))],
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
             ..Default::default()
@@ -512,8 +460,10 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: PropertyKey::Node(String::from("node.description")),
-                value: String::from("Node name"),
+                matches: vec![MatchCondition(HashMap::from([(
+                    PropertyKey::Node(String::from("node.description")),
+                    MatchValue::Literal(String::from("Node name")),
+                )]))],
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
             ..Default::default()
@@ -531,8 +481,10 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: PropertyKey::Node(String::from("node.name")),
-                value: String::from("Node name"),
+                matches: vec![MatchCondition(HashMap::from([(
+                    PropertyKey::Node(String::from("node.name")),
+                    MatchValue::Literal(String::from("Node name")),
+                )]))],
                 templates: vec![],
             }],
             ..Default::default()
