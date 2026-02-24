@@ -5,7 +5,7 @@ use crate::config;
 use crate::wirehose::state;
 
 pub use crate::config::name_template::NameTemplate;
-pub use crate::config::tag::Tag;
+pub use crate::config::property_key::PropertyKey;
 use crate::config::Names;
 use crate::wirehose::media_class;
 
@@ -38,7 +38,7 @@ impl Names {
     /// 1. Overrides
     /// 2. Stream/endpoint/device default templates
     /// 3. Fallback
-    pub fn resolve<T: TagResolver + NameResolver>(
+    pub fn resolve<T: PropertyResolver + NameResolver>(
         &self,
         state: &state::State,
         resolver: &T,
@@ -47,7 +47,7 @@ impl Names {
             .templates(state, self)
             .iter()
             .find_map(|template| {
-                template.render(|tag| resolver.resolve_tag(state, tag))
+                template.render(|key| resolver.resolve_key(state, key))
             })
             .or(resolver.fallback().cloned())
     }
@@ -64,15 +64,15 @@ impl Default for Names {
     }
 }
 
-pub trait TagResolver {
-    fn resolve_tag<'a>(
+pub trait PropertyResolver {
+    fn resolve_key<'a>(
         &'a self,
         state: &'a state::State,
-        tag: &Tag,
+        key: &PropertyKey,
     ) -> Option<&'a str>;
 }
 
-pub trait NameResolver: TagResolver {
+pub trait NameResolver: PropertyResolver {
     fn fallback(&self) -> Option<&String>;
 
     fn templates<'a>(
@@ -89,24 +89,24 @@ pub trait NameResolver: TagResolver {
     ) -> Option<&'a Vec<NameTemplate>> {
         overrides.iter().find_map(|name_override| {
             (name_override.types.contains(&override_type)
-                && self.resolve_tag(state, &name_override.property)
+                && self.resolve_key(state, &name_override.property)
                     == Some(&name_override.value))
             .then_some(&name_override.templates)
         })
     }
 }
 
-impl TagResolver for state::Device {
-    /// Resolve a tag using Device.
-    fn resolve_tag<'a>(
+impl PropertyResolver for state::Device {
+    /// Resolve a key using Device.
+    fn resolve_key<'a>(
         &'a self,
         _state: &'a state::State,
-        tag: &Tag,
+        key: &PropertyKey,
     ) -> Option<&'a str> {
-        match tag {
-            Tag::Device(s) => self.props.raw(s),
-            Tag::Node(_) => None,
-            Tag::Client(_) => None,
+        match key {
+            PropertyKey::Device(s) => self.props.raw(s),
+            PropertyKey::Node(_) => None,
+            PropertyKey::Client(_) => None,
         }
     }
 }
@@ -130,23 +130,23 @@ impl NameResolver for state::Device {
     }
 }
 
-impl TagResolver for state::Node {
-    /// Resolve a tag using Node. Falls back on resolving using the linked
+impl PropertyResolver for state::Node {
+    /// Resolve a key using Node. Falls back on resolving using the linked
     /// Device, if present.
-    fn resolve_tag<'a>(
+    fn resolve_key<'a>(
         &'a self,
         state: &'a state::State,
-        tag: &Tag,
+        key: &PropertyKey,
     ) -> Option<&'a str> {
-        match tag {
-            Tag::Node(s) => self.props.raw(s),
-            Tag::Device(_) => {
+        match key {
+            PropertyKey::Node(s) => self.props.raw(s),
+            PropertyKey::Device(_) => {
                 let device = state.devices.get(self.props.device_id()?)?;
-                device.resolve_tag(state, tag)
+                device.resolve_key(state, key)
             }
-            Tag::Client(_) => {
+            PropertyKey::Client(_) => {
                 let client = state.clients.get(self.props.client_id()?)?;
-                client.resolve_tag(state, tag)
+                client.resolve_key(state, key)
             }
         }
     }
@@ -185,17 +185,17 @@ impl NameResolver for state::Node {
     }
 }
 
-impl TagResolver for state::Client {
-    /// Resolve a tag using Client.
-    fn resolve_tag<'a>(
+impl PropertyResolver for state::Client {
+    /// Resolve a key using Client.
+    fn resolve_key<'a>(
         &'a self,
         _state: &'a state::State,
-        tag: &Tag,
+        key: &PropertyKey,
     ) -> Option<&'a str> {
-        match tag {
-            Tag::Client(s) => self.props.raw(s),
-            Tag::Node(_) => None,
-            Tag::Device(_) => None,
+        match key {
+            PropertyKey::Client(s) => self.props.raw(s),
+            PropertyKey::Node(_) => None,
+            PropertyKey::Device(_) => None,
         }
     }
 }
@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn render_endpoint_missing_tag() {
+    fn render_endpoint_missing_key() {
         let mut fixture = Fixture::new();
 
         fixture
@@ -329,7 +329,7 @@ mod tests {
     }
 
     #[test]
-    fn render_device_missing_tag() {
+    fn render_device_missing_key() {
         let fixture = Fixture::new();
 
         let names = Names {
@@ -367,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn render_endpoint_linked_device_missing_tag() {
+    fn render_endpoint_linked_device_missing_key() {
         let mut fixture = Fixture::new();
 
         fixture
@@ -471,7 +471,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: Tag::Node(String::from("node.name")),
+                property: PropertyKey::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec![
                     "{node:node.description}".parse().unwrap(),
@@ -493,7 +493,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: Tag::Node(String::from("node.name")),
+                property: PropertyKey::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
@@ -512,7 +512,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device],
-                property: Tag::Node(String::from("node.description")),
+                property: PropertyKey::Node(String::from("node.description")),
                 value: String::from("Node name"),
                 templates: vec!["{node:node.nick}".parse().unwrap()],
             }],
@@ -531,7 +531,7 @@ mod tests {
         let names = Names {
             overrides: vec![NameOverride {
                 types: vec![OverrideType::Device, OverrideType::Stream],
-                property: Tag::Node(String::from("node.name")),
+                property: PropertyKey::Node(String::from("node.name")),
                 value: String::from("Node name"),
                 templates: vec![],
             }],

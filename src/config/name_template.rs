@@ -1,13 +1,13 @@
 //! A type for validating and rendering name template strings.
 //!
 //! Templates are strings with tags enclosed in { and }. All tag contents must
-//! be parsable into Tags in order by the string to be accepted.
+//! be parsable into PropertyKeys in order for the string to be accepted.
 //! { without a matching } or } without a matching { are invalid.
 //! { and } can be escaped with {{ and }}.
 use anyhow::{anyhow, bail};
 use serde_with::DeserializeFromStr;
 
-use crate::config::tag::Tag;
+use crate::config::property_key::PropertyKey;
 
 #[derive(Debug, DeserializeFromStr)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -19,7 +19,7 @@ pub struct NameTemplate {
 #[cfg_attr(test, derive(PartialEq))]
 enum Part {
     Literal(String),
-    Tag(Tag),
+    Tag(PropertyKey),
 }
 
 impl std::str::FromStr for NameTemplate {
@@ -54,11 +54,13 @@ impl NameTemplate {
                         }
 
                         let tag_content = Self::parse_tag(&mut chars)?;
-                        let tag = tag_content.parse::<Tag>().map_err(|_| {
+                        let property_key = tag_content
+                            .parse::<PropertyKey>()
+                            .map_err(|_| {
                             anyhow!("\"{}\" is not implemented", tag_content)
                         })?;
 
-                        parts.push(Part::Tag(tag));
+                        parts.push(Part::Tag(property_key));
                     }
                 }
                 '}' => {
@@ -103,13 +105,15 @@ impl NameTemplate {
     /// Tags into replacement strings.
     pub fn render<T: AsRef<str>>(
         &self,
-        lookup: impl Fn(&Tag) -> Option<T>,
+        lookup: impl Fn(&PropertyKey) -> Option<T>,
     ) -> Option<String> {
         let mut result = String::new();
         for part in &self.parts {
             match part {
                 Part::Literal(literal) => result.push_str(literal),
-                Part::Tag(tag) => result.push_str(lookup(tag)?.as_ref()),
+                Part::Tag(property_key) => {
+                    result.push_str(lookup(property_key)?.as_ref())
+                }
             }
         }
 
@@ -144,7 +148,7 @@ mod tests {
             NameTemplate {
                 parts: vec![
                     Part::Literal(String::from("Hello ")),
-                    Part::Tag(Tag::Node(String::from("node.name"))),
+                    Part::Tag(PropertyKey::Node(String::from("node.name"))),
                 ],
             }
         );
@@ -167,7 +171,7 @@ mod tests {
             NameTemplate {
                 parts: vec![
                     Part::Literal(String::from("Hello } { { ")),
-                    Part::Tag(Tag::Node(String::from("node.name"))),
+                    Part::Tag(PropertyKey::Node(String::from("node.name"))),
                     Part::Literal(String::from(" }")),
                 ],
             }
@@ -223,8 +227,10 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
-            Tag::Device(ref s) if s == "device.name" => {
+            PropertyKey::Node(ref s) if s == "node.name" => {
+                Some(String::from("foo"))
+            }
+            PropertyKey::Device(ref s) if s == "device.name" => {
                 Some(String::from("bar"))
             }
             _ => None,
@@ -238,7 +244,9 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
+            PropertyKey::Node(ref s) if s == "node.name" => {
+                Some(String::from("foo"))
+            }
             _ => None,
         });
         assert_eq!(rendered, None)
@@ -250,8 +258,10 @@ mod tests {
         let template: Result<NameTemplate, _> = s.parse();
         assert!(template.is_ok());
         let rendered = template.unwrap().render(|tag| match tag {
-            Tag::Node(ref s) if s == "node.name" => Some(String::from("foo")),
-            Tag::Device(ref s) if s == "device.name" => {
+            PropertyKey::Node(ref s) if s == "node.name" => {
+                Some(String::from("foo"))
+            }
+            PropertyKey::Device(ref s) if s == "device.name" => {
                 Some(String::from("bar"))
             }
             _ => None,

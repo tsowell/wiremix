@@ -5,7 +5,7 @@ mod help;
 mod keybinding;
 mod name_template;
 mod names;
-mod tag;
+mod property_key;
 mod theme;
 
 use std::collections::HashMap;
@@ -127,7 +127,7 @@ pub enum OverrideType {
 #[serde(deny_unknown_fields)]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
-    pub property: names::Tag,
+    pub property: names::PropertyKey,
     pub value: String,
     pub templates: Vec<names::NameTemplate>,
 }
