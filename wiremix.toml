@@ -228,6 +228,33 @@ device = [ "{device:device.nick}", "{device:device.description}" ]
 # ]
 
 
+# Filters
+#
+# Filters hide objects from lists.
+#
+# Filters consist of a list of match rules (see Match Rules section) and an
+# optional string id. The id is only used for overriding built-in filters.
+#
+# [[filters]]
+# # Hide virtual endpoints
+# matches = [ { "node.virtual" = "true", "media.class" = "Audio/Sink" } ]
+#
+# [[filters]]
+# # Disable a built-in filter
+# id = "pavucontrol-capture"
+# matches = [ ]
+[[filters]]
+matches = [ { "node.name" = "wiremix-capture" } ]
+
+[[filters]]
+id = "pavucontrol-capture"
+matches = [ { "node.name" = "PulseAudio Volume Control" } ]
+
+[[filters]]
+id = "ncpamixer-capture"
+matches = [ { "node.name" = "ncpamixer" } ]
+
+
 # Themes
 #
 # Themes determine the styling of user interface elements.

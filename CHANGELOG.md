@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- User-configurable object filtering.
+
 ### Changed
 
 - Tags no longer require a type prefix. If there is no prefix, it refers to the

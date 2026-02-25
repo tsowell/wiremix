@@ -635,7 +635,12 @@ mod tests {
     #[test]
     fn object_list_up_overflow() {
         let (state, wirehose) = init();
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -656,7 +661,12 @@ mod tests {
     #[test]
     fn object_list_down_overflow() {
         let (state, wirehose) = init();
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // + 2 for header and footer
@@ -682,7 +692,12 @@ mod tests {
     #[test]
     fn visible_objects_changes_with_scroll() {
         let (state, wirehose) = init();
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // 3 nodes + 2 lines for header and footer
@@ -734,7 +749,12 @@ mod tests {
             props,
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // 1 node + 2 lines for header and footer
@@ -788,7 +808,12 @@ mod tests {
             mute: false,
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         // 1 node + 2 lines for header and footer
@@ -835,7 +860,12 @@ mod tests {
             value: Some(String::from("100")),
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         let rect = Rect::new(0, 0, 80, height + 2);
@@ -899,7 +929,12 @@ mod tests {
             value: Some(String::from("100")),
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         let rect = Rect::new(0, 0, 80, height + 2);
@@ -986,7 +1021,12 @@ mod tests {
             value: Some(String::from("100")),
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         let height = NodeWidget::height() + NodeWidget::spacing();
         let rect = Rect::new(0, 0, 80, height + 2);
@@ -1025,7 +1065,12 @@ mod tests {
             value: Some(String::from("{\"name\":\"default_sink\"}")),
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         assert!(view.default_sink.is_some());
 
@@ -1065,7 +1110,12 @@ mod tests {
             value: Some(String::from("{\"name\":\"default_source\"}")),
         });
 
-        let view = View::from(&wirehose, &state, &config::Names::default());
+        let view = View::from(
+            &wirehose,
+            &state,
+            &config::Names::default(),
+            &Vec::new(),
+        );
 
         assert!(view.default_source.is_some());
 

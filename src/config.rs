@@ -1,13 +1,14 @@
 //! Mixer configuration.
 
 mod char_set;
+mod filter;
 mod help;
 mod keybinding;
 mod matching;
 mod name_override;
 mod name_template;
 mod names;
-mod property_key;
+pub mod property_key;
 mod theme;
 
 use std::collections::HashMap;
@@ -23,6 +24,7 @@ use serde::Deserialize;
 use toml;
 
 use crate::app::{Action, TabKind};
+pub use crate::config::matching::MatchCondition;
 use crate::opt::Opt;
 
 #[derive(Debug)]
@@ -41,6 +43,7 @@ pub struct Config {
     pub names: Names,
     pub tab: TabKind,
     pub lazy_capture: bool,
+    pub filters: Vec<MatchCondition>,
 }
 
 /// Represents a configuration deserialized from a file. This gets baked into a
@@ -82,6 +85,8 @@ struct ConfigFile {
     tab: Option<TabKind>,
     #[serde(default = "default_lazy_capture")]
     lazy_capture: bool,
+    #[serde(default = "Filter::defaults", deserialize_with = "Filter::merge")]
+    filters: Vec<Filter>,
 }
 
 #[derive(Deserialize, Default, Debug, Clone, PartialEq, clap::ValueEnum)]
@@ -128,7 +133,7 @@ pub enum OverrideType {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct NameOverride {
     pub types: Vec<OverrideType>,
-    pub matches: Vec<matching::MatchCondition>,
+    pub matches: Vec<MatchCondition>,
     pub templates: Vec<names::NameTemplate>,
 }
 
@@ -193,6 +198,14 @@ pub struct Theme {
     pub help_border: Style,
     pub help_item: Style,
     pub help_more: Style,
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+#[serde(deny_unknown_fields)]
+pub struct Filter {
+    pub id: Option<String>,
+    pub matches: Vec<MatchCondition>,
 }
 
 fn default_fps() -> Option<f32> {
@@ -305,6 +318,12 @@ impl TryFrom<ConfigFile> for Config {
             anyhow::bail!("theme '{}' does not exist", &config_file.theme);
         };
 
+        let filters = config_file
+            .filters
+            .into_iter()
+            .flat_map(|f| f.matches)
+            .collect();
+
         let help = help::Help::from(&config_file.keybindings);
 
         if let Some(max_volume_percent) = config_file.max_volume_percent {
@@ -336,6 +355,7 @@ impl TryFrom<ConfigFile> for Config {
             names: config_file.names,
             tab: config_file.tab.unwrap_or_default(),
             lazy_capture: config_file.lazy_capture,
+            filters,
         })
     }
 }
@@ -419,6 +439,7 @@ pub mod strict {
         themes: HashMap<String, Theme>,
         tab: Option<TabKind>,
         lazy_capture: bool,
+        filters: Vec<Filter>,
     }
 
     impl From<ConfigFile> for super::ConfigFile {
@@ -438,6 +459,7 @@ pub mod strict {
                 themes: strict.themes,
                 tab: strict.tab,
                 lazy_capture: strict.lazy_capture,
+                filters: strict.filters,
             }
         }
     }

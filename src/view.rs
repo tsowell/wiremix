@@ -9,7 +9,7 @@ use std::sync::Arc;
 use serde_json::json;
 
 use crate::atomic_f32::AtomicF32;
-use crate::config;
+use crate::config::{self, property_key::PropertyResolver};
 use crate::device_kind::DeviceKind;
 use crate::wirehose::{media_class, state, CommandSender, ObjectId};
 
@@ -434,6 +434,18 @@ fn has_target(state: &state::State, node_id: ObjectId) -> bool {
     }
 }
 
+fn is_filtered(
+    filters: &[config::MatchCondition],
+    state: &state::State,
+    object: Option<&(impl PropertyResolver + ?Sized)>,
+) -> bool {
+    object.is_some_and(|object| {
+        filters
+            .iter()
+            .any(|condition| condition.matches(state, object))
+    })
+}
+
 impl<'a> View<'a> {
     pub fn new(wirehose: &'a dyn CommandSender) -> View<'a> {
         Self {
@@ -459,6 +471,7 @@ impl<'a> View<'a> {
         wirehose: &'a dyn CommandSender,
         state: &state::State,
         names: &config::Names,
+        filters: &[config::MatchCondition],
     ) -> View<'a> {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
@@ -545,6 +558,13 @@ impl<'a> View<'a> {
         let devices: HashMap<ObjectId, Device> = state
             .devices
             .values()
+            .filter(|device| {
+                !is_filtered(
+                    filters,
+                    state,
+                    state.devices.get(&device.object_id),
+                )
+            })
             .filter_map(|device| Device::from(state, device, names))
             .map(|device| (device.object_id, device))
             .collect();
@@ -554,8 +574,12 @@ impl<'a> View<'a> {
         let mut nodes_recording = Vec::new();
         let mut nodes_output = Vec::new();
         let mut nodes_input = Vec::new();
-        for (id, node) in
-            nodes.iter().sorted_by_key(|(_, node)| node.object_serial)
+        for (id, node) in nodes
+            .iter()
+            .sorted_by_key(|(_, node)| node.object_serial)
+            .filter(|(_, node)| {
+                !is_filtered(filters, state, state.nodes.get(&node.object_id))
+            })
         {
             nodes_all.push(*id);
             if media_class::is_sink_input(&node.media_class) {

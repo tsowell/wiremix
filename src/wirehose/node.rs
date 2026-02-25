@@ -34,15 +34,6 @@ pub fn monitor_node(
         _ => return None,
     }
 
-    // Don't monitor capture streams to avoid clutter.
-    match props.get("node.name") {
-        // We especially don't want to capture our own capture streams.
-        Some("wiremix-capture") => return None,
-        Some("PulseAudio Volume Control") => return None,
-        Some("ncpamixer") => return None,
-        _ => (),
-    }
-
     let node: Node = registry.bind(object).ok()?;
     let node = Rc::new(node);
 

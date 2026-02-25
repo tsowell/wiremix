@@ -234,6 +234,21 @@ custom ones.
 
 See [wiremix.toml](./wiremix.toml) for more details.
 
+### Filters
+
+You can filter objects to exclude them from object lists based on their
+PipeWire properties.
+
+See [wiremix.toml](./wiremix.toml) for more details.
+
+#### Examples
+
+```toml
+[[filters]]
+# Hide virtual endpoints
+matches = [ { "node.virtual" = "true", "media.class" = "Audio/Sink" } ]
+```
+
 ### Names
 
 You can customize how streams, endpoints, and devices are displayed in the user
