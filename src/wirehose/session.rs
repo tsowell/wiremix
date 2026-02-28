@@ -12,7 +12,7 @@ use nix::sys::eventfd::{EfdFlags, EventFd};
 use std::os::fd::AsRawFd;
 
 use pipewire::{
-    main_loop::MainLoop, properties::properties, proxy::ProxyT,
+    main_loop::MainLoopRc, properties::properties, proxy::ProxyT,
     types::ObjectType,
 };
 
@@ -80,7 +80,7 @@ fn run<F: EventHandler>(
         pipewire::deinit();
     });
 
-    let main_loop = MainLoop::new(None)?;
+    let main_loop = MainLoopRc::new(None)?;
     let sender = Rc::new(EventSender::new(handler, main_loop.downgrade()));
 
     let err_sender = Rc::clone(&sender);
@@ -212,18 +212,18 @@ impl CommandSender for Session {
 /// Sets up core listeners and runs the PipeWire main loop.
 fn monitor_pipewire(
     remote: Option<String>,
-    main_loop: MainLoop,
+    main_loop: MainLoopRc,
     sender: Rc<EventSender>,
     rx: pipewire::channel::Receiver<Command>,
     shutdown_fd: Arc<EventFd>,
 ) -> Result<()> {
-    let context = pipewire::context::Context::new(&main_loop)?;
+    let context = pipewire::context::ContextRc::new(&main_loop, None)?;
     let props = remote.map(|remote| {
         properties! {
             *pipewire::keys::REMOTE_NAME => remote
         }
     });
-    let core = Rc::new(context.connect(props)?);
+    let core = context.connect_rc(props)?;
 
     let fd = shutdown_fd.as_raw_fd();
     let _shutdown_watch =
@@ -267,8 +267,8 @@ fn monitor_pipewire(
         })
         .register();
 
-    let registry = Rc::new(core.get_registry()?);
-    let registry_weak = Rc::downgrade(&registry);
+    let registry = core.get_registry_rc()?;
+    let registry_weak = registry.downgrade();
 
     // Proxies and their listeners need to stay alive so store them here
     let proxies = Rc::new(RefCell::new(ProxyRegistry::try_new()?));
@@ -312,7 +312,7 @@ fn monitor_pipewire(
     let _registry_listener = registry
         .add_listener_local()
         .global({
-            let core_weak = Rc::downgrade(&core);
+            let core_weak = core.downgrade();
             let proxies = Rc::clone(&proxies);
             let sender_weak = Rc::downgrade(&sender);
             let streams_weak = Rc::downgrade(&streams);
@@ -452,13 +452,9 @@ fn monitor_pipewire(
 
     let proxies = Rc::clone(&proxies);
     let _receiver = rx.attach(main_loop.loop_(), {
-        let core_weak = Rc::downgrade(&core);
         let sender_weak = Rc::downgrade(&sender);
         let streams_weak = Rc::downgrade(&streams);
         move |command| {
-            let Some(core) = core_weak.upgrade() else {
-                return;
-            };
             let Some(sender) = sender_weak.upgrade() else {
                 return;
             };

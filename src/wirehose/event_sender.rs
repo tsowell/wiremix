@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use pipewire::main_loop::WeakMainLoop;
+use pipewire::main_loop::MainLoopWeak;
 
 use crate::wirehose::{Event, StateEvent};
 
@@ -22,13 +22,13 @@ where
 
 pub struct EventSender {
     handler: RefCell<Box<dyn EventHandler>>,
-    main_loop_weak: WeakMainLoop,
+    main_loop_weak: MainLoopWeak,
 }
 
 impl EventSender {
     pub fn new<F: EventHandler>(
         handler: F,
-        main_loop_weak: WeakMainLoop,
+        main_loop_weak: MainLoopWeak,
     ) -> Self {
         Self {
             handler: RefCell::new(Box::new(handler)),

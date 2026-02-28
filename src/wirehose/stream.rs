@@ -3,9 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use pipewire::{
-    core::Core,
+    core::CoreRc,
     properties::properties,
-    stream::{Stream, StreamListener},
+    stream::{StreamListener, StreamRc},
 };
 
 use libspa::{
@@ -86,14 +86,14 @@ fn find_peak(samples: &[f32]) -> f32 {
 }
 
 pub fn capture_node(
-    core: &Core,
+    core: &CoreRc,
     sender: &Rc<EventSender>,
     object_id: ObjectId,
     serial: &str,
     capture_sink: bool,
     peaks_dirty: Arc<AtomicBool>,
     peak_processor: Option<Arc<dyn PeakProcessor>>,
-) -> Option<(Rc<Stream>, StreamListener<StreamData>)> {
+) -> Option<(StreamRc, StreamListener<StreamData>)> {
     let mut props = properties! {
         *pipewire::keys::TARGET_OBJECT => String::from(serial),
         *pipewire::keys::STREAM_MONITOR => "true",
@@ -111,8 +111,7 @@ pub fn capture_node(
         buffers_seen: 0,
     };
 
-    let stream = Stream::new(core, "wiremix-capture", props).ok()?;
-    let stream = Rc::new(stream);
+    let stream = StreamRc::new(core.clone(), "wiremix-capture", props).ok()?;
     let listener = stream
         .add_local_listener_with_user_data(data)
         .param_changed({

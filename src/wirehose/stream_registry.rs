@@ -1,22 +1,21 @@
 use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 
 use anyhow::Result;
 
 use nix::sys::eventfd::{EfdFlags, EventFd};
 
-use pipewire::stream::{Stream, StreamListener};
+use pipewire::stream::{StreamListener, StreamRc};
 
 use crate::wirehose::ObjectId;
 
 /// Storage for keeping streams and their listeners alive
 pub struct StreamRegistry<D> {
     /// Storage for keeping streams
-    streams: HashMap<ObjectId, Rc<Stream>>,
+    streams: HashMap<ObjectId, StreamRc>,
     /// Storage for keeping listeners alive
     listeners: HashMap<ObjectId, Vec<StreamListener<D>>>,
     /// Streams pending deletion
-    garbage_streams: Vec<Rc<Stream>>,
+    garbage_streams: Vec<StreamRc>,
     /// Listeners pending deletion
     garbage_listeners: Vec<StreamListener<D>>,
     /// Track garbage node IDs so [`Self::collect_garbage()`] can report on who
@@ -64,7 +63,7 @@ impl<D> StreamRegistry<D> {
     pub fn add_stream(
         &mut self,
         stream_id: ObjectId,
-        stream: Rc<Stream>,
+        stream: StreamRc,
         listener: StreamListener<D>,
     ) {
         if let Some(old) = self.streams.insert(stream_id, stream) {

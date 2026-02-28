@@ -5,7 +5,7 @@ use crate::wirehose::proxy_registry::ProxyRegistry;
 use crate::wirehose::stream_registry::StreamRegistry;
 use crate::wirehose::{command::Command, stream};
 
-use pipewire::{core::Core, device::Device, node::Node};
+use pipewire::{core::CoreRc, device::Device, node::Node};
 
 use libspa::param::ParamType;
 use libspa::pod::{
@@ -14,7 +14,7 @@ use libspa::pod::{
 };
 
 pub fn execute_command(
-    core: &Core,
+    core: &CoreRc,
     sender: Rc<EventSender>,
     streams: &mut StreamRegistry<stream::StreamData>,
     proxies: &ProxyRegistry,
