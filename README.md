@@ -36,6 +36,53 @@ dependencies:
 
 Then install wiremix with `cargo install wiremix`
 
+## Building from Source
+
+To build wiremix from source, you'll need:
+
+* Rust 1.74.1 or later
+* PipeWire development libraries
+* pkg-config
+* clang
+
+### Prerequisites
+
+Install the required dependencies for your distribution:
+
+* **Ubuntu/Debian**: `sudo apt install cargo libpipewire-0.3-dev pkg-config clang`
+* **Fedora**: `sudo dnf install cargo pipewire-devel clang`
+* **Arch Linux**: `sudo pacman -S rust pipewire pkg-config clang`
+
+### Build Steps
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/tsowell/wiremix.git
+   cd wiremix
+   ```
+
+2. Build the project:
+   ```bash
+   cargo build --release
+   ```
+
+3. The binary will be available at `target/release/wiremix`
+
+4. Optionally, install it system-wide:
+   ```bash
+   cargo install --path .
+   ```
+
+### Development Build
+
+For development with debug symbols and faster compilation:
+
+```bash
+cargo build
+```
+
+The debug binary will be at `target/debug/wiremix`.
+
 ## Quick Start
 
 1. Run `wiremix` to launch with default settings
@@ -99,6 +146,7 @@ Everything except quitting can also be done with the mouse. Some of the
 less-intuitive mouse controls are:
 
 * Click the numeric volume percentage to toggle muting.
+* Use the mouse wheel over the volume bar to adjust volume (scroll up to increase, scroll down to decrease).
 * Scroll through lists and dropdowns with the mouse wheel or click on scroll
   buttons (default appearance: `•••`)
 * Right-click to set as the default source/sink

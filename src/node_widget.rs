@@ -431,6 +431,24 @@ impl StatefulWidget for VolumeWidget<'_> {
             ],
         ));
 
+        // Add mousewheel support for volume control on the volume bar
+        mouse_areas.push((
+            volume_bar,
+            smallvec![MouseEventKind::ScrollUp],
+            smallvec![
+                Action::SelectObject(self.node.object_id),
+                Action::SetRelativeVolume(0.05),
+            ],
+        ));
+        mouse_areas.push((
+            volume_bar,
+            smallvec![MouseEventKind::ScrollDown],
+            smallvec![
+                Action::SelectObject(self.node.object_id),
+                Action::SetRelativeVolume(-0.05),
+            ],
+        ));
+
         // Add mouse areas for setting volume
         for i in 0..=volume_bar.width {
             let volume_area = Rect::new(
