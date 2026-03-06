@@ -33,6 +33,7 @@
               clippy
               pkg-config
               rustPlatform.bindgenHook
+              typos
 
               pipewire
             ];
