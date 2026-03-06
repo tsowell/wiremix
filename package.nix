@@ -16,7 +16,6 @@ rustPlatform.buildRustPackage {
     root = ./.;
     fileset = fs.unions [
       (fs.fileFilter (file: builtins.any file.hasExt [ "rs" ]) ./src)
-      ./build.rs
       ./wiremix.desktop
       ./wiremix.toml
       ./Cargo.lock

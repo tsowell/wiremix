@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Name overrides now use PipeWire match rules.
 - TOML 1.1 support for wiremix.toml.
 
+### Removed
+
+- "git describe" information from --version string.
+
 ### Fixed
 
 - Endpoints with the media.name prop (notably AirPods) were using that instead
