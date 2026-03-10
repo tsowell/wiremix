@@ -58,6 +58,8 @@ pub enum Action {
     TabRight,
     SelectTab(usize),
     SetAbsoluteVolume(f32),
+    SetAbsoluteBalance(f32),
+    SetRelativeBalance(f32),
     #[serde(skip_deserializing)]
     SelectObject(ObjectId),
     #[serde(skip_deserializing)]
@@ -87,6 +89,8 @@ impl std::fmt::Display for Action {
             Action::SetRelativeVolume(vol) => {
                 Self::format_relative_volume(f, *vol)
             }
+            Action::SetAbsoluteBalance(bal) => Self::format_balance(f, *bal),
+            Action::SetRelativeBalance(bal) => Self::format_balance(f, *bal),
             Action::SetDefault => write!(f, "Set default"),
             Action::Help => write!(f, "Show/hide help"),
             Action::Exit => write!(f, "Exit wiremix"),
@@ -112,6 +116,31 @@ impl Action {
             }
             v => {
                 write!(f, "Decrease volume by {}%", Self::format_percentage(-v))
+            }
+        }
+    }
+
+    fn format_balance(
+        f: &mut std::fmt::Formatter<'_>,
+        bal: f32,
+    ) -> std::fmt::Result {
+        match bal {
+            0.0 => write!(f, "Center balance"),
+            0.01 => write!(f, "Shift balance right"),
+            -0.01 => write!(f, "Shift balance left"),
+            v if v > 0.0 => {
+                write!(
+                    f,
+                    "Shift balance right by {}%",
+                    Self::format_percentage(v)
+                )
+            }
+            v => {
+                write!(
+                    f,
+                    "Shift balance left by {}%",
+                    Self::format_percentage(-v)
+                )
             }
         }
     }
@@ -651,6 +680,18 @@ impl Handle for Action {
                     .then_some(app.config.max_volume_percent);
                 return Ok(current_list!(app)
                     .set_relative_volume(&app.view, volume, max));
+            }
+            Action::SetAbsoluteBalance(balance) => {
+                let max = (app.config.enforce_max_volume)
+                    .then_some(app.config.max_volume_percent);
+                return Ok(current_list!(app)
+                    .set_absolute_balance(&app.view, balance, max));
+            }
+            Action::SetRelativeBalance(balance) => {
+                let max = (app.config.enforce_max_volume)
+                    .then_some(app.config.max_volume_percent);
+                return Ok(current_list!(app)
+                    .set_relative_balance(&app.view, balance, max));
             }
             Action::SetDefault => {
                 current_list!(app).set_default(&app.view);
