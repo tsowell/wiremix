@@ -24,6 +24,8 @@ Issues and pull requests are welcome!
   `emerge -av wiremix`.
 * Fedora: Install the [official package](https://src.fedoraproject.org/rpms/rust-wiremix) via
   `dnf in wiremix`.
+* openSUSE Tumbleweed: Install the [official package](https://build.opensuse.org/package/show/openSUSE:Factory/wiremix) via
+  `zypper in wiremix`.
 
 ### Manual Installation
 
