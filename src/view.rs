@@ -402,19 +402,19 @@ impl Device {
             })
             .collect();
         profiles.sort_by_key(|&(index, _)| index);
-        let profiles = profiles
+        let profiles: Vec<(Target, String)> = profiles
             .into_iter()
             .map(|(index, title)| (Target::Profile(object_id, index), title))
             .collect();
 
-        let target_profile = device.profiles.get(&device.profile_index?)?;
-        let target_title = if target_profile.available {
-            target_profile.description.clone()
-        } else {
-            format!("{} (unavailable)", target_profile.description)
-        };
+        let profile_index = device.profile_index?;
+        let target_title = profiles
+            .iter()
+            .find(|(t, _)| *t == Target::Profile(object_id, profile_index))
+            .map(|(_, title)| title.clone())
+            .unwrap_or_default();
 
-        let target = Some(Target::Profile(object_id, device.profile_index?));
+        let target = Some(Target::Profile(object_id, profile_index));
 
         let object_serial = *device.props.object_serial()?;
 
