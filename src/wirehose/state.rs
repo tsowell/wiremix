@@ -21,6 +21,7 @@ pub struct EnumRoute {
     pub available: bool,
     pub profiles: Vec<i32>,
     pub devices: Vec<i32>,
+    pub product_name: Option<String>,
 }
 
 #[derive(Debug)]
@@ -162,6 +163,7 @@ impl State {
                 available,
                 profiles,
                 devices,
+                product_name,
             } => {
                 self.device_entry(object_id).enum_routes.insert(
                     index,
@@ -171,6 +173,7 @@ impl State {
                         available,
                         profiles,
                         devices,
+                        product_name,
                     },
                 );
             }

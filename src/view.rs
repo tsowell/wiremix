@@ -365,10 +365,39 @@ impl Device {
             .profiles
             .values()
             .map(|profile| {
-                let title = if profile.available {
-                    profile.description.clone()
-                } else {
-                    format!("{} (unavailable)", profile.description)
+                let profile_devices: Vec<i32> = profile
+                    .classes
+                    .iter()
+                    .flat_map(|(_, devices)| devices.iter().copied())
+                    .collect();
+                let matching_routes: Vec<_> = device
+                    .enum_routes
+                    .values()
+                    .filter(|route| {
+                        route
+                            .devices
+                            .iter()
+                            .any(|d| profile_devices.contains(d))
+                    })
+                    .collect();
+                let monitor_name =
+                    if matching_routes.len() == 1 {
+                        matching_routes[0].product_name.as_deref()
+                    } else {
+                        None
+                    };
+                let title = match (profile.available, monitor_name) {
+                    (true, Some(name)) => {
+                        format!("{} \u{2014} {}", profile.description, name)
+                    }
+                    (false, Some(name)) => format!(
+                        "{} \u{2014} {} (unavailable)",
+                        profile.description, name
+                    ),
+                    (true, None) => profile.description.clone(),
+                    (false, None) => {
+                        format!("{} (unavailable)", profile.description)
+                    }
                 };
                 (profile.index, title)
             })

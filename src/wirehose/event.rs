@@ -28,6 +28,7 @@ pub enum StateEvent {
         available: bool,
         profiles: Vec<i32>,
         devices: Vec<i32>,
+        product_name: Option<String>,
     },
     DeviceEnumProfile {
         object_id: ObjectId,
