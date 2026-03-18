@@ -380,12 +380,11 @@ impl Device {
                             .any(|d| profile_devices.contains(d))
                     })
                     .collect();
-                let monitor_name =
-                    if matching_routes.len() == 1 {
-                        matching_routes[0].product_name.as_deref()
-                    } else {
-                        None
-                    };
+                let monitor_name = if matching_routes.len() == 1 {
+                    matching_routes[0].product_name.as_deref()
+                } else {
+                    None
+                };
                 let title = match (profile.available, monitor_name) {
                     (true, Some(name)) => {
                         format!("{} \u{2014} {}", profile.description, name)
