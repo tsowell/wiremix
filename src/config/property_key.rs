@@ -101,7 +101,9 @@ impl PropertyResolver for state::Node {
                 let client = state.clients.get(self.props.client_id()?)?;
                 client.resolve_key(state, key)
             }
-            PropertyKey::Computed(s) => state.resolve_computed_node_key(self, s),
+            PropertyKey::Computed(s) => {
+                state.resolve_computed_node_key(self, s)
+            }
         }
     }
 }
@@ -188,12 +190,7 @@ mod tests {
 
     #[test]
     fn roundtrip_prefixed() {
-        for input in [
-            "device:foo",
-            "node:bar",
-            "client:baz",
-            "computed:qux",
-        ] {
+        for input in ["device:foo", "node:bar", "client:baz", "computed:qux"] {
             let key = PropertyKey::from_str(input).unwrap();
             assert_eq!(key.to_string(), input);
         }
@@ -204,10 +201,7 @@ mod tests {
         assert_eq!(PropertyKey::Device("x".into()).to_string(), "device:x");
         assert_eq!(PropertyKey::Node("x".into()).to_string(), "node:x");
         assert_eq!(PropertyKey::Client("x".into()).to_string(), "client:x");
-        assert_eq!(
-            PropertyKey::Computed("x".into()).to_string(),
-            "computed:x"
-        );
+        assert_eq!(PropertyKey::Computed("x".into()).to_string(), "computed:x");
         assert_eq!(PropertyKey::Bare("x".into()).to_string(), "x");
     }
 

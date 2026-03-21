@@ -524,9 +524,9 @@ mod tests {
         fixture.set_endpoint();
 
         let names = Names {
-            endpoint: vec![
-                "{computed:physical.endpoint.label}".parse().unwrap(),
-            ],
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
             ..Default::default()
         };
 
@@ -545,9 +545,9 @@ mod tests {
         fixture.set_route_label("DELL U2723QE");
 
         let names = Names {
-            endpoint: vec![
-                "{computed:physical.endpoint.label}".parse().unwrap(),
-            ],
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
             ..Default::default()
         };
 
@@ -565,9 +565,9 @@ mod tests {
         fixture.link_node_to_device(0);
 
         let names = Names {
-            endpoint: vec![
-                "{computed:physical.endpoint.label}".parse().unwrap(),
-            ],
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
             ..Default::default()
         };
 

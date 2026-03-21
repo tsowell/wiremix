@@ -403,10 +403,10 @@ impl State {
                     if !route.profiles.contains(&profile_index) {
                         return None;
                     }
-                    let route_device = route
-                        .devices
-                        .iter()
-                        .find(|route_device| profile_devices.contains(route_device))?;
+                    let route_device =
+                        route.devices.iter().find(|route_device| {
+                            profile_devices.contains(route_device)
+                        })?;
                     Some((route, *route_device))
                 })
                 .collect(),
@@ -418,15 +418,16 @@ impl State {
         node: &'a Node,
     ) -> Option<&'a str> {
         let media_class = node.props.media_class()?;
-        if !(
-            media_class::is_sink(media_class)
-                || media_class::is_source(media_class)
-        ) {
+        if !(media_class::is_sink(media_class)
+            || media_class::is_source(media_class))
+        {
             return None;
         }
 
-        if let Some(node_nick) =
-            node.props.node_nick().filter(|node_nick| !node_nick.is_empty())
+        if let Some(node_nick) = node
+            .props
+            .node_nick()
+            .filter(|node_nick| !node_nick.is_empty())
         {
             return Some(node_nick.as_str());
         }

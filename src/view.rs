@@ -201,50 +201,48 @@ impl Node {
             let device = state.devices.get(device_id)?;
             let card_device = *node.props.card_profile_device()?;
 
-            let mut routes: Vec<_> =
-                state
-                    .route_targets(device, &media_class)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|(route, route_device)| {
-                        let title = if route.available {
-                            route.description.clone()
-                        } else {
-                            format!("{} (unavailable)", route.description)
-                        };
-                        (
-                            Target::Route(
-                                device.object_id,
-                                route.index,
-                                route_device,
-                            ),
-                            title,
-                        )
-                    })
-                    .collect();
-            routes.sort_by(|(_, a), (_, b)| a.cmp(b));
-            let routes = routes;
-
-            let (target, target_title) =
-                match state.active_route(device, card_device)
-            {
-                Some(route) => {
-                    let target_title = if route.available {
+            let mut routes: Vec<_> = state
+                .route_targets(device, &media_class)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(route, route_device)| {
+                    let title = if route.available {
                         route.description.clone()
                     } else {
                         format!("{} (unavailable)", route.description)
                     };
                     (
-                        Some(Target::Route(
+                        Target::Route(
                             device.object_id,
                             route.index,
-                            card_device,
-                        )),
-                        target_title,
+                            route_device,
+                        ),
+                        title,
                     )
-                }
-                None => (None, String::from("No route selected")),
-            };
+                })
+                .collect();
+            routes.sort_by(|(_, a), (_, b)| a.cmp(b));
+            let routes = routes;
+
+            let (target, target_title) =
+                match state.active_route(device, card_device) {
+                    Some(route) => {
+                        let target_title = if route.available {
+                            route.description.clone()
+                        } else {
+                            format!("{} (unavailable)", route.description)
+                        };
+                        (
+                            Some(Target::Route(
+                                device.object_id,
+                                route.index,
+                                card_device,
+                            )),
+                            target_title,
+                        )
+                    }
+                    None => (None, String::from("No route selected")),
+                };
 
             (Some(routes), target, target_title)
         } else if media_class::is_sink_input(&media_class) {
