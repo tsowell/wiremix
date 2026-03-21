@@ -21,6 +21,7 @@ pub struct EnumRoute {
     pub available: bool,
     pub profiles: Vec<i32>,
     pub devices: Vec<i32>,
+    pub info: HashMap<String, String>,
 }
 
 #[derive(Debug)]
@@ -162,6 +163,7 @@ impl State {
                 available,
                 profiles,
                 devices,
+                info,
             } => {
                 self.device_entry(object_id).enum_routes.insert(
                     index,
@@ -171,6 +173,7 @@ impl State {
                         available,
                         profiles,
                         devices,
+                        info,
                     },
                 );
             }
@@ -357,6 +360,120 @@ impl State {
             .collect()
     }
 
+    pub fn active_route<'a>(
+        &'a self,
+        device: &'a Device,
+        card_device: i32,
+    ) -> Option<&'a Route> {
+        let profile_index = device.profile_index?;
+
+        device
+            .routes
+            .get(&card_device)
+            .filter(|route| route.profiles.contains(&profile_index))
+    }
+
+    pub fn active_route_for_node<'a>(
+        &'a self,
+        node: &'a Node,
+    ) -> Option<(&'a Device, &'a Route, i32)> {
+        let device = self.devices.get(node.props.device_id()?)?;
+        let card_device = *node.props.card_profile_device()?;
+        let route = self.active_route(device, card_device)?;
+        Some((device, route, card_device))
+    }
+
+    pub fn route_targets<'a>(
+        &'a self,
+        device: &'a Device,
+        media_class: &str,
+    ) -> Option<Vec<(&'a EnumRoute, i32)>> {
+        let profile_index = device.profile_index?;
+        let profile = device.profiles.get(&profile_index)?;
+        let profile_devices = profile
+            .classes
+            .iter()
+            .find_map(|(mc, devices)| (mc == media_class).then_some(devices))?;
+
+        Some(
+            device
+                .enum_routes
+                .values()
+                .filter_map(|route| {
+                    if !route.profiles.contains(&profile_index) {
+                        return None;
+                    }
+                    let route_device = route
+                        .devices
+                        .iter()
+                        .find(|route_device| profile_devices.contains(route_device))?;
+                    Some((route, *route_device))
+                })
+                .collect(),
+        )
+    }
+
+    pub fn endpoint_physical_label<'a>(
+        &'a self,
+        node: &'a Node,
+    ) -> Option<&'a str> {
+        let media_class = node.props.media_class()?;
+        if !(
+            media_class::is_sink(media_class)
+                || media_class::is_source(media_class)
+        ) {
+            return None;
+        }
+
+        if let Some(node_nick) =
+            node.props.node_nick().filter(|node_nick| !node_nick.is_empty())
+        {
+            return Some(node_nick.as_str());
+        }
+
+        let (device, route, _) = self.active_route_for_node(node)?;
+        device.enum_routes.get(&route.index)?.physical_label()
+    }
+
+    pub fn device_profile_physical_label<'a>(
+        &'a self,
+        device: &'a Device,
+        profile_index: i32,
+    ) -> Option<&'a str> {
+        let profile = device.profiles.get(&profile_index)?;
+        let profile_devices: Vec<i32> = profile
+            .classes
+            .iter()
+            .flat_map(|(_, devices)| devices.iter().copied())
+            .collect();
+
+        let mut matching_routes = device.enum_routes.values().filter(|route| {
+            route.profiles.contains(&profile_index)
+                && route
+                    .devices
+                    .iter()
+                    .any(|route_device| profile_devices.contains(route_device))
+        });
+
+        let route = matching_routes.next()?;
+        if matching_routes.next().is_some() {
+            return None;
+        }
+
+        route.physical_label()
+    }
+
+    pub fn resolve_computed_node_key<'a>(
+        &'a self,
+        node: &'a Node,
+        key: &str,
+    ) -> Option<&'a str> {
+        match key {
+            "physical.endpoint.label" => self.endpoint_physical_label(node),
+            _ => None,
+        }
+    }
+
     /// Call when a node's capture eligibility might have changed.
     fn on_node(&self, node: &Node) -> Option<CaptureEligibility> {
         if !node
@@ -397,9 +514,48 @@ impl State {
     }
 }
 
+impl EnumRoute {
+    pub fn info(&self, key: &str) -> Option<&str> {
+        self.info.get(key).map(String::as_str)
+    }
+
+    pub fn physical_label(&self) -> Option<&str> {
+        self.info("device.product.name")
+            .filter(|label| !label.is_empty())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn create_device_with_profile(state: &mut State, object_id: ObjectId) {
+        state.update(StateEvent::DeviceProperties {
+            object_id,
+            props: PropertyStore::default(),
+        });
+        state.update(StateEvent::DeviceEnumProfile {
+            object_id,
+            index: 1,
+            description: String::from("Digital Stereo Output"),
+            available: true,
+            classes: vec![(String::from("Audio/Sink"), vec![0])],
+        });
+        state.update(StateEvent::DeviceProfile {
+            object_id,
+            index: 1,
+        });
+        state.update(StateEvent::DeviceRoute {
+            object_id,
+            index: 7,
+            device: 0,
+            profiles: vec![1],
+            description: String::from("HDMI"),
+            available: true,
+            channel_volumes: vec![1.0, 1.0],
+            mute: false,
+        });
+    }
 
     fn create_node(
         state: &mut State,
@@ -548,6 +704,103 @@ mod tests {
 
         assert!(get_metadata_properties(&state, &object_id, 0).is_empty());
         assert!(!get_metadata_properties(&state, &object_id, 1).is_empty());
+    }
+
+    #[test]
+    fn endpoint_physical_label_prefers_node_nick() {
+        let mut state = State::default();
+        let device_id = ObjectId::from_raw_id(10);
+        let node_id = ObjectId::from_raw_id(11);
+
+        create_device_with_profile(&mut state, device_id);
+        state.update(StateEvent::DeviceEnumRoute {
+            object_id: device_id,
+            index: 7,
+            description: String::from("HDMI"),
+            available: true,
+            profiles: vec![1],
+            devices: vec![0],
+            info: HashMap::from([(
+                String::from("device.product.name"),
+                String::from("Route label"),
+            )]),
+        });
+
+        let mut props = PropertyStore::default();
+        props.set_media_class(String::from("Audio/Sink"));
+        props.set_node_name(String::from("sink"));
+        props.set_node_nick(String::from("Node label"));
+        props.set_device_id(device_id);
+        props.set_card_profile_device(0);
+        props.set_object_serial(11);
+        state.update(StateEvent::NodeProperties {
+            object_id: node_id,
+            props,
+        });
+
+        let node = state.nodes.get(&node_id).unwrap();
+        assert_eq!(state.endpoint_physical_label(node), Some("Node label"));
+    }
+
+    #[test]
+    fn device_profile_physical_label_requires_unique_route() {
+        let mut state = State::default();
+        let device_id = ObjectId::from_raw_id(10);
+
+        create_device_with_profile(&mut state, device_id);
+        state.update(StateEvent::DeviceEnumRoute {
+            object_id: device_id,
+            index: 7,
+            description: String::from("HDMI"),
+            available: true,
+            profiles: vec![1],
+            devices: vec![0],
+            info: HashMap::from([(
+                String::from("device.product.name"),
+                String::from("DELL U2723QE"),
+            )]),
+        });
+
+        let device = state.devices.get(&device_id).unwrap();
+        assert_eq!(
+            state.device_profile_physical_label(device, 1),
+            Some("DELL U2723QE")
+        );
+    }
+
+    #[test]
+    fn device_profile_physical_label_is_none_for_multiple_routes() {
+        let mut state = State::default();
+        let device_id = ObjectId::from_raw_id(10);
+
+        create_device_with_profile(&mut state, device_id);
+        state.update(StateEvent::DeviceEnumRoute {
+            object_id: device_id,
+            index: 7,
+            description: String::from("HDMI 1"),
+            available: true,
+            profiles: vec![1],
+            devices: vec![0],
+            info: HashMap::from([(
+                String::from("device.product.name"),
+                String::from("DELL U2723QE"),
+            )]),
+        });
+        state.update(StateEvent::DeviceEnumRoute {
+            object_id: device_id,
+            index: 8,
+            description: String::from("HDMI 2"),
+            available: true,
+            profiles: vec![1],
+            devices: vec![0],
+            info: HashMap::from([(
+                String::from("device.product.name"),
+                String::from("PA32QCV"),
+            )]),
+        });
+
+        let device = state.devices.get(&device_id).unwrap();
+        assert_eq!(state.device_profile_physical_label(device, 1), None);
     }
 
     #[test]

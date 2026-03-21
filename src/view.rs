@@ -155,61 +155,6 @@ impl ListKind {
     }
 }
 
-/// Gets the potential Target::Routes for a device and media class.
-/// These come from the EnumRoutes where profiles contains the active profile's
-/// index, and devices contains at least one of the profile's devices for the
-/// given media class.
-fn route_targets(
-    device: &state::Device,
-    media_class: &String,
-) -> Option<Vec<(Target, String)>> {
-    let profile_index = device.profile_index?;
-    let profile = device.profiles.get(&profile_index)?;
-    let profile_devices = profile
-        .classes
-        .iter()
-        .find_map(|(mc, devices)| (mc == media_class).then_some(devices))?;
-    Some(
-        device
-            .enum_routes
-            .values()
-            .filter_map(|route| {
-                if !route.profiles.contains(&profile_index) {
-                    return None;
-                }
-                let route_device =
-                    route.devices.iter().find(|route_device| {
-                        profile_devices.contains(route_device)
-                    })?;
-                let title = if route.available {
-                    route.description.clone()
-                } else {
-                    format!("{} (unavailable)", route.description)
-                };
-                Some((
-                    Target::Route(device.object_id, route.index, *route_device),
-                    title,
-                ))
-            })
-            .collect(),
-    )
-}
-
-/// Get the active route for a device and card device.
-/// This is the route on a device Node IF the route's profile matches the
-/// device's current profile. Otherwise, there is no valid route.
-fn active_route(
-    device: &state::Device,
-    card_device: i32,
-) -> Option<&state::Route> {
-    let profile_index = device.profile_index?;
-
-    device
-        .routes
-        .get(&card_device)
-        .filter(|route| route.profiles.contains(&profile_index))
-}
-
 impl Node {
     fn from(
         state: &state::State,
@@ -231,9 +176,9 @@ impl Node {
                 // Nodes for devices should get their volume and mute status
                 // from the associated device's active route which is also used
                 // for changing the volume and mute status.
-                let device = state.devices.get(device_id)?;
-                let card_device = *node.props.card_profile_device()?;
-                if let Some(route) = active_route(device, card_device) {
+                if let Some((_, route, card_device)) =
+                    state.active_route_for_node(node)
+                {
                     let route_index = route.index;
                     (
                         route.volumes.clone(),
@@ -257,11 +202,31 @@ impl Node {
             let card_device = *node.props.card_profile_device()?;
 
             let mut routes: Vec<_> =
-                route_targets(device, &media_class).unwrap_or_default();
+                state
+                    .route_targets(device, &media_class)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|(route, route_device)| {
+                        let title = if route.available {
+                            route.description.clone()
+                        } else {
+                            format!("{} (unavailable)", route.description)
+                        };
+                        (
+                            Target::Route(
+                                device.object_id,
+                                route.index,
+                                route_device,
+                            ),
+                            title,
+                        )
+                    })
+                    .collect();
             routes.sort_by(|(_, a), (_, b)| a.cmp(b));
             let routes = routes;
 
-            let (target, target_title) = match active_route(device, card_device)
+            let (target, target_title) =
+                match state.active_route(device, card_device)
             {
                 Some(route) => {
                     let target_title = if route.available {

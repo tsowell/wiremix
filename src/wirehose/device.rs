@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use pipewire::{
@@ -94,12 +95,38 @@ pub fn monitor_device(
     Some((device, Box::new(listener)))
 }
 
+fn parse_route_info(value: Value) -> HashMap<String, String> {
+    let Value::Struct(info_struct) = value else {
+        return HashMap::new();
+    };
+
+    let skip = match info_struct.first() {
+        Some(Value::Int(_)) => 1,
+        _ => 0,
+    };
+
+    let mut info = HashMap::new();
+    let mut iter = info_struct.into_iter().skip(skip);
+    loop {
+        match (iter.next(), iter.next()) {
+            (Some(Value::String(key)), Some(Value::String(value))) => {
+                info.insert(key, value);
+            }
+            (Some(_), Some(_)) => continue,
+            _ => break,
+        }
+    }
+
+    info
+}
+
 fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut index = None;
     let mut description = None;
     let mut available = None;
     let mut profiles = None;
     let mut devices = None;
+    let mut info = HashMap::new();
 
     for prop in param.properties {
         match prop.key {
@@ -129,6 +156,9 @@ fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
                     devices = Some(value);
                 }
             }
+            libspa_sys::SPA_PARAM_ROUTE_info => {
+                info = parse_route_info(prop.value);
+            }
             _ => {}
         }
     }
@@ -140,6 +170,7 @@ fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
         available: available?,
         profiles: profiles?,
         devices: devices?,
+        info,
     })
 }
 
@@ -311,4 +342,26 @@ fn device_info_props(
 
     let props = PropertyStore::from(props);
     sender.send(StateEvent::DeviceProperties { object_id, props });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_route_info_collects_string_pairs() {
+        let info = parse_route_info(Value::Struct(vec![
+            Value::Int(4),
+            Value::String(String::from("device.product.name")),
+            Value::String(String::from("DELL U2723QE")),
+            Value::String(String::from("device.api")),
+            Value::String(String::from("alsa")),
+        ]));
+
+        assert_eq!(
+            info.get("device.product.name").map(String::as_str),
+            Some("DELL U2723QE")
+        );
+        assert_eq!(info.get("device.api").map(String::as_str), Some("alsa"));
+    }
 }
