@@ -73,7 +73,7 @@ lazy_capture = false
 #
 # keybindings = [
 #  # Demonstrate modifiers
-#  { key = "End", modifier = "CTRL | ALT", action = "Exit" },
+#  { key = "End", modifiers = "CTRL | ALT", action = "Exit" },
 # ]
 #
 # Each of the available keybinding actions are documented below.
