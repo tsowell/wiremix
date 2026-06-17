@@ -16,14 +16,7 @@ Issues and pull requests are welcome!
 
 ### Package Managers
 
-* Arch Linux: Install the [official package](https://archlinux.org/packages/extra/x86_64/wiremix/)
-  via `pacman -S wiremix` or `paru -S wiremix-git` for the
-  latest development version from the [AUR](https://aur.archlinux.org/packages/wiremix-git).
-* Nix: `nix run nixpkgs#wiremix` or add `wiremix` to your configuration.
-* Gentoo: Install the [official package](https://packages.gentoo.org/packages/media-sound/wiremix) via
-  `emerge -av wiremix`.
-* Fedora: Install the [official package](https://src.fedoraproject.org/rpms/rust-wiremix) via
-  `dnf in wiremix`.
+[![Packaging status](https://repology.org/badge/vertical-allrepos/wiremix.svg?columns=2)](https://repology.org/project/wiremix/versions)
 
 ### Manual Installation
 
