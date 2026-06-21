@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use pipewire::link::LinkInfoRef;
@@ -30,6 +31,7 @@ pub enum StateEvent {
         available: bool,
         profiles: Vec<i32>,
         devices: Vec<i32>,
+        info: HashMap<String, String>,
     },
     DeviceEnumProfile {
         object_id: ObjectId,
