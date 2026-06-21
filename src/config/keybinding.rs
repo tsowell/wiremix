@@ -48,6 +48,18 @@ impl Keybinding {
             (event(KeyCode::Char('9')), Action::SetAbsoluteVolume(0.90)),
             (event(KeyCode::Char('0')), Action::SetAbsoluteVolume(1.00)),
             (event(KeyCode::Char('?')), Action::Help),
+            (
+                KeyEvent::new(KeyCode::Left, KeyModifiers::SHIFT),
+                Action::SetRelativeBalance(-0.01),
+            ),
+            (
+                KeyEvent::new(KeyCode::Right, KeyModifiers::SHIFT),
+                Action::SetRelativeBalance(0.01),
+            ),
+            (
+                KeyEvent::new(KeyCode::Down, KeyModifiers::SHIFT),
+                Action::SetAbsoluteBalance(0.0),
+            ),
         ])
     }
 
