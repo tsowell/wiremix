@@ -16,6 +16,7 @@ impl Names {
 
     pub fn default_endpoint() -> Vec<NameTemplate> {
         vec![
+            "{node:node.nick}".parse().unwrap(),
             "{device:device.nick}".parse().unwrap(),
             "{node:node.description}".parse().unwrap(),
         ]
