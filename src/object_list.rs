@@ -176,10 +176,12 @@ impl ObjectList {
         if matches!(self.list_kind, ListKind::Device) {
             return;
         }
-        if let (Some(node_id), Some(device_kind)) =
-            (self.selected, self.device_kind)
-        {
-            view.set_default(node_id, device_kind);
+        if let Some(node_id) = self.selected {
+            if let Some(device_kind) = self.device_kind {
+                view.set_default(node_id, device_kind);
+            } else {
+                view.set_target(node_id, view::Target::Default);
+            }
         }
     }
 
