@@ -278,7 +278,20 @@ impl Node {
                         target_title,
                     )
                 }
-                None => (None, String::from("No route selected")),
+                None => {
+                    let target_title = if routes.is_empty() {
+                        node.props
+                            .node_nick()
+                            .filter(|s| !s.is_empty())
+                            .cloned()
+                            .unwrap_or_else(|| {
+                                String::from("No routes available")
+                            })
+                    } else {
+                        String::from("No route selected")
+                    };
+                    (None, target_title)
+                }
             };
 
             (Some(routes), target, target_title)
