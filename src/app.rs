@@ -253,7 +253,7 @@ impl<'a> App<'a> {
             rx,
             error_message: None,
             tabs,
-            visible_tabs: visible_tabs,
+            visible_tabs,
             current_tab_index: config.tab,
             mouse_areas: Vec::new(),
             is_ready: false,
