@@ -13,6 +13,7 @@ use crate::wirehose::{
 
 use anyhow::{anyhow, Result};
 
+use ratatui::style::Stylize;
 use ratatui::{
     layout::Flex,
     prelude::{Buffer, Constraint, Direction, Layout, Position, Rect},
@@ -184,7 +185,9 @@ pub struct App<'a> {
     error_message: Option<String>,
     /// The main tabs
     tabs: Vec<Tab>,
-    /// The index of the currently-visible tab
+    /// Indices into `tabs` for tabs that currently have visible content.
+    visible_tabs: Vec<usize>,
+    /// Index into `tabs` of the currently selected visible tab.
     current_tab_index: usize,
     /// Areas populated during rendering which define actions corresponding to
     /// mouse activity
@@ -228,7 +231,9 @@ impl<'a> App<'a> {
         rx: mpsc::Receiver<Event>,
         config: Config,
     ) -> Self {
-        let tabs = config.tabs.iter().copied().map(Tab::from).collect();
+        let tabs: Vec<Tab> =
+            config.tabs.iter().copied().map(Tab::from).collect();
+        let visible_tabs = (0..tabs.len()).collect();
 
         // Update peaks with VU-meter-style ballistics
         let peak_processor = |new_peak, current_peak, samples, rate| {
@@ -248,6 +253,7 @@ impl<'a> App<'a> {
             rx,
             error_message: None,
             tabs,
+            visible_tabs: visible_tabs,
             current_tab_index: config.tab,
             mouse_areas: Vec::new(),
             is_ready: false,
@@ -287,6 +293,9 @@ impl<'a> App<'a> {
                     &self.config.names,
                     &self.config.filters,
                 );
+            }
+            if !self.config.show_empty_tabs {
+                self.update_visible_tabs();
             }
             self.state_dirty = false;
 
@@ -330,6 +339,7 @@ impl<'a> App<'a> {
         let mut widget_state = AppWidgetState {
             mouse_areas: &mut self.mouse_areas,
             tabs: &mut self.tabs,
+            visible_tabs: &self.visible_tabs,
             help_position: &mut self.help_position,
         };
 
@@ -339,6 +349,32 @@ impl<'a> App<'a> {
     fn exit(&mut self, error_message: Option<String>) {
         self.exit = true;
         self.error_message = error_message;
+    }
+
+    fn update_visible_tabs(&mut self) {
+        self.visible_tabs = self
+            .tabs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, tab)| {
+                if self.view.len(tab.list.list_kind) > 0 {
+                    Some(index)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if self.visible_tabs.is_empty() {
+            return;
+        }
+
+        self.current_tab_index =
+            match self.visible_tabs.binary_search(&self.current_tab_index) {
+                Ok(idx) => self.visible_tabs[idx],
+                Err(0) => self.visible_tabs[0],
+                Err(idx) => self.visible_tabs[idx - 1],
+            };
     }
 
     fn stop_capture(&mut self, object_id: ObjectId) {
@@ -575,8 +611,8 @@ impl Handle for Action {
 
         match self {
             Action::SelectTab(index) => {
-                if index < app.tabs.len() {
-                    app.current_tab_index = index;
+                if let Some(&tab_index) = app.visible_tabs.get(index) {
+                    app.current_tab_index = tab_index;
                 }
             }
             Action::MoveDown => {
@@ -586,14 +622,32 @@ impl Handle for Action {
                 current_list!(app).up(&app.view);
             }
             Action::TabLeft => {
-                app.current_tab_index = app
-                    .current_tab_index
-                    .checked_sub(1)
-                    .unwrap_or(app.tabs.len() - 1)
+                if app.visible_tabs.is_empty() {
+                    return Ok(false);
+                }
+                app.current_tab_index = match app
+                    .visible_tabs
+                    .binary_search(&app.current_tab_index)
+                {
+                    Ok(idx) | Err(idx) => {
+                        app.visible_tabs[idx
+                            .checked_sub(1)
+                            .unwrap_or(app.visible_tabs.len() - 1)]
+                    }
+                };
             }
             Action::TabRight => {
-                app.current_tab_index =
-                    (app.current_tab_index + 1) % app.tabs.len()
+                if app.visible_tabs.is_empty() {
+                    return Ok(false);
+                }
+                app.current_tab_index = match app
+                    .visible_tabs
+                    .binary_search(&app.current_tab_index)
+                {
+                    Ok(idx) | Err(idx) => {
+                        app.visible_tabs[(idx + 1) % app.visible_tabs.len()]
+                    }
+                };
             }
             Action::CloseDropdown => {
                 current_list!(app).dropdown_close();
@@ -737,6 +791,7 @@ pub struct AppWidget<'a, 'b> {
 pub struct AppWidgetState<'a> {
     mouse_areas: &'a mut Vec<MouseArea>,
     tabs: &'a mut Vec<Tab>,
+    visible_tabs: &'a [usize],
     help_position: &'a mut Option<u16>,
 }
 
@@ -744,6 +799,15 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
     type State = AppWidgetState<'a>;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        if state.visible_tabs.is_empty() {
+            let line = Line::from("All tabs are empty".red().bold()).centered();
+            let [area_centered] = Layout::vertical([Constraint::Length(1)])
+                .flex(Flex::Center)
+                .areas(area);
+            line.render(area_centered, buf);
+            return;
+        }
+
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -755,9 +819,12 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
         let menu_area = layout[1];
 
         let constraints: Vec<_> = state
-            .tabs
+            .visible_tabs
             .iter()
-            .map(|tab| Constraint::Length(tab.title.len() as u16 + 2))
+            .map(|&tab_index| {
+                let tab = &state.tabs[tab_index];
+                Constraint::Length(tab.title.len() as u16 + 2)
+            })
             .collect();
 
         let menu_areas = Layout::default()
@@ -765,8 +832,9 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
             .constraints(constraints)
             .split(menu_area);
 
-        for (i, tab) in state.tabs.iter().enumerate() {
-            let title_line = if i == self.current_tab_index {
+        for (i, &tab_index) in state.visible_tabs.iter().enumerate() {
+            let tab = &state.tabs[tab_index];
+            let title_line = if tab_index == self.current_tab_index {
                 Line::from(vec![
                     Span::styled(
                         &self.config.char_set.tab_marker_left,
@@ -785,7 +853,6 @@ impl<'a> StatefulWidget for AppWidget<'a, '_> {
                 ))
             };
             title_line.render(menu_areas[i], buf);
-
             state.mouse_areas.push((
                 menu_areas[i],
                 smallvec![MouseEventKind::Down(MouseButton::Left)],
@@ -880,6 +947,7 @@ mod tests {
             names: Default::default(),
             tab: 0,
             tabs: vec![TabKind::Playback],
+            show_empty_tabs: true,
             lazy_capture: Default::default(),
             filters: Default::default(),
         };
@@ -981,6 +1049,7 @@ mod tests {
                 TabKind::Input,
                 TabKind::Configuration,
             ],
+            show_empty_tabs: true,
             lazy_capture: Default::default(),
             filters: Default::default(),
         };

@@ -35,6 +35,9 @@ tab = "playback"
 # Which tabs are present and their order
 tabs = [ "playback", "recording", "output", "input", "configuration" ]
 
+# Whether to show tabs even when their corresponding list is empty.
+show_empty_tabs = true
+
 # Maximum percentage for volume sliders
 max_volume_percent = 150.0
 
