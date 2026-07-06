@@ -71,7 +71,7 @@ impl<D> StreamRegistry<D> {
             if let Some(listeners) = self.listeners.get_mut(&stream_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd;
         }
 
         let v = self.listeners.entry(stream_id).or_default();
@@ -85,11 +85,11 @@ impl<D> StreamRegistry<D> {
             let _ = stream.disconnect();
             self.garbage_streams.push(stream);
             self.garbage_ids.insert(stream_id);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd;
         }
         if let Some(listeners) = self.listeners.get_mut(&stream_id) {
             if !listeners.is_empty() {
-                let _ = self.gc_fd.arm();
+                let _ = self.gc_fd;
                 self.garbage_ids.insert(stream_id);
             }
             self.garbage_listeners.append(listeners);

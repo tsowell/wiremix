@@ -75,7 +75,7 @@ impl StatefulWidget for DropdownWidget<'_> {
                     .border_type(self.config.char_set.dropdown_border),
             )
             .style(self.config.theme.dropdown_item)
-            .highlight_symbol(&highlight_symbol)
+            .highlight_symbol(highlight_symbol.as_str())
             .highlight_style(self.config.theme.dropdown_selected);
 
         StatefulWidget::render(

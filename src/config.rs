@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{style::Style, widgets::block::BorderType};
+use ratatui::{style::Style, widgets::BorderType};
 use serde::Deserialize;
 use toml;
 
