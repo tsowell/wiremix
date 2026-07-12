@@ -365,28 +365,56 @@ impl Device {
             .profiles
             .values()
             .map(|profile| {
-                let title = if profile.available {
-                    profile.description.clone()
+                let profile_devices: Vec<i32> = profile
+                    .classes
+                    .iter()
+                    .flat_map(|(_, devices)| devices.iter().copied())
+                    .collect();
+                let matching_routes: Vec<_> = device
+                    .enum_routes
+                    .values()
+                    .filter(|route| {
+                        route
+                            .devices
+                            .iter()
+                            .any(|d| profile_devices.contains(d))
+                    })
+                    .collect();
+                let monitor_name = if matching_routes.len() == 1 {
+                    matching_routes[0].product_name.as_deref()
                 } else {
-                    format!("{} (unavailable)", profile.description)
+                    None
+                };
+                let title = match (profile.available, monitor_name) {
+                    (true, Some(name)) => {
+                        format!("{} \u{2014} {}", profile.description, name)
+                    }
+                    (false, Some(name)) => format!(
+                        "{} \u{2014} {} (unavailable)",
+                        profile.description, name
+                    ),
+                    (true, None) => profile.description.clone(),
+                    (false, None) => {
+                        format!("{} (unavailable)", profile.description)
+                    }
                 };
                 (profile.index, title)
             })
             .collect();
         profiles.sort_by_key(|&(index, _)| index);
-        let profiles = profiles
+        let profiles: Vec<(Target, String)> = profiles
             .into_iter()
             .map(|(index, title)| (Target::Profile(object_id, index), title))
             .collect();
 
-        let target_profile = device.profiles.get(&device.profile_index?)?;
-        let target_title = if target_profile.available {
-            target_profile.description.clone()
-        } else {
-            format!("{} (unavailable)", target_profile.description)
-        };
+        let profile_index = device.profile_index?;
+        let target_title = profiles
+            .iter()
+            .find(|(t, _)| *t == Target::Profile(object_id, profile_index))
+            .map(|(_, title)| title.clone())
+            .unwrap_or_default();
 
-        let target = Some(Target::Profile(object_id, device.profile_index?));
+        let target = Some(Target::Profile(object_id, profile_index));
 
         let object_serial = *device.props.object_serial()?;
 

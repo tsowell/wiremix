@@ -100,6 +100,7 @@ fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
     let mut available = None;
     let mut profiles = None;
     let mut devices = None;
+    let mut product_name = None;
 
     for prop in param.properties {
         match prop.key {
@@ -129,6 +130,25 @@ fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
                     devices = Some(value);
                 }
             }
+            libspa_sys::SPA_PARAM_ROUTE_info => {
+                if let Value::Struct(info_struct) = prop.value {
+                    let skip = match info_struct.first() {
+                        Some(Value::Int(_)) => 1,
+                        _ => 0,
+                    };
+                    let mut iter = info_struct.into_iter().skip(skip);
+                    while let (
+                        Some(Value::String(key)),
+                        Some(Value::String(val)),
+                    ) = (iter.next(), iter.next())
+                    {
+                        if key == "device.product.name" {
+                            product_name = Some(val);
+                            break;
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -140,6 +160,7 @@ fn device_enum_route(object_id: ObjectId, param: Object) -> Option<StateEvent> {
         available: available?,
         profiles: profiles?,
         devices: devices?,
+        product_name,
     })
 }
 
