@@ -10,7 +10,7 @@ use serde_json::Value;
 
 /// The `--format` values accepted by every command.
 ///
-/// `yaml` and `csv` from the full SFRS set are not yet implemented; `json` and
+/// `yaml` and `csv` from the full set defined by the CLI Standard are not yet implemented; `json` and
 /// `jsonl` cover the machine-readable contract, `explore` is the TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 #[clap(rename_all = "lowercase")]

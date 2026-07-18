@@ -13,7 +13,7 @@ Software umbrella project** (`GPL-3.0-or-later`) — a fork of upstream `wiremix
 by Thomas Sowell (originally `MIT OR Apache-2.0`,
 <https://github.com/tsowell/wiremix>; see `CREDITS.md`).
 
-**The Steelbore Standard, the CLI Standard (SFRS), and the Agentic CLI layer
+**The Steelbore Standard, the CLI Standard, and the Agentic CLI layer
 apply.** Load the `spacecraft-standard`, `spacecraft-cli-standard`,
 `spacecraft-agentic-cli`, and `microsoft-rust-guidelines` skills before
 substantive work. Key invariants: REUSE/SPDX two-tag header on every file

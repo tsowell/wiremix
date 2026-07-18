@@ -36,7 +36,7 @@ incorporated.
 ## Standards
 
 This fork conforms to The Steelbore Standard, the Spacecraft Software CLI
-Standard (SFRS v1.0.0), and the Agentic CLI layer. These are conventions the
+Standard (v1.0.0), and the Agentic CLI layer. These are conventions the
 project adheres to, not redistributed works.
 
 ---

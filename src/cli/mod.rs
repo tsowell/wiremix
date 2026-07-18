@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Mohamed Hammad <Mohamed.Hammad@SpacecraftSoftware.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! The machine-readable noun-verb CLI (Spacecraft Software CLI Standard, SFRS).
+//! The machine-readable noun-verb CLI (Spacecraft Software CLI Standard).
 //!
 //! This runs *alongside* the interactive TUI. `main` dispatches a subcommand
 //! here as a one-shot command; with no subcommand it runs the TUI. Everything
