@@ -9,6 +9,7 @@ pub enum PropertyKey {
     Device(String),
     Node(String),
     Client(String),
+    Computed(String),
     Bare(String),
 }
 
@@ -25,6 +26,9 @@ impl ToString for PropertyKey {
             PropertyKey::Client(s) => {
                 format!("client:{s}")
             }
+            PropertyKey::Computed(s) => {
+                format!("computed:{s}")
+            }
             PropertyKey::Bare(s) => s.to_string(),
         }
     }
@@ -37,6 +41,8 @@ impl std::str::FromStr for PropertyKey {
         let (variant, key): (fn(String) -> PropertyKey, &str) =
             if let Some(key) = s.strip_prefix("client:") {
                 (PropertyKey::Client, key)
+            } else if let Some(key) = s.strip_prefix("computed:") {
+                (PropertyKey::Computed, key)
             } else if let Some(key) = s.strip_prefix("device:") {
                 (PropertyKey::Device, key)
             } else if let Some(key) = s.strip_prefix("node:") {
@@ -72,6 +78,7 @@ impl PropertyResolver for state::Device {
             PropertyKey::Device(s) | PropertyKey::Bare(s) => self.props.raw(s),
             PropertyKey::Node(_) => None,
             PropertyKey::Client(_) => None,
+            PropertyKey::Computed(_) => None,
         }
     }
 }
@@ -94,6 +101,9 @@ impl PropertyResolver for state::Node {
                 let client = state.clients.get(self.props.client_id()?)?;
                 client.resolve_key(state, key)
             }
+            PropertyKey::Computed(s) => {
+                state.resolve_computed_node_key(self, s)
+            }
         }
     }
 }
@@ -109,6 +119,7 @@ impl PropertyResolver for state::Client {
             PropertyKey::Client(s) | PropertyKey::Bare(s) => self.props.raw(s),
             PropertyKey::Node(_) => None,
             PropertyKey::Device(_) => None,
+            PropertyKey::Computed(_) => None,
         }
     }
 }
@@ -151,6 +162,14 @@ mod tests {
     }
 
     #[test]
+    fn parse_computed() {
+        assert_eq!(
+            PropertyKey::from_str("computed:physical.endpoint.label").unwrap(),
+            PropertyKey::Computed("physical.endpoint.label".into())
+        );
+    }
+
+    #[test]
     fn empty_bare_is_error() {
         assert!(PropertyKey::from_str("").is_err());
     }
@@ -160,6 +179,7 @@ mod tests {
         assert!(PropertyKey::from_str("device:").is_err());
         assert!(PropertyKey::from_str("node:").is_err());
         assert!(PropertyKey::from_str("client:").is_err());
+        assert!(PropertyKey::from_str("computed:").is_err());
     }
 
     #[test]
@@ -170,7 +190,7 @@ mod tests {
 
     #[test]
     fn roundtrip_prefixed() {
-        for input in ["device:foo", "node:bar", "client:baz"] {
+        for input in ["device:foo", "node:bar", "client:baz", "computed:qux"] {
             let key = PropertyKey::from_str(input).unwrap();
             assert_eq!(key.to_string(), input);
         }
@@ -181,6 +201,7 @@ mod tests {
         assert_eq!(PropertyKey::Device("x".into()).to_string(), "device:x");
         assert_eq!(PropertyKey::Node("x".into()).to_string(), "node:x");
         assert_eq!(PropertyKey::Client("x".into()).to_string(), "client:x");
+        assert_eq!(PropertyKey::Computed("x".into()).to_string(), "computed:x");
         assert_eq!(PropertyKey::Bare("x".into()).to_string(), "x");
     }
 

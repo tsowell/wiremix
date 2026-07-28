@@ -272,6 +272,11 @@ Not all nodes and devices have the same properties present, so if multiple
 naming templates are specified, wiremix will try to resolve them in order and
 use the first one that works.
 
+Templates and match rules can also use computed values. Currently
+`computed:physical.endpoint.label` is available for endpoint nodes. It resolves
+from `node.nick` first, then falls back to the active route's
+`device.product.name` when there is a single unambiguous physical label.
+
 For ncpamixer-style names you can use:
 
 ```toml
