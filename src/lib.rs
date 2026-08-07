@@ -6,6 +6,7 @@ pub mod device_widget;
 pub mod dropdown_widget;
 pub mod event;
 pub mod help;
+pub mod hidden_state;
 pub mod input;
 pub mod meter;
 pub mod node_widget;

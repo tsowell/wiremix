@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use regex::Regex;
-use serde::Deserialize;
-use serde_with::DeserializeFromStr;
+use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 
 use crate::config::property_key::{PropertyKey, PropertyResolver};
 use crate::wirehose::state;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct MatchCondition(pub HashMap<PropertyKey, MatchValue>);
 
@@ -21,9 +21,24 @@ impl MatchCondition {
             .iter()
             .all(|(key, value)| value.matches(resolver.resolve_key(state, key)))
     }
+
+    /// Builds a matcher against a node's exact `node.name` - used to
+    /// durably identify a node for hide-items persistence. `node.name` is
+    /// the same property `Filter::defaults()` already relies on to
+    /// identify wiremix's own capture streams by name, the established
+    /// "stable enough" identifier for a node in this codebase. Not
+    /// perfectly stable for every kind of stream (an app that varies its
+    /// own `node.name` between launches won't re-match), the same
+    /// limitation any hand-written `[[filters]]` entry already has.
+    pub fn from_node_name(name: &str) -> Self {
+        Self(HashMap::from([(
+            PropertyKey::Bare(String::from("node.name")),
+            MatchValue::Literal(String::from(name)),
+        )]))
+    }
 }
 
-#[derive(Debug, DeserializeFromStr)]
+#[derive(Debug, Clone, DeserializeFromStr, SerializeDisplay)]
 pub enum MatchValue {
     Literal(String),
     NegatedLiteral(String),
@@ -31,6 +46,30 @@ pub enum MatchValue {
     NegatedRegex(Regex),
     Null,
     NotNull,
+}
+
+impl std::fmt::Display for MatchValue {
+    /// Inverse of `FromStr` - only round-trips values `FromStr` can
+    /// actually parse back: the literal string `"null"` is escaped as
+    /// `"null"` (quoted) so it isn't read back as the `Null` variant on
+    /// reload. Literal strings that themselves start with `!` or `~` are
+    /// not escaped, since `FromStr` has no quoting mechanism for that -
+    /// same pre-existing limitation as any hand-written `[[filters]]`
+    /// entry.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MatchValue::Null => write!(f, "null"),
+            MatchValue::NotNull => write!(f, "!null"),
+            MatchValue::Literal(s) if s == "null" => write!(f, "\"null\""),
+            MatchValue::Literal(s) => write!(f, "{s}"),
+            MatchValue::NegatedLiteral(s) if s == "null" => {
+                write!(f, "!\"null\"")
+            }
+            MatchValue::NegatedLiteral(s) => write!(f, "!{s}"),
+            MatchValue::Regex(re) => write!(f, "~{}", re.as_str()),
+            MatchValue::NegatedRegex(re) => write!(f, "!~{}", re.as_str()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -212,5 +251,52 @@ mod tests {
         assert!(!val.matches(Some("null")));
         assert!(val.matches(Some("other")));
         assert!(val.matches(None));
+    }
+
+    fn round_trip(s: &str) {
+        let val = s.parse::<MatchValue>().unwrap();
+        assert_eq!(val.to_string(), s);
+        let reparsed = val.to_string().parse::<MatchValue>().unwrap();
+        assert_eq!(val, reparsed);
+    }
+
+    #[test]
+    fn display_round_trips_null() {
+        round_trip("null");
+    }
+
+    #[test]
+    fn display_round_trips_not_null() {
+        round_trip("!null");
+    }
+
+    #[test]
+    fn display_round_trips_quoted_null_literal() {
+        round_trip("\"null\"");
+    }
+
+    #[test]
+    fn display_round_trips_negated_quoted_null_literal() {
+        round_trip("!\"null\"");
+    }
+
+    #[test]
+    fn display_round_trips_literal() {
+        round_trip("hello");
+    }
+
+    #[test]
+    fn display_round_trips_negated_literal() {
+        round_trip("!hello");
+    }
+
+    #[test]
+    fn display_round_trips_regex() {
+        round_trip("~^foo.*bar$");
+    }
+
+    #[test]
+    fn display_round_trips_negated_regex() {
+        round_trip("!~^foo.*bar$");
     }
 }

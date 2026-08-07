@@ -473,6 +473,7 @@ impl<'a> View<'a> {
         names: &config::Names,
         filters: &[config::MatchCondition],
         hidden_instance: &HashSet<ObjectId>,
+        hidden_permanent: &HashSet<ObjectId>,
     ) -> View<'a> {
         let default_sink_name = default_for(state, "default.audio.sink");
         let default_source_name = default_for(state, "default.audio.source");
@@ -596,9 +597,21 @@ impl<'a> View<'a> {
                 nodes_input.push(*id);
             }
         }
-        // Stable sort on hidden status only, after the object_serial sort
-        // above - preserves relative order within the visible and hidden
-        // groups, so hidden objects sink to the bottom without otherwise
+        // Rank visible objects first, instance-hidden ones next, and
+        // permanent-hidden ones last.
+        let hidden_rank = |id: &ObjectId| -> u8 {
+            if hidden_permanent.contains(id) {
+                2
+            } else if hidden_instance.contains(id) {
+                1
+            } else {
+                0
+            }
+        };
+
+        // Stable sort on hidden rank only, after the object_serial sort
+        // above - preserves relative order within each rank, so hiding
+        // something sinks it to the bottom of its group without otherwise
         // reshuffling the list.
         for list in [
             &mut nodes_all,
@@ -607,7 +620,7 @@ impl<'a> View<'a> {
             &mut nodes_output,
             &mut nodes_input,
         ] {
-            list.sort_by_key(|id| hidden_instance.contains(id));
+            list.sort_by_key(&hidden_rank);
         }
         let nodes_all = nodes_all;
         let nodes_playback = nodes_playback;
@@ -620,7 +633,7 @@ impl<'a> View<'a> {
             .sorted_by_key(|(_, device)| device.object_serial)
             .map(|(&id, _)| id)
             .collect();
-        devices_all.sort_by_key(|id| hidden_instance.contains(id));
+        devices_all.sort_by_key(&hidden_rank);
         let devices_all = devices_all;
 
         Self {

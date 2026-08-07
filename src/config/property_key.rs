@@ -1,10 +1,12 @@
 //! An identifier for a property on an object or a linked object
 
-use serde_with::DeserializeFromStr;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 
 use crate::wirehose::state;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq, DeserializeFromStr)]
+#[derive(
+    Debug, Clone, Hash, PartialEq, Eq, DeserializeFromStr, SerializeDisplay,
+)]
 pub enum PropertyKey {
     Device(String),
     Node(String),
@@ -12,20 +14,13 @@ pub enum PropertyKey {
     Bare(String),
 }
 
-#[allow(clippy::to_string_trait_impl)] // This is not for display.
-impl ToString for PropertyKey {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for PropertyKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PropertyKey::Device(s) => {
-                format!("device:{s}")
-            }
-            PropertyKey::Node(s) => {
-                format!("node:{s}")
-            }
-            PropertyKey::Client(s) => {
-                format!("client:{s}")
-            }
-            PropertyKey::Bare(s) => s.to_string(),
+            PropertyKey::Device(s) => write!(f, "device:{s}"),
+            PropertyKey::Node(s) => write!(f, "node:{s}"),
+            PropertyKey::Client(s) => write!(f, "client:{s}"),
+            PropertyKey::Bare(s) => write!(f, "{s}"),
         }
     }
 }

@@ -85,6 +85,9 @@ keybindings = [
  # "t" for "toggle hide": hide/show the selected item for this instance
  # only (not saved, not synced to other instances)
  { key = { Char = "t" }, action = "ToggleHiddenInstance" },
+ # Hide/show the selected item permanently (saved to disk, synced to
+ # other running instances)
+ { key = { Char = "t" }, modifiers = "CONTROL", action = "ToggleHiddenPermanent" },
  # Make the selected item in Input/Output Devices the default endpoint
  { key = { Char = "d" }, action = "SetDefault" },
  # Increase the volume of the selected item by 1%
@@ -341,9 +344,12 @@ config_device = { }
 config_profile = { }
 # Patched onto a hidden row's own text styles (node_title, node_target,
 # volume, config_device, config_profile) - only whichever of
-# fg/bg/add_modifier you set here override the base style. A faint tint
-# (e.g. DarkGray) is a typical choice, to visually distinguish hidden
-# items from normal ones without hiding them entirely.
+# fg/bg/add_modifier you set here override the base style. Used for both
+# instance-hidden and permanently-hidden rows alike (they're
+# distinguished from each other by the hidden_instance/hidden_permanent
+# char_set prefixes instead). A faint tint (e.g. DarkGray) is a typical
+# choice, to visually distinguish hidden items from normal ones without
+# hiding them entirely.
 row_hidden = { fg = "DarkGray" }
 # Dropdown marker next to the profiles in the Configuration tab
 dropdown_icon = { }
@@ -397,6 +403,10 @@ default_stream = "◇"
 # most glyphs above), since it's meant to be a short text tag rather than
 # a single character - e.g. try "🙈 " for an emoji alternative.
 hidden_instance = "[hide] "
+# Same as hidden_instance, but for items permanently hidden (saved to
+# disk, synced to other running instances) rather than just for this
+# instance - e.g. try "🚫 " for an emoji alternative.
+hidden_permanent = "[perm-hide] "
 # The selection indicator in a tab
 selector_top = "░"
 selector_middle = "▒"
@@ -509,6 +519,7 @@ help_more = { }
 default_device = "◊"
 default_stream = "◊"
 hidden_instance = "[hide] "
+hidden_permanent = "[perm-hide] "
 selector_top = "░"
 selector_middle = "▒"
 selector_bottom = "░"
@@ -538,6 +549,7 @@ help_border = "Plain"
 default_device = "*"
 default_stream = "*"
 hidden_instance = "[hide] "
+hidden_permanent = "[perm-hide] "
 selector_top = "-"
 selector_middle = "="
 selector_bottom = "-"

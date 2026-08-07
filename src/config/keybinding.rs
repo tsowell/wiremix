@@ -20,6 +20,10 @@ impl Keybinding {
             // `t` for "toggle hide": toggles hiding the selected item for
             // this instance only.
             (event(KeyCode::Char('t')), Action::ToggleHiddenInstance),
+            (
+                KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+                Action::ToggleHiddenPermanent,
+            ),
             (event(KeyCode::Char('d')), Action::SetDefault),
             (event(KeyCode::Char('l')), Action::SetRelativeVolume(0.01)),
             (event(KeyCode::Right), Action::SetRelativeVolume(0.01)),

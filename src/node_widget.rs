@@ -33,7 +33,8 @@ pub struct NodeWidget<'a> {
     device_kind: Option<DeviceKind>,
     node: &'a view::Node,
     selected: bool,
-    hidden: bool,
+    hidden_instance: bool,
+    hidden_permanent: bool,
 }
 
 impl<'a> NodeWidget<'a> {
@@ -42,14 +43,16 @@ impl<'a> NodeWidget<'a> {
         device_kind: Option<DeviceKind>,
         node: &'a view::Node,
         selected: bool,
-        hidden: bool,
+        hidden_instance: bool,
+        hidden_permanent: bool,
     ) -> Self {
         Self {
             config,
             device_kind,
             node,
             selected,
-            hidden,
+            hidden_instance,
+            hidden_permanent,
         }
     }
 
@@ -164,12 +167,17 @@ impl StatefulWidget for NodeWidget<'_> {
             self.config,
             self.device_kind,
             self.node,
-            self.hidden,
+            self.hidden_instance,
+            self.hidden_permanent,
         )
         .render(header_area, buf, mouse_areas);
 
         // Render volume bar and (if enabled) peak meter
-        let volume = VolumeWidget::new(self.config, self.node, self.hidden);
+        let volume = VolumeWidget::new(
+            self.config,
+            self.node,
+            self.hidden_instance || self.hidden_permanent,
+        );
         if self.config.peaks == Peaks::Off {
             let layout = Layout::default()
                 .direction(Direction::Horizontal)
@@ -246,7 +254,8 @@ struct HeaderWidget<'a> {
     config: &'a Config,
     device_kind: Option<DeviceKind>,
     node: &'a view::Node,
-    hidden: bool,
+    hidden_instance: bool,
+    hidden_permanent: bool,
 }
 
 impl<'a> HeaderWidget<'a> {
@@ -254,21 +263,27 @@ impl<'a> HeaderWidget<'a> {
         config: &'a Config,
         device_kind: Option<DeviceKind>,
         node: &'a view::Node,
-        hidden: bool,
+        hidden_instance: bool,
+        hidden_permanent: bool,
     ) -> Self {
         Self {
             config,
             device_kind,
             node,
-            hidden,
+            hidden_instance,
+            hidden_permanent,
         }
+    }
+
+    fn hidden(&self) -> bool {
+        self.hidden_instance || self.hidden_permanent
     }
 
     /// Patches `row_hidden` onto `base` when this row is hidden - a no-op
     /// (`row_hidden` defaults to an empty `Style`) unless a theme
     /// explicitly sets it.
     fn hidden_style(&self, base: Style) -> Style {
-        if self.hidden {
+        if self.hidden() {
             base.patch(self.config.theme.row_hidden)
         } else {
             base
@@ -305,7 +320,9 @@ impl<'a> HeaderWidget<'a> {
             Span::from(" ")
         };
         let title_style = self.hidden_style(self.config.theme.node_title);
-        let hidden_prefix = if self.hidden {
+        let hidden_prefix = if self.hidden_permanent {
+            Span::styled(&self.config.char_set.hidden_permanent, title_style)
+        } else if self.hidden_instance {
             Span::styled(&self.config.char_set.hidden_instance, title_style)
         } else {
             Span::from("")

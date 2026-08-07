@@ -16,6 +16,7 @@ pub struct CharSetOverlay {
     default_device: Option<String>,
     default_stream: Option<String>,
     hidden_instance: Option<String>,
+    hidden_permanent: Option<String>,
     selector_top: Option<String>,
     selector_middle: Option<String>,
     selector_bottom: Option<String>,
@@ -99,6 +100,7 @@ impl TryFrom<CharSetOverlay> for CharSet {
         validate_and_set!(default_device, 1);
         validate_and_set!(default_stream, 1);
         validate_and_set!(hidden_instance, 0);
+        validate_and_set!(hidden_permanent, 0);
         validate_and_set!(selector_top, 1);
         validate_and_set!(selector_middle, 1);
         validate_and_set!(selector_bottom, 1);
@@ -140,6 +142,7 @@ impl Default for CharSet {
             default_device: String::from("◇"),
             default_stream: String::from("◇"),
             hidden_instance: String::from("[hide] "),
+            hidden_permanent: String::from("[perm-hide] "),
             selector_top: String::from("░"),
             selector_middle: String::from("▒"),
             selector_bottom: String::from("░"),
@@ -182,6 +185,7 @@ impl CharSet {
             default_device: String::from("◊"),
             default_stream: String::from("◊"),
             hidden_instance: String::from("[hide] "),
+            hidden_permanent: String::from("[perm-hide] "),
             selector_top: String::from("░"),
             selector_middle: String::from("▒"),
             selector_bottom: String::from("░"),
@@ -214,6 +218,7 @@ impl CharSet {
             default_device: String::from("*"),
             default_stream: String::from("*"),
             hidden_instance: String::from("[hide] "),
+            hidden_permanent: String::from("[perm-hide] "),
             selector_top: String::from("-"),
             selector_middle: String::from("="),
             selector_bottom: String::from("-"),

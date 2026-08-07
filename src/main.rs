@@ -11,6 +11,7 @@ use crossterm::{
 use wiremix::app;
 use wiremix::config::Config;
 use wiremix::event::Event;
+use wiremix::hidden_state::HiddenState;
 use wiremix::input;
 use wiremix::opt::Opt;
 use wiremix::wirehose::Session;
@@ -61,8 +62,9 @@ fn main() -> Result<()> {
     }
     let mut terminal = ratatui::init();
     terminal.clear()?;
-    let app_result =
-        app::App::new(&client, event_rx, config).run(&mut terminal);
+    let mut app = app::App::new(&client, event_rx, config);
+    app.load_hidden_state(HiddenState::default_path());
+    let app_result = app.run(&mut terminal);
     ratatui::restore();
     if support_mouse {
         stdout().execute(DisableMouseCapture)?;

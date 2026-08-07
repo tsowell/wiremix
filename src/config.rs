@@ -146,6 +146,7 @@ pub struct CharSet {
     pub default_device: String,
     pub default_stream: String,
     pub hidden_instance: String,
+    pub hidden_permanent: String,
     pub selector_top: String,
     pub selector_middle: String,
     pub selector_bottom: String,
