@@ -21,18 +21,28 @@ pub struct HiddenState {
 }
 
 impl HiddenState {
+    /// Bare filename (no directory) the state file is saved under - shared
+    /// with the inotify-based live-sync watch (see
+    /// `wirehose::hidden_state_watch`), which needs to filter directory
+    /// events down to just this file without duplicating the string.
+    pub const FILENAME: &'static str = "hidden.toml";
+
     /// Returns the default path for the hidden-item state file, following
     /// the same `$XDG_STATE_HOME`/`$HOME` resolution
     /// [`Config::default_path`](`crate::config::Config::default_path`)
     /// already uses for the config file (mirroring `$XDG_CONFIG_HOME`).
     pub fn default_path() -> Option<PathBuf> {
         if let Ok(xdg_state) = env::var("XDG_STATE_HOME") {
-            return Some(Path::new(&xdg_state).join("wiremix/hidden.toml"));
+            return Some(
+                Path::new(&xdg_state).join("wiremix").join(Self::FILENAME),
+            );
         }
 
         if let Ok(home) = env::var("HOME") {
             return Some(
-                Path::new(&home).join(".local/state/wiremix/hidden.toml"),
+                Path::new(&home)
+                    .join(".local/state/wiremix")
+                    .join(Self::FILENAME),
             );
         }
 

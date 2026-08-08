@@ -358,6 +358,63 @@ impl<'a> App<'a> {
         let _ = hidden_state.save(path);
     }
 
+    /// Reacts to `hidden_state_path` having changed on disk - most likely
+    /// another wiremix instance's own `save_hidden_state()`, delivered via
+    /// the inotify watch in `wirehose::session` (see its doc comment for
+    /// why the watch itself lives there). Deliberately does not call
+    /// `save_hidden_state()` itself: this instance is *reading* a change
+    /// something else already wrote, not originating one - re-saving here
+    /// would just write the same content straight back and cause another
+    /// spurious watch trigger for every real one.
+    ///
+    /// The content comparison below also means saving our own change here
+    /// harmlessly no-ops if this fires for our own just-written file
+    /// (which it will, since the watch is on the directory, not scoped by
+    /// writer) - not required for correctness the way the equivalent guard
+    /// was for the PipeWire-metadata design this replaced (no re-save here
+    /// means no risk of an actual feedback loop either way), but it's
+    /// nearly free and avoids a redundant recompute + capture-diff pass.
+    fn apply_file_hidden_state_change(&mut self) {
+        let Some(path) = self.hidden_state_path.clone() else {
+            return;
+        };
+
+        let Ok(hidden_state) = HiddenState::load(&path) else {
+            return;
+        };
+
+        let current_json =
+            serde_json::to_string(&self.hidden_permanent_matchers).ok();
+        let new_json = serde_json::to_string(&hidden_state.hidden).ok();
+        if current_json == new_json {
+            return;
+        }
+
+        self.hidden_permanent_matchers = hidden_state.hidden;
+        self.recompute_hidden_permanent();
+        self.state_dirty = true;
+
+        let need_to_stop: Vec<_> = self
+            .capturing_objects
+            .iter()
+            .copied()
+            .filter(|id| self.hidden_permanent.contains(id))
+            .collect();
+        for object_id in need_to_stop {
+            self.stop_capture(object_id);
+        }
+
+        let need_to_start: Vec<_> = self
+            .capturable_objects
+            .iter()
+            .copied()
+            .filter(|id| !self.capturing_objects.contains(id))
+            .collect();
+        for object_id in need_to_start {
+            self.start_capture(object_id);
+        }
+    }
+
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         // Wait until we've received all initial data from PipeWire
         let _ = terminal.draw(|frame| {
@@ -873,6 +930,10 @@ impl Handle for PipewireEvent {
             }
             PipewireEvent::Error(message) => message.handle(app),
             PipewireEvent::State(event) => event.handle(app),
+            PipewireEvent::HiddenStateChanged => {
+                app.apply_file_hidden_state_change();
+                Ok(true)
+            }
         }
     }
 }
@@ -1788,6 +1849,122 @@ mod tests {
         app2.recompute_hidden_permanent();
 
         assert!(app2.hidden_permanent.contains(&id));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    fn hidden_state_test_path() -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "wiremix-app-test-file-watch-hidden-{}-{n}.toml",
+            std::process::id(),
+        ))
+    }
+
+    #[test]
+    fn apply_file_hidden_state_change_hides_matching_object() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let mut app = fixture(&wirehose);
+        let id = ObjectId::from_raw_id(0);
+        let path = hidden_state_test_path();
+        app.hidden_state_path = Some(path.clone());
+        app.capturable_objects.insert(id);
+        app.capturing_objects.insert(id);
+        commands.borrow_mut().clear();
+
+        let hidden_state = HiddenState {
+            hidden: vec![MatchCondition::from_node_name("Node name")],
+        };
+        hidden_state.save(&path).unwrap();
+
+        app.apply_file_hidden_state_change();
+
+        assert!(app.hidden_permanent.contains(&id));
+        assert!(!app.capturing_objects.contains(&id));
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStop(id))
+        );
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn apply_file_hidden_state_change_resumes_capture_when_cleared() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let mut app = fixture(&wirehose);
+        let id = ObjectId::from_raw_id(0);
+        let path = hidden_state_test_path();
+        app.hidden_state_path = Some(path.clone());
+        app.hidden_permanent_matchers =
+            vec![MatchCondition::from_node_name("Node name")];
+        app.recompute_hidden_permanent();
+        app.capturable_objects.insert(id);
+        app.capturing_objects.remove(&id);
+        assert!(app.hidden_permanent.contains(&id));
+        commands.borrow_mut().clear();
+
+        let hidden_state = HiddenState { hidden: Vec::new() };
+        hidden_state.save(&path).unwrap();
+
+        app.apply_file_hidden_state_change();
+
+        assert!(!app.hidden_permanent.contains(&id));
+        assert!(app.capturing_objects.contains(&id));
+        assert_eq!(
+            commands.borrow_mut().pop_front(),
+            Some(mock::MockCommand::NodeCaptureStart(id))
+        );
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn apply_file_hidden_state_change_ignores_malformed_file() {
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
+        let path = hidden_state_test_path();
+        app.hidden_state_path = Some(path.clone());
+
+        std::fs::write(&path, "not valid toml {{{").unwrap();
+
+        app.apply_file_hidden_state_change();
+
+        assert!(app.hidden_permanent_matchers.is_empty());
+        assert!(app.hidden_permanent.is_empty());
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn apply_file_hidden_state_change_noop_when_unchanged() {
+        let commands = RefCell::new(VecDeque::new());
+        let wirehose = mock::WirehoseHandle::with_commands(&commands);
+        let mut app = fixture(&wirehose);
+        let path = hidden_state_test_path();
+        app.hidden_state_path = Some(path.clone());
+        app.hidden_permanent_matchers =
+            vec![MatchCondition::from_node_name("Node name")];
+        app.recompute_hidden_permanent();
+        commands.borrow_mut().clear();
+
+        // Same content this instance already has in memory - as if the
+        // file changed underneath it but round-tripped to the exact same
+        // matchers (including this instance's own save() landing on disk,
+        // which the shared directory watch can't distinguish from anyone
+        // else's write).
+        let hidden_state = HiddenState {
+            hidden: vec![MatchCondition::from_node_name("Node name")],
+        };
+        hidden_state.save(&path).unwrap();
+
+        app.apply_file_hidden_state_change();
+
+        assert!(commands.borrow_mut().is_empty());
 
         let _ = std::fs::remove_file(&path);
     }

@@ -238,6 +238,71 @@ fn monitor_pipewire(
                 }
             });
 
+    // Watches the permanent-hide state file's directory for changes made by
+    // other wiremix instances, so Ctrl+t takes effect live everywhere
+    // instead of only on each instance's next restart
+    // (load_hidden_state() still covers that). Watches the *directory*
+    // rather than the file itself: HiddenState::save() writes via a temp
+    // file + rename, and a direct watch on the original path would go
+    // stale the first time that rename replaces its inode - filtering
+    // directory events down to just this filename sidesteps that entirely.
+    // Linux-only (inotify) - a no-op elsewhere, falling back to
+    // load-at-startup sync only. Best-effort: any failure along the way
+    // (can't resolve a path, can't create the directory, inotify_init
+    // fails) just leaves this instance without live-sync rather than
+    // erroring out, the same tradeoff already documented for
+    // HiddenState::save() itself.
+    #[cfg(target_os = "linux")]
+    let _hidden_state_watch = (|| {
+        use nix::sys::inotify::{AddWatchFlags, InitFlags, Inotify};
+        use std::os::fd::AsFd;
+
+        let path = crate::hidden_state::HiddenState::default_path()?;
+        let dir = path.parent()?.to_path_buf();
+        let filename = path.file_name()?.to_owned();
+        std::fs::create_dir_all(&dir).ok()?;
+
+        let inotify =
+            Inotify::init(InitFlags::IN_NONBLOCK | InitFlags::IN_CLOEXEC)
+                .ok()?;
+        inotify
+            .add_watch(
+                &dir,
+                AddWatchFlags::IN_MOVED_TO
+                    | AddWatchFlags::IN_CLOSE_WRITE
+                    | AddWatchFlags::IN_CREATE,
+            )
+            .ok()?;
+
+        let fd = inotify.as_fd().as_raw_fd();
+        let watch = main_loop.loop_().add_io(
+            fd,
+            libspa::support::system::IoFlags::IN,
+            {
+                let sender_weak = Rc::downgrade(&sender);
+                move |_status| {
+                    let Ok(events) = inotify.read_events() else {
+                        return;
+                    };
+                    let Some(sender) = sender_weak.upgrade() else {
+                        return;
+                    };
+                    let changed = events.iter().any(|event| {
+                        event.name.as_deref() == Some(filename.as_os_str())
+                    });
+                    if changed {
+                        sender.send_hidden_state_changed();
+                    }
+                }
+            },
+        );
+
+        Some(watch)
+    })();
+
+    #[cfg(not(target_os = "linux"))]
+    let _hidden_state_watch = ();
+
     let syncs = Rc::new(RefCell::new(SyncRegistry::default()));
 
     let _core_listener = core

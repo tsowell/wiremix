@@ -18,6 +18,12 @@ pub enum Event {
     /// The [StateEvent]s representing the PipeWire state at the time of
     /// connection have been sent. wirehose is listening for changes now.
     Ready,
+    /// The permanent-hide state file was changed on disk, most likely by
+    /// another wiremix instance saving its own change - see
+    /// `wirehose::hidden_state_watch`. Not a PipeWire event at all, but
+    /// carried on this same channel since it originates on the same
+    /// monitoring thread.
+    HiddenStateChanged,
 }
 
 #[derive(Debug)]

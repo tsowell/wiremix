@@ -59,4 +59,16 @@ impl EventSender {
             }
         }
     }
+
+    pub fn send_hidden_state_changed(&self) {
+        if !self
+            .handler
+            .borrow_mut()
+            .handle_event(Event::HiddenStateChanged)
+        {
+            if let Some(main_loop) = self.main_loop_weak.upgrade() {
+                main_loop.quit();
+            }
+        }
+    }
 }
