@@ -843,6 +843,10 @@ impl Handle for Action {
 
                     if app.hidden_permanent.contains(&object_id) {
                         app.stop_capture(object_id);
+                        // Release the selection - see the equivalent
+                        // comment in ToggleHiddenInstance above.
+                        current_list!(app)
+                            .release_hidden_selection(&app.view, object_id);
                     } else if app.capturable_objects.contains(&object_id) {
                         app.start_capture(object_id);
                     }
@@ -1616,6 +1620,7 @@ mod tests {
             &app.config.names,
             &Vec::new(),
             &app.hidden_instance,
+            &app.hidden_permanent,
         );
         Action::SelectObject(id1).handle(&mut app).unwrap();
 
@@ -1638,6 +1643,7 @@ mod tests {
             &app.config.names,
             &Vec::new(),
             &app.hidden_instance,
+            &app.hidden_permanent,
         );
         Action::SelectObject(id2).handle(&mut app).unwrap();
 
@@ -1723,11 +1729,65 @@ mod tests {
         assert_eq!(app.hidden_permanent_matchers.len(), 1);
         assert!(app.state_dirty);
 
+        // Hiding the only object releases the selection (see
+        // toggle_hidden_permanent_clears_selection_when_hiding_only_item) -
+        // re-select it to verify toggling again un-hides it.
+        Action::SelectObject(id).handle(&mut app).unwrap();
+
         app.state_dirty = false;
         assert!(Action::ToggleHiddenPermanent.handle(&mut app).unwrap());
         assert!(!app.hidden_permanent.contains(&id));
         assert!(app.hidden_permanent_matchers.is_empty());
         assert!(app.state_dirty);
+    }
+
+    #[test]
+    fn toggle_hidden_permanent_clears_selection_when_hiding_only_item() {
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
+        let id = ObjectId::from_raw_id(0);
+        assert_eq!(current_list!(app).selected, Some(id));
+
+        Action::ToggleHiddenPermanent.handle(&mut app).unwrap();
+
+        assert_eq!(current_list!(app).selected, None);
+    }
+
+    #[test]
+    fn toggle_hidden_permanent_unhiding_keeps_selection() {
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
+        let id = ObjectId::from_raw_id(0);
+
+        Action::ToggleHiddenPermanent.handle(&mut app).unwrap();
+        Action::SelectObject(id).handle(&mut app).unwrap();
+
+        Action::ToggleHiddenPermanent.handle(&mut app).unwrap();
+
+        assert_eq!(current_list!(app).selected, Some(id));
+    }
+
+    #[test]
+    fn toggle_hidden_permanent_selects_next_when_hiding_middle_item() {
+        let wirehose = mock::WirehoseHandle::default();
+        let mut app = fixture(&wirehose);
+        let id1 = ObjectId::from_raw_id(1);
+        let id2 = ObjectId::from_raw_id(2);
+        add_playback_node(&mut app, id1);
+        add_playback_node(&mut app, id2);
+        app.view = View::from(
+            app.wirehose,
+            &app.state,
+            &app.config.names,
+            &Vec::new(),
+            &app.hidden_instance,
+            &app.hidden_permanent,
+        );
+        Action::SelectObject(id1).handle(&mut app).unwrap();
+
+        Action::ToggleHiddenPermanent.handle(&mut app).unwrap();
+
+        assert_eq!(current_list!(app).selected, Some(id2));
     }
 
     #[test]
@@ -1760,6 +1820,9 @@ mod tests {
 
         Action::ToggleHiddenPermanent.handle(&mut app).unwrap();
         assert!(app.hidden_permanent.contains(&id));
+        // Hiding released the selection (only object in the list) -
+        // re-select it before toggling again.
+        Action::SelectObject(id).handle(&mut app).unwrap();
         app.capturable_objects.insert(id);
         commands.borrow_mut().clear();
 
