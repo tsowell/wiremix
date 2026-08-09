@@ -173,11 +173,14 @@ impl StatefulWidget for NodeWidget<'_> {
         .render(header_area, buf, mouse_areas);
 
         // Render volume bar and (if enabled) peak meter
-        let volume = VolumeWidget::new(
-            self.config,
-            self.node,
-            self.hidden_instance || self.hidden_permanent,
-        );
+        let hidden = self.hidden_instance || self.hidden_permanent;
+        let volume = VolumeWidget::new(self.config, self.node, hidden);
+        // Peak monitoring is suspended for this item (capture_hidden is
+        // off and it's hidden) - the meter would otherwise still show an
+        // inactive-looking placeholder even though nothing is actually
+        // being sampled, which reads as broken rather than intentionally
+        // off. Leave meter_area untouched instead.
+        let monitoring_suspended = hidden && !self.config.capture_hidden;
         if self.config.peaks == Peaks::Off {
             let layout = Layout::default()
                 .direction(Direction::Horizontal)
@@ -208,7 +211,10 @@ impl StatefulWidget for NodeWidget<'_> {
             let meter_area = layout[3];
 
             volume.render(volume_area, buf, mouse_areas);
-            MeterWidget::new(self.config, self.node).render(meter_area, buf);
+            if !monitoring_suspended {
+                MeterWidget::new(self.config, self.node)
+                    .render(meter_area, buf);
+            }
         }
     }
 }
@@ -556,5 +562,71 @@ impl Widget for MeterWidget<'_> {
         }
 
         self.node.peaks_dirty.store(false, Ordering::Relaxed);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config;
+    use crate::wirehose::ObjectId;
+    use std::sync::atomic::AtomicBool;
+
+    fn test_node() -> view::Node {
+        view::Node {
+            object_id: ObjectId::from_raw_id(1),
+            object_serial: 1,
+            name: String::from("Test node"),
+            title: String::from("Test node"),
+            media_class: String::from("Stream/Output/Audio"),
+            routes: None,
+            target_title: String::new(),
+            target: None,
+            volumes: vec![1.0],
+            mute: false,
+            peaks: None,
+            peaks_dirty: std::sync::Arc::new(AtomicBool::new(false)),
+            positions: None,
+            device_info: None,
+            is_default_sink: false,
+            is_default_source: false,
+            client_id: None,
+        }
+    }
+
+    fn non_blank_cells(config: &Config, node: &view::Node) -> usize {
+        let area = Rect::new(0, 0, 20, 3);
+        let mut buf = Buffer::empty(area);
+        // hidden_instance is true in both compared renders below, so the
+        // "[hide] " title prefix is present either way - only
+        // capture_hidden differs, isolating the meter's own contribution.
+        NodeWidget::new(config, None, node, false, true, false).render(
+            area,
+            &mut buf,
+            &mut Vec::new(),
+        );
+        buf.content
+            .iter()
+            .filter(|cell| cell.symbol() != " ")
+            .count()
+    }
+
+    #[test]
+    fn meter_hidden_when_monitoring_suspended() {
+        let node = test_node();
+
+        let capture_hidden_true =
+            config::Config::from_toml_str("peaks = \"mono\"");
+        let capture_hidden_false = config::Config::from_toml_str(
+            "peaks = \"mono\"\ncapture_hidden = false",
+        );
+
+        // Same hidden item either way (title prefix unchanged) - fewer
+        // non-blank cells with capture_hidden off confirms the meter
+        // placeholder was skipped entirely, not just drawn over blank
+        // space.
+        let shown = non_blank_cells(&capture_hidden_true, &node);
+        let suspended = non_blank_cells(&capture_hidden_false, &node);
+        assert!(suspended < shown);
     }
 }

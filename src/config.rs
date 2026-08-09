@@ -44,6 +44,7 @@ pub struct Config {
     pub tab: usize,
     pub tabs: Vec<TabKind>,
     pub lazy_capture: bool,
+    pub capture_hidden: bool,
     pub filters: Vec<MatchCondition>,
 }
 
@@ -88,6 +89,8 @@ struct ConfigFile {
     tabs: Vec<TabKind>,
     #[serde(default = "default_lazy_capture")]
     lazy_capture: bool,
+    #[serde(default = "default_capture_hidden")]
+    capture_hidden: bool,
     #[serde(default = "Filter::defaults", deserialize_with = "Filter::merge")]
     filters: Vec<Filter>,
 }
@@ -273,6 +276,10 @@ fn default_lazy_capture() -> bool {
     false
 }
 
+fn default_capture_hidden() -> bool {
+    true
+}
+
 impl ConfigFile {
     /// Override configuration with command-line arguments.
     pub fn apply_opt(&mut self, opt: &Opt) {
@@ -330,6 +337,14 @@ impl ConfigFile {
 
         if opt.lazy_capture {
             self.lazy_capture = true;
+        }
+
+        if opt.no_capture_hidden {
+            self.capture_hidden = false;
+        }
+
+        if opt.capture_hidden {
+            self.capture_hidden = true;
         }
     }
 }
@@ -399,6 +414,7 @@ impl TryFrom<ConfigFile> for Config {
             tab,
             tabs: config_file.tabs,
             lazy_capture: config_file.lazy_capture,
+            capture_hidden: config_file.capture_hidden,
             filters,
         })
     }
@@ -484,6 +500,7 @@ pub mod strict {
         tab: Option<TabKind>,
         tabs: Vec<TabKind>,
         lazy_capture: bool,
+        capture_hidden: bool,
         filters: Vec<Filter>,
     }
 
@@ -505,6 +522,7 @@ pub mod strict {
                 tab: strict.tab,
                 tabs: strict.tabs,
                 lazy_capture: strict.lazy_capture,
+                capture_hidden: strict.capture_hidden,
                 filters: strict.filters,
             }
         }
