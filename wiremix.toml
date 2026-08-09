@@ -85,7 +85,7 @@ keybindings = [
  # "t" for "toggle hide": hide/show the selected item for this instance
  # only (not saved, not synced to other instances)
  { key = { Char = "t" }, action = "ToggleHiddenInstance" },
- # Hide/show the selected item permanently (saved to disk, synced to
+ # Same "toggle hide" mnemonic, but permanently (saved to disk, synced to
  # other running instances)
  { key = { Char = "t" }, modifiers = "CONTROL", action = "ToggleHiddenPermanent" },
  # Make the selected item in Input/Output Devices the default endpoint
