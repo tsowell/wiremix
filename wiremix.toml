@@ -406,7 +406,7 @@ hidden_instance = "[hide] "
 # Same as hidden_instance, but for items permanently hidden (saved to
 # disk, synced to other running instances) rather than just for this
 # instance - e.g. try "🚫 " for an emoji alternative.
-hidden_permanent = "[perm-hide] "
+hidden_permanent = "[HIDE] "
 # The selection indicator in a tab
 selector_top = "░"
 selector_middle = "▒"
@@ -519,7 +519,7 @@ help_more = { }
 default_device = "◊"
 default_stream = "◊"
 hidden_instance = "[hide] "
-hidden_permanent = "[perm-hide] "
+hidden_permanent = "[HIDE] "
 selector_top = "░"
 selector_middle = "▒"
 selector_bottom = "░"
@@ -549,7 +549,7 @@ help_border = "Plain"
 default_device = "*"
 default_stream = "*"
 hidden_instance = "[hide] "
-hidden_permanent = "[perm-hide] "
+hidden_permanent = "[HIDE] "
 selector_top = "-"
 selector_middle = "="
 selector_bottom = "-"
