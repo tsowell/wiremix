@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Mohamed Hammad <Mohamed.Hammad@SpacecraftSoftware.org>
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Steelbore Standard §6.5 — Text File Format.
+#
+# .gitattributes and .editorconfig are advisory to the tools that read them,
+# and neither stops a CR byte written by a tool that reads neither. §6.5 makes
+# the gate the binding part. `git grep -I` skips binaries and honors
+# .gitattributes, so a pinned CRLF exception is invisible here and needs no
+# exclusion list.
+name: Text file format
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  line-endings:
+    name: LF line endings (§6.5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No CR bytes in tracked text files
+        run: |
+          CR=$(printf '\r')
+          if git grep -Il "$CR" -- .; then
+            echo "::error::CR byte in a tracked text file — §6.5 requires LF line endings"
+            exit 1
+          fi

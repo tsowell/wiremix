@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Mohamed Hammad <Mohamed.Hammad@SpacecraftSoftware.org>
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Steelbore Standard §6.5 — Text File Format.
+#
+# Normalize every text file to LF in the repository and on checkout, regardless
+# of the contributor's core.autocrlf setting (which defaults to true on Windows
+# and rewrites the working tree). A CRLF exception, if one is ever needed, is
+# pinned here as its own line (e.g. `*.bat text eol=crlf`), never left implicit.
+* text=auto eol=lf
