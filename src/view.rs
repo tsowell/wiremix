@@ -107,6 +107,10 @@ pub struct Node {
     pub is_default_sink: bool,
     pub is_default_source: bool,
 
+    /// Whether this is a device node with nothing plugged into it, meaning
+    /// that all of its routes are unavailable.
+    pub unavailable: bool,
+
     pub client_id: Option<ObjectId>,
 }
 
@@ -210,6 +214,26 @@ fn active_route(
         .filter(|route| route.profiles.contains(&profile_index))
 }
 
+/// Get the EnumRoutes for a card device under the device's current profile.
+fn card_device_routes(
+    device: &state::Device,
+    card_device: i32,
+) -> impl Iterator<Item = &state::EnumRoute> {
+    device.enum_routes.values().filter(move |route| {
+        device.profile_index.is_some_and(|profile_index| {
+            route.profiles.contains(&profile_index)
+        }) && route.devices.contains(&card_device)
+    })
+}
+
+/// Whether a card device has routes and all of them are unavailable, e.g. an
+/// HDMI output with no display connected. A card device without routes, such
+/// as one from the Pro Audio profile, is never unavailable.
+fn is_unavailable(device: &state::Device, card_device: i32) -> bool {
+    let mut routes = card_device_routes(device, card_device).peekable();
+    routes.peek().is_some() && routes.all(|route| !route.available)
+}
+
 impl Node {
     fn from(
         state: &state::State,
@@ -278,7 +302,20 @@ impl Node {
                         target_title,
                     )
                 }
-                None => (None, String::from("No route selected")),
+                None => {
+                    // An unavailable route is never selected, so when it is
+                    // the card device's only route, show it instead.
+                    let target_title =
+                        match card_device_routes(device, card_device)
+                            .exactly_one()
+                        {
+                            Ok(route) if !route.available => {
+                                format!("{} (unavailable)", route.description)
+                            }
+                            _ => String::from("No route selected"),
+                        };
+                    (None, target_title)
+                }
             };
 
             (Some(routes), target, target_title)
@@ -323,9 +360,22 @@ impl Node {
                 )
             };
             (None, target, target_title)
+        } else if node.props.node_virtual() == Some(&true) {
+            // Filters, loopbacks and null sinks have no device, and so no
+            // routes.
+            (None, None, String::from("Virtual"))
         } else {
             (None, None, String::from("No route selected"))
         };
+
+        let unavailable = node
+            .props
+            .device_id()
+            .and_then(|device_id| state.devices.get(device_id))
+            .zip(node.props.card_profile_device())
+            .is_some_and(|(device, &card_device)| {
+                is_unavailable(device, card_device)
+            });
 
         Some(Self {
             object_id,
@@ -346,6 +396,7 @@ impl Node {
                 == node.props.node_name(),
             is_default_source: default_source_name.as_ref()
                 == node.props.node_name(),
+            unavailable,
             client_id: node.props.client_id().copied(),
         })
     }
@@ -574,9 +625,10 @@ impl<'a> View<'a> {
         let mut nodes_recording = Vec::new();
         let mut nodes_output = Vec::new();
         let mut nodes_input = Vec::new();
+        // Unavailable endpoints go after everything else.
         for (id, node) in nodes
             .iter()
-            .sorted_by_key(|(_, node)| node.object_serial)
+            .sorted_by_key(|(_, node)| (node.unavailable, node.object_serial))
             .filter(|(_, node)| {
                 !is_filtered(filters, state, state.nodes.get(&node.object_id))
             })
@@ -919,5 +971,182 @@ impl<'a> View<'a> {
             .unwrap_or(0);
 
         Some((targets, selected_position))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock;
+    use crate::wirehose::{PropertyStore, StateEvent};
+
+    const PROFILE: i32 = 1;
+    const HDMI: i32 = 0; // card device with a single, unavailable route
+    const SPEAKER: i32 = 1; // card device with an active route
+    const LINE_OUT: i32 = 2; // card device with no routes, as in Pro Audio
+
+    /// A card with three sinks plus a virtual sink with no device.
+    struct Fixture {
+        state: state::State,
+        device: ObjectId,
+        hdmi: ObjectId,
+        speaker: ObjectId,
+        line_out: ObjectId,
+        filter: ObjectId,
+    }
+
+    impl Fixture {
+        fn new() -> Self {
+            let device = ObjectId::from_raw_id(0);
+            let mut fixture = Self {
+                state: state::State::default(),
+                device,
+                hdmi: ObjectId::from_raw_id(1),
+                speaker: ObjectId::from_raw_id(2),
+                line_out: ObjectId::from_raw_id(3),
+                filter: ObjectId::from_raw_id(4),
+            };
+
+            fixture.update(StateEvent::DeviceProfile {
+                object_id: device,
+                index: PROFILE,
+            });
+            fixture.enum_route(0, "HDMI", HDMI, false);
+            fixture.enum_route(1, "Speaker", SPEAKER, true);
+            fixture.update(StateEvent::DeviceRoute {
+                object_id: device,
+                index: 1,
+                device: SPEAKER,
+                profiles: vec![PROFILE],
+                description: String::from("Speaker"),
+                available: true,
+                channel_volumes: vec![1.0, 1.0],
+                mute: false,
+            });
+
+            // Serials put the unavailable sink first.
+            fixture.sink(fixture.hdmi, 1, |props| {
+                props.set_device_id(device);
+                props.set_card_profile_device(HDMI);
+            });
+            fixture.sink(fixture.speaker, 2, |props| {
+                props.set_device_id(device);
+                props.set_card_profile_device(SPEAKER);
+            });
+            fixture.sink(fixture.line_out, 3, |props| {
+                props.set_device_id(device);
+                props.set_card_profile_device(LINE_OUT);
+            });
+            fixture.sink(fixture.filter, 4, |props| {
+                props.set_node_virtual(true);
+            });
+
+            fixture
+        }
+
+        fn update(&mut self, event: StateEvent) {
+            self.state.update(event);
+        }
+
+        fn enum_route(
+            &mut self,
+            index: i32,
+            description: &str,
+            card_device: i32,
+            available: bool,
+        ) {
+            self.update(StateEvent::DeviceEnumRoute {
+                object_id: self.device,
+                index,
+                description: String::from(description),
+                available,
+                profiles: vec![PROFILE],
+                devices: vec![card_device],
+            });
+        }
+
+        fn sink(
+            &mut self,
+            object_id: ObjectId,
+            object_serial: u64,
+            set_props: impl FnOnce(&mut PropertyStore),
+        ) {
+            let mut props = PropertyStore::default();
+            props.set_media_class(String::from("Audio/Sink"));
+            props.set_node_name(format!("sink{object_serial}"));
+            props.set_object_serial(object_serial);
+            set_props(&mut props);
+            self.update(StateEvent::NodeProperties { object_id, props });
+            self.update(StateEvent::NodeVolumes {
+                object_id,
+                volumes: vec![1.0, 1.0],
+            });
+            self.update(StateEvent::NodeMute {
+                object_id,
+                mute: false,
+            });
+        }
+
+        fn view<'a>(&self, wirehose: &'a mock::WirehoseHandle<'a>) -> View<'a> {
+            View::from(wirehose, &self.state, &Default::default(), &[])
+        }
+    }
+
+    #[test]
+    fn unavailable_when_all_routes_unavailable() {
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new();
+        let view = fixture.view(&wirehose);
+
+        assert!(view.nodes[&fixture.hdmi].unavailable);
+        assert!(!view.nodes[&fixture.speaker].unavailable);
+        assert!(!view.nodes[&fixture.line_out].unavailable);
+        assert!(!view.nodes[&fixture.filter].unavailable);
+    }
+
+    #[test]
+    fn available_once_plugged_in() {
+        let wirehose = mock::WirehoseHandle::default();
+        let mut fixture = Fixture::new();
+        fixture.enum_route(0, "HDMI", HDMI, true);
+        let view = fixture.view(&wirehose);
+
+        assert!(!view.nodes[&fixture.hdmi].unavailable);
+        assert_eq!(view.nodes[&fixture.hdmi].target_title, "No route selected");
+    }
+
+    #[test]
+    fn unavailable_listed_last() {
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new();
+        let view = fixture.view(&wirehose);
+
+        assert_eq!(
+            view.nodes_output,
+            vec![
+                fixture.speaker,
+                fixture.line_out,
+                fixture.filter,
+                fixture.hdmi
+            ]
+        );
+    }
+
+    #[test]
+    fn target_titles() {
+        let wirehose = mock::WirehoseHandle::default();
+        let fixture = Fixture::new();
+        let view = fixture.view(&wirehose);
+
+        assert_eq!(
+            view.nodes[&fixture.hdmi].target_title,
+            "HDMI (unavailable)"
+        );
+        assert_eq!(view.nodes[&fixture.speaker].target_title, "Speaker");
+        assert_eq!(
+            view.nodes[&fixture.line_out].target_title,
+            "No route selected"
+        );
+        assert_eq!(view.nodes[&fixture.filter].target_title, "Virtual");
     }
 }

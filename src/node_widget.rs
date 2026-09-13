@@ -5,6 +5,7 @@ use std::sync::atomic::Ordering;
 use ratatui::{
     layout::Flex,
     prelude::{Alignment, Buffer, Constraint, Direction, Layout, Rect},
+    style::Style,
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
@@ -24,6 +25,15 @@ fn is_default(node: &view::Node, device_kind: Option<DeviceKind>) -> bool {
         Some(DeviceKind::Sink) => node.is_default_sink,
         Some(DeviceKind::Source) => node.is_default_source,
         None => false,
+    }
+}
+
+/// Patch a style for a node with nothing plugged into it.
+fn node_style(config: &Config, node: &view::Node, style: Style) -> Style {
+    if node.unavailable {
+        style.patch(config.theme.node_unavailable)
+    } else {
+        style
     }
 }
 
@@ -256,6 +266,8 @@ impl<'a> HeaderWidget<'a> {
     }
 
     fn target_line(&self) -> Line<'_> {
+        let target_style =
+            node_style(self.config, self.node, self.config.theme.node_target);
         match self.node.target {
             Some(view::Target::Default) => {
                 // Add the default target indicator
@@ -265,17 +277,17 @@ impl<'a> HeaderWidget<'a> {
                         self.config.theme.default_stream,
                     ),
                     Span::from(" "),
-                    Span::styled(
-                        &self.node.target_title,
-                        self.config.theme.node_target,
-                    ),
+                    Span::styled(&self.node.target_title, target_style),
                 ])
             }
-            _ => Line::from(Span::styled(
-                &self.node.target_title,
-                self.config.theme.node_target,
-            )),
+            _ => {
+                Line::from(Span::styled(&self.node.target_title, target_style))
+            }
         }
+    }
+
+    fn title_style(&self) -> Style {
+        node_style(self.config, self.node, self.config.theme.node_title)
     }
 
     fn title_line(&self) -> Line<'_> {
@@ -290,7 +302,7 @@ impl<'a> HeaderWidget<'a> {
         Line::from(vec![
             default_span,
             Span::from(" "),
-            Span::styled(&self.node.title, self.config.theme.node_title),
+            Span::styled(&self.node.title, self.title_style()),
         ])
     }
 }
@@ -337,8 +349,7 @@ impl StatefulWidget for HeaderWidget<'_> {
             let ellipses_area = layout[1];
             target_area = layout[3];
 
-            Span::styled("...", self.config.theme.node_title)
-                .render(ellipses_area, buf);
+            Span::styled("...", self.title_style()).render(ellipses_area, buf);
         }
         let (title_area, target_area) = (title_area, target_area);
 
@@ -389,6 +400,9 @@ impl StatefulWidget for VolumeWidget<'_> {
         let volume_label = layout[0];
         let volume_bar = layout[1];
 
+        let theme = &self.config.theme;
+        let patched = |style| node_style(self.config, self.node, style);
+
         let volumes = &self.node.volumes;
         if !volumes.is_empty() {
             let mean = volumes.iter().sum::<f32>() / volumes.len() as f32;
@@ -397,7 +411,7 @@ impl StatefulWidget for VolumeWidget<'_> {
 
             Line::from(Span::styled(
                 format!("{percent}%"),
-                self.config.theme.volume,
+                patched(theme.volume),
             ))
             .alignment(Alignment::Right)
             .render(volume_label, buf);
@@ -413,8 +427,8 @@ impl StatefulWidget for VolumeWidget<'_> {
                 .volume_empty
                 .repeat((volume_bar.width as usize).saturating_sub(count));
             Line::from(vec![
-                Span::styled(filled, self.config.theme.volume_filled),
-                Span::styled(blank, self.config.theme.volume_empty),
+                Span::styled(filled, patched(theme.volume_filled)),
+                Span::styled(blank, patched(theme.volume_empty)),
             ])
             .render(volume_bar, buf);
         }

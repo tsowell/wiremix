@@ -19,6 +19,7 @@ pub struct ThemeOverlay {
     list_more: Option<StyleDef>,
     node_title: Option<StyleDef>,
     node_target: Option<StyleDef>,
+    node_unavailable: Option<StyleDef>,
     volume: Option<StyleDef>,
     volume_empty: Option<StyleDef>,
     volume_filled: Option<StyleDef>,
@@ -98,6 +99,7 @@ impl TryFrom<ThemeOverlay> for Theme {
         set!(list_more);
         set!(node_title);
         set!(node_target);
+        set!(node_unavailable);
         set!(volume);
         set!(volume_empty);
         set!(volume_filled);
@@ -133,6 +135,7 @@ impl Default for Theme {
             list_more: Style::default().fg(Color::DarkGray),
             node_title: Style::default(),
             node_target: Style::default(),
+            node_unavailable: Style::default().fg(Color::DarkGray),
             volume: Style::default(),
             volume_empty: Style::default().fg(Color::DarkGray),
             volume_filled: Style::default().fg(Color::LightBlue),
@@ -177,6 +180,7 @@ impl Theme {
             list_more: Style::default(),
             node_title: Style::default(),
             node_target: Style::default(),
+            node_unavailable: Style::default().add_modifier(Modifier::DIM),
             volume: Style::default(),
             volume_empty: Style::default().add_modifier(Modifier::DIM),
             volume_filled: Style::default().add_modifier(Modifier::BOLD),
@@ -210,6 +214,7 @@ impl Theme {
             list_more: Style::default(),
             node_title: Style::default(),
             node_target: Style::default(),
+            node_unavailable: Style::default(),
             volume: Style::default(),
             volume_empty: Style::default(),
             volume_filled: Style::default(),
