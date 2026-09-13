@@ -183,6 +183,7 @@ pub struct Theme {
     pub list_more: Style,
     pub node_title: Style,
     pub node_target: Style,
+    pub node_unavailable: Style,
     pub volume: Style,
     pub volume_empty: Style,
     pub volume_filled: Style,

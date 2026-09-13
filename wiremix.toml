@@ -320,6 +320,9 @@ list_more = { fg = "DarkGray" }
 node_title = { }
 # The name of the selected target for a node
 node_target = { }
+# Patched over a device endpoint's title, target and volume when nothing is
+# plugged into it (all of its routes are unavailable)
+node_unavailable = { fg = "DarkGray" }
 # The volume percentage label
 volume = { }
 # Volume bar
@@ -442,6 +445,7 @@ tab_marker = { add_modifier = "BOLD" }
 list_more = { }
 node_title = { }
 node_target = { }
+node_unavailable = { add_modifier = "DIM" }
 volume = { }
 volume_empty = { add_modifier = "DIM" }
 volume_filled = { add_modifier = "BOLD" }
@@ -471,6 +475,7 @@ tab_marker = { }
 list_more = { }
 node_title = { }
 node_target = { }
+node_unavailable = { }
 volume = { }
 volume_empty = { }
 volume_filled = { }

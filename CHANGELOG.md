@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Endpoints with nothing plugged in, meaning all of their routes are
+  unavailable, are dimmed with the new `node_unavailable` theme style and
+  listed after the rest.
+
+### Changed
+
+- An endpoint with no selected route shows its only route, marked unavailable,
+  instead of "No route selected".
+
 ## [0.11.0] - 2026-06-04
 
 ### Added
