@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - An endpoint with no selected route shows its only route, marked unavailable,
   instead of "No route selected".
+- Virtual endpoints, such as filter-chain sinks, show "Virtual" instead of "No
+  route selected".
 
 ## [0.11.0] - 2026-06-04
 

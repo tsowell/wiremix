@@ -360,6 +360,10 @@ impl Node {
                 )
             };
             (None, target, target_title)
+        } else if node.props.node_virtual() == Some(&true) {
+            // Filters, loopbacks and null sinks have no device, and so no
+            // routes.
+            (None, None, String::from("Virtual"))
         } else {
             (None, None, String::from("No route selected"))
         };
@@ -1143,9 +1147,6 @@ mod tests {
             view.nodes[&fixture.line_out].target_title,
             "No route selected"
         );
-        assert_eq!(
-            view.nodes[&fixture.filter].target_title,
-            "No route selected"
-        );
+        assert_eq!(view.nodes[&fixture.filter].target_title, "Virtual");
     }
 }
