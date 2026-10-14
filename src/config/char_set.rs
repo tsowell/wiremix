@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use ratatui::{text::Span, widgets::block::BorderType};
+use ratatui::{text::Span, widgets::BorderType};
 use serde::{de::Error, Deserialize};
 
 use crate::config::CharSet;
