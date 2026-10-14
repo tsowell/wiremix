@@ -14,6 +14,7 @@
       ...
     }:
     let
+      rustToolchain = (nixpkgs.lib.importTOML ./rust-toolchain.toml).toolchain;
       eachSystem =
         callback:
         nixpkgs.lib.genAttrs (import systems) (
@@ -23,6 +24,9 @@
     {
       devShells = eachSystem (pkgs: {
         default =
+          assert nixpkgs.lib.assertMsg (
+            pkgs.rustc.version == rustToolchain.channel
+          ) "rust-toolchain.toml version does not match flake";
           with pkgs;
           mkShell {
             packages = [
