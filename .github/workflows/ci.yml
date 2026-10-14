@@ -33,7 +33,7 @@ jobs:
       - uses: nixbuild/nix-quick-install-action@v30
       - name: Check Nix formatting
         run: |
-          nix shell nixpkgs#nixfmt-rfc-style -c \
+          nix shell nixpkgs#nixfmt -c \
             find . -name '*.nix' -exec nixfmt -sw 80 --check {} +
   rustfmt:
     runs-on: ubuntu-latest

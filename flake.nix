@@ -29,7 +29,7 @@
               rustc
               cargo
               rustfmt
-              nixfmt-rfc-style
+              nixfmt
               clippy
               pkg-config
               rustPlatform.bindgenHook
