@@ -338,14 +338,11 @@ impl TryFrom<ConfigFile> for Config {
         let Some(char_set) =
             config_file.char_sets.remove(&config_file.char_set)
         else {
-            anyhow::bail!(
-                "char_set '{}' does not exist",
-                &config_file.char_set
-            );
+            anyhow::bail!("char_set '{}' does not exist", config_file.char_set);
         };
 
         let Some(theme) = config_file.themes.remove(&config_file.theme) else {
-            anyhow::bail!("theme '{}' does not exist", &config_file.theme);
+            anyhow::bail!("theme '{}' does not exist", config_file.theme);
         };
 
         let filters = config_file
