@@ -32,7 +32,7 @@ pub struct ObjectList {
     /// ID of the currently selected object
     pub selected: Option<ObjectId>,
     /// Which set of objects to use from the View
-    list_kind: ListKind,
+    pub list_kind: ListKind,
     /// Default device type to use for defaults and node rendering
     device_kind: Option<DeviceKind>,
     /// Target dropdown state

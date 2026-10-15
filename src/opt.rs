@@ -57,6 +57,14 @@ pub struct Opt {
     #[clap(short = 'T', long, num_args = 1.., value_enum)]
     pub tabs: Option<Vec<TabKind>>,
 
+    /// Hide tabs that have no visible entries.
+    #[clap(long, conflicts_with = "show_empty_tabs")]
+    pub no_empty_tabs: bool,
+
+    /// Show tabs even when they have no visible entries.
+    #[clap(long, conflicts_with = "no_empty_tabs")]
+    pub show_empty_tabs: bool,
+
     /// Maximum volume for volume sliders
     #[clap(short = 'm', long, value_name = "PERCENT")]
     pub max_volume_percent: Option<f32>,
