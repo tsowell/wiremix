@@ -98,6 +98,18 @@ pub fn capture_node(
         *pipewire::keys::TARGET_OBJECT => String::from(serial),
         *pipewire::keys::STREAM_MONITOR => "true",
         *pipewire::keys::NODE_NAME => "wiremix-capture",
+        // wireplumber's state-stream.lua persists volume/mute/target to disk
+        // (~/.local/state/wireplumber/stream-properties) for any node whose
+        // media.class matches "Stream/*", which this capture stream does by
+        // default. That's real per-event disk I/O (write+fsync+rename,
+        // debounced but still frequent) for a purely internal metering tap
+        // that has no volume/mute/target of its own worth remembering -
+        // these two properties are wireplumber's own opt-out mechanism
+        // (checked directly in state-stream.lua before any of that work
+        // happens), and eliminate the cost entirely rather than just
+        // reducing how many capture streams exist at once.
+        "state.restore-props" => "false",
+        "state.restore-target" => "false",
     };
     if capture_sink {
         props.insert(*pipewire::keys::STREAM_CAPTURE_SINK, "true");
