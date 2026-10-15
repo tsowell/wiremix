@@ -82,11 +82,11 @@ impl MatchValue {
                 value.is_some_and(|v| v == expected)
             }
             MatchValue::NegatedLiteral(expected) => {
-                value.map_or(true, |v| v != expected)
+                value.is_none_or(|v| v != expected)
             }
             MatchValue::Regex(re) => value.is_some_and(|v| re.is_match(v)),
             MatchValue::NegatedRegex(re) => {
-                value.map_or(true, |v| !re.is_match(v))
+                value.is_none_or(|v| !re.is_match(v))
             }
         }
     }
