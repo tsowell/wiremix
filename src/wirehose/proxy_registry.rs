@@ -84,7 +84,7 @@ impl ProxyRegistry {
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
 
         let v = self.listeners.entry(obj_id).or_default();
@@ -103,7 +103,7 @@ impl ProxyRegistry {
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
 
         let v = self.listeners.entry(obj_id).or_default();
@@ -122,7 +122,7 @@ impl ProxyRegistry {
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
 
         let v = self.listeners.entry(obj_id).or_default();
@@ -141,7 +141,7 @@ impl ProxyRegistry {
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
 
         let v = self.listeners.entry(obj_id).or_default();
@@ -160,7 +160,7 @@ impl ProxyRegistry {
             if let Some(listeners) = self.listeners.get_mut(&obj_id) {
                 self.garbage_listeners.append(listeners);
             }
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
 
         let v = self.listeners.entry(obj_id).or_default();
@@ -182,29 +182,29 @@ impl ProxyRegistry {
     pub fn remove(&mut self, obj_id: ObjectId) {
         if let Some(listeners) = self.listeners.get_mut(&obj_id) {
             if !listeners.is_empty() {
-                let _ = self.gc_fd.arm();
+                let _ = self.gc_fd.write(1);
             }
             self.garbage_listeners.append(listeners);
         }
         if let Some(old) = self.devices.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
         if let Some(old) = self.clients.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
         if let Some(old) = self.nodes.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
         if let Some(old) = self.links.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
         if let Some(old) = self.metadatas.remove(&obj_id) {
             self.garbage_proxies_t.push(old);
-            let _ = self.gc_fd.arm();
+            let _ = self.gc_fd.write(1);
         }
     }
 }

@@ -95,7 +95,7 @@ fn run<F: EventHandler>(
 impl Drop for Session {
     /// Shut down the PipeWire monitoring thread.
     fn drop(&mut self) {
-        let _ = self.fd.arm();
+        let _ = self.fd.write(1);
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
