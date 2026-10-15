@@ -38,6 +38,7 @@
               pkg-config
               rustPlatform.bindgenHook
               typos
+              cargo-msrv
 
               pipewire
             ];
