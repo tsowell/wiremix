@@ -60,6 +60,20 @@ impl<D> StreamRegistry<D> {
     }
 
     /// Register a stream and its listener, evicting any with the same ID.
+    ///
+    /// If a stream is already registered under `stream_id` (e.g. when a
+    /// capture is renewed after [`CaptureEligibility::NeedsRestart`]), the
+    /// evicted stream is explicitly disconnected before being handed to the
+    /// garbage collector - matching what [`Self::remove()`] already does.
+    /// Without this, dropping the evicted [`StreamRc`] alone destroys the
+    /// client-side stream object (see `StreamBox`'s `Drop` impl, which calls
+    /// `pw_stream_destroy` directly) without ever calling
+    /// `pw_stream_disconnect`, so the corresponding PipeWire node can be left
+    /// registered in the graph - orphaned from wiremix's own bookkeeping,
+    /// but still visible to every other client - until something else tears
+    /// it down.
+    ///
+    /// [`CaptureEligibility::NeedsRestart`]: crate::wirehose::state::CaptureEligibility::NeedsRestart
     pub fn add_stream(
         &mut self,
         stream_id: ObjectId,
@@ -67,6 +81,7 @@ impl<D> StreamRegistry<D> {
         listener: StreamListener<D>,
     ) {
         if let Some(old) = self.streams.insert(stream_id, stream) {
+            let _ = old.disconnect();
             self.garbage_streams.push(old);
             if let Some(listeners) = self.listeners.get_mut(&stream_id) {
                 self.garbage_listeners.append(listeners);
