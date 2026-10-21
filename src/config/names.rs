@@ -225,19 +225,66 @@ mod tests {
                 node_props,
             }
         }
+
+        fn set_endpoint(&mut self) {
+            self.node_props.set_media_class(String::from("Audio/Sink"));
+            self.state.update(StateEvent::NodeProperties {
+                object_id: self.node_id,
+                props: self.node_props.clone(),
+            });
+        }
+
+        fn link_node_to_device(&mut self, card_profile_device: i32) {
+            self.node_props.set_device_id(self.device_id);
+            self.node_props.set_card_profile_device(card_profile_device);
+            self.state.update(StateEvent::NodeProperties {
+                object_id: self.node_id,
+                props: self.node_props.clone(),
+            });
+        }
+
+        fn set_route_label(&mut self, label: &str) {
+            self.state.update(StateEvent::DeviceEnumProfile {
+                object_id: self.device_id,
+                index: 1,
+                description: String::from("Digital Stereo Output"),
+                available: true,
+                classes: vec![(String::from("Audio/Sink"), vec![0])],
+            });
+            self.state.update(StateEvent::DeviceProfile {
+                object_id: self.device_id,
+                index: 1,
+            });
+            self.state.update(StateEvent::DeviceRoute {
+                object_id: self.device_id,
+                index: 7,
+                device: 0,
+                profiles: vec![1],
+                description: String::from("HDMI"),
+                available: true,
+                channel_volumes: vec![1.0, 1.0],
+                mute: false,
+            });
+            self.state.update(StateEvent::DeviceEnumRoute {
+                object_id: self.device_id,
+                index: 7,
+                description: String::from("HDMI"),
+                available: true,
+                profiles: vec![1],
+                devices: vec![0],
+                info: HashMap::from([(
+                    String::from("device.product.name"),
+                    String::from(label),
+                )]),
+            });
+        }
     }
 
     #[test]
     fn render_endpoint() {
         let mut fixture = Fixture::new();
 
-        fixture
-            .node_props
-            .set_media_class(String::from("Audio/Sink"));
-        fixture.state.update(StateEvent::NodeProperties {
-            object_id: fixture.node_id,
-            props: fixture.node_props,
-        });
+        fixture.set_endpoint();
 
         let names = Names {
             endpoint: vec!["{node:node.nick}".parse().unwrap()],
@@ -253,13 +300,7 @@ mod tests {
     fn render_endpoint_missing_key() {
         let mut fixture = Fixture::new();
 
-        fixture
-            .node_props
-            .set_media_class(String::from("Audio/Sink"));
-        fixture.state.update(StateEvent::NodeProperties {
-            object_id: fixture.node_id,
-            props: fixture.node_props,
-        });
+        fixture.set_endpoint();
 
         let names = Names {
             endpoint: vec!["{node:node.description}".parse().unwrap()],
@@ -291,14 +332,8 @@ mod tests {
     fn render_endpoint_linked_device() {
         let mut fixture = Fixture::new();
 
-        fixture
-            .node_props
-            .set_media_class(String::from("Audio/Sink"));
-        fixture.node_props.set_device_id(fixture.device_id);
-        fixture.state.update(StateEvent::NodeProperties {
-            object_id: fixture.node_id,
-            props: fixture.node_props,
-        });
+        fixture.set_endpoint();
+        fixture.link_node_to_device(0);
 
         let names = Names {
             endpoint: vec!["{device:device.nick}".parse().unwrap()],
@@ -314,14 +349,8 @@ mod tests {
     fn render_endpoint_linked_device_missing_key() {
         let mut fixture = Fixture::new();
 
-        fixture
-            .node_props
-            .set_media_class(String::from("Audio/Sink"));
-        fixture.node_props.set_device_id(fixture.device_id);
-        fixture.state.update(StateEvent::NodeProperties {
-            object_id: fixture.node_id,
-            props: fixture.node_props,
-        });
+        fixture.set_endpoint();
+        fixture.link_node_to_device(0);
 
         let names = Names {
             endpoint: vec!["{device:device.description}".parse().unwrap()],
@@ -338,13 +367,7 @@ mod tests {
     fn render_endpoint_no_linked_device() {
         let mut fixture = Fixture::new();
 
-        fixture
-            .node_props
-            .set_media_class(String::from("Audio/Sink"));
-        fixture.state.update(StateEvent::NodeProperties {
-            object_id: fixture.node_id,
-            props: fixture.node_props,
-        });
+        fixture.set_endpoint();
 
         let names = Names {
             endpoint: vec!["{device:device.nick}".parse().unwrap()],
@@ -378,7 +401,7 @@ mod tests {
         fixture.node_props.set_client_id(fixture.client_id);
         fixture.state.update(StateEvent::NodeProperties {
             object_id: fixture.node_id,
-            props: fixture.node_props,
+            props: fixture.node_props.clone(),
         });
 
         let names = Names {
@@ -486,6 +509,92 @@ mod tests {
                     MatchValue::Literal(String::from("Node name")),
                 )]))],
                 templates: vec![],
+            }],
+            ..Default::default()
+        };
+
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn render_endpoint_computed_label_from_node_nick() {
+        let mut fixture = Fixture::new();
+        fixture.set_endpoint();
+
+        let names = Names {
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
+            ..Default::default()
+        };
+
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
+        assert_eq!(result, Some(String::from("Node nick")))
+    }
+
+    #[test]
+    fn render_endpoint_computed_label_from_route_info() {
+        let mut fixture = Fixture::new();
+        fixture.node_props = PropertyStore::default();
+        fixture.node_props.set_node_name(String::from("Node name"));
+        fixture.set_endpoint();
+        fixture.link_node_to_device(0);
+        fixture.set_route_label("DELL U2723QE");
+
+        let names = Names {
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
+            ..Default::default()
+        };
+
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
+        assert_eq!(result, Some(String::from("DELL U2723QE")))
+    }
+
+    #[test]
+    fn render_endpoint_computed_label_missing_falls_back() {
+        let mut fixture = Fixture::new();
+        fixture.node_props = PropertyStore::default();
+        fixture.node_props.set_node_name(String::from("Node name"));
+        fixture.set_endpoint();
+        fixture.link_node_to_device(0);
+
+        let names = Names {
+            endpoint: vec!["{computed:physical.endpoint.label}"
+                .parse()
+                .unwrap()],
+            ..Default::default()
+        };
+
+        let node = fixture.state.nodes.get(&fixture.node_id).unwrap();
+        let result = names.resolve(&fixture.state, node);
+        assert_eq!(result, Some(String::from("Node name")))
+    }
+
+    #[test]
+    fn render_override_match_on_computed_label() {
+        let mut fixture = Fixture::new();
+        fixture.node_props = PropertyStore::default();
+        fixture.node_props.set_node_name(String::from("Node name"));
+        fixture.set_endpoint();
+        fixture.link_node_to_device(0);
+        fixture.set_route_label("DELL U2723QE");
+
+        let names = Names {
+            overrides: vec![NameOverride {
+                types: vec![OverrideType::Endpoint],
+                matches: vec![MatchCondition(HashMap::from([(
+                    PropertyKey::Computed(String::from(
+                        "physical.endpoint.label",
+                    )),
+                    MatchValue::Literal(String::from("DELL U2723QE")),
+                )]))],
+                templates: vec!["{node:node.name}".parse().unwrap()],
             }],
             ..Default::default()
         };
