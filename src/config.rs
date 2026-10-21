@@ -43,6 +43,7 @@ pub struct Config {
     pub names: Names,
     pub tab: usize,
     pub tabs: Vec<TabKind>,
+    pub show_empty_tabs: bool,
     pub lazy_capture: bool,
     pub filters: Vec<MatchCondition>,
 }
@@ -86,6 +87,8 @@ struct ConfigFile {
     tab: Option<TabKind>,
     #[serde(default = "default_tabs")]
     tabs: Vec<TabKind>,
+    #[serde(default = "default_show_empty_tabs")]
+    show_empty_tabs: bool,
     #[serde(default = "default_lazy_capture")]
     lazy_capture: bool,
     #[serde(default = "Filter::defaults", deserialize_with = "Filter::merge")]
@@ -250,6 +253,10 @@ fn default_tabs() -> Vec<TabKind> {
     ]
 }
 
+fn default_show_empty_tabs() -> bool {
+    false
+}
+
 fn default_char_set_name() -> String {
     String::from("default")
 }
@@ -307,6 +314,14 @@ impl ConfigFile {
 
         if let Some(tabs) = &opt.tabs {
             self.tabs = tabs.clone();
+        }
+
+        if opt.show_empty_tabs {
+            self.show_empty_tabs = true
+        }
+
+        if opt.no_empty_tabs {
+            self.show_empty_tabs = false
         }
 
         if let Some(max_volume_percent) = &opt.max_volume_percent {
@@ -392,6 +407,7 @@ impl TryFrom<ConfigFile> for Config {
             names: config_file.names,
             tab,
             tabs: config_file.tabs,
+            show_empty_tabs: config_file.show_empty_tabs,
             lazy_capture: config_file.lazy_capture,
             filters,
         })
@@ -477,6 +493,7 @@ pub mod strict {
         themes: HashMap<String, Theme>,
         tab: Option<TabKind>,
         tabs: Vec<TabKind>,
+        show_empty_tabs: bool,
         lazy_capture: bool,
         filters: Vec<Filter>,
     }
@@ -498,6 +515,7 @@ pub mod strict {
                 themes: strict.themes,
                 tab: strict.tab,
                 tabs: strict.tabs,
+                show_empty_tabs: strict.show_empty_tabs,
                 lazy_capture: strict.lazy_capture,
                 filters: strict.filters,
             }
