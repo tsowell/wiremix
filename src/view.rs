@@ -126,6 +126,8 @@ pub struct Device {
 pub enum VolumeAdjustment {
     Relative(f32),
     Absolute(f32),
+    RelativeBalance(f32),
+    AbsoluteBalance(f32),
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -721,6 +723,33 @@ impl<'a> View<'a> {
         }
     }
 
+    /// Get current balance (stereo only)
+    fn balance(&self, volumes: &[f32]) -> Option<f32> {
+        if volumes.len() == 2 {
+            if volumes[0] == volumes[1] {
+                Some(0.0) // handles div by 0 case
+            } else if volumes[0] > volumes[1] {
+                Some((volumes[1] / volumes[0]) - 1.0)
+            } else {
+                Some(1.0 - volumes[0] / volumes[1])
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Update channel balance balance (stereo only)
+    fn rebalance(&self, volumes: &mut [f32], balance: f32) {
+        if let Some(bal) = self.balance(volumes) {
+            let bal_new = balance.clamp(-1.0, 1.0);
+            if bal < 0.0 || (bal == 0.0 && bal_new < 0.0) {
+                volumes[1] = volumes[0] * (1.0 - bal_new * bal.signum());
+            } else if bal > 0.0 || (bal == 0.0 && bal_new > 0.0) {
+                volumes[0] = volumes[1] * (1.0 - bal_new * bal.signum());
+            }
+        }
+    }
+
     /// Changes the volume of the provided node. If max volume is provided,
     /// won't change volume if result would be greater than max. Returns true
     /// if volume was changed, otherwise false.
@@ -740,11 +769,54 @@ impl<'a> View<'a> {
         }
         match adjustment {
             VolumeAdjustment::Relative(delta) => {
-                let avg = volumes.iter().sum::<f32>() / volumes.len() as f32;
-                volumes.fill((avg.cbrt() + delta).max(0.0).powi(3));
+                let bal = self.balance(&volumes);
+                match bal {
+                    // TODO: consolidate first two cases
+                    Some(bal) if bal < 0.0 => {
+                        volumes[0] =
+                            (volumes[0].cbrt() + delta).max(0.0).powi(3);
+                        volumes[1] =
+                            (volumes[0] * (1.0 - bal * bal.signum())).max(0.0);
+                    }
+                    Some(bal) if bal > 0.0 => {
+                        volumes[1] =
+                            (volumes[1].cbrt() + delta).max(0.0).powi(3);
+                        volumes[0] =
+                            (volumes[1] * (1.0 - bal * bal.signum())).max(0.0);
+                    }
+                    _ => {
+                        let avg =
+                            volumes.iter().sum::<f32>() / volumes.len() as f32;
+                        volumes.fill((avg.cbrt() + delta).max(0.0).powi(3));
+                    }
+                }
             }
             VolumeAdjustment::Absolute(volume) => {
-                volumes.fill(volume.max(0.0).powi(3));
+                let bal = self.balance(&volumes);
+                match bal {
+                    // TODO: consolidate first two cases
+                    Some(bal) if bal <= 0.0 => {
+                        volumes[0] = volume.max(0.0).powi(3);
+                        volumes[1] =
+                            (volumes[0] * (1.0 - bal * bal.signum())).max(0.0);
+                    }
+                    Some(bal) => {
+                        volumes[1] = volume.max(0.0).powi(3);
+                        volumes[0] =
+                            (volumes[1] * (1.0 - bal * bal.signum())).max(0.0);
+                    }
+                    None => {
+                        volumes.fill(volume.max(0.0).powi(3));
+                    }
+                }
+            }
+            VolumeAdjustment::AbsoluteBalance(balance) => {
+                self.rebalance(&mut volumes, balance);
+            }
+            VolumeAdjustment::RelativeBalance(delta) => {
+                if let Some(balance) = self.balance(&volumes) {
+                    self.rebalance(&mut volumes, balance + delta);
+                }
             }
         }
         let volumes = volumes;
