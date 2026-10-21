@@ -169,7 +169,7 @@ keybindings = [
 # Streams in the Playback/Recording tabs
 stream = [ "{node:node.name}: {node:media.name}" ]
 # Endpoints in the Input/Output Devices tabs
-endpoint = [ "{device:device.nick}", "{node:node.description}" ]
+endpoint = [ "{node:node.nick}", "{device:device.nick}", "{node:node.description}" ]
 # Devices in the Configuration tab
 device = [ "{device:device.nick}", "{device:device.description}" ]
 
